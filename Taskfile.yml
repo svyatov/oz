@@ -1,0 +1,18 @@
+version: "3"
+
+tasks:
+  lint:
+    cmd: golangci-lint run ./...
+
+  test:
+    cmd: go test ./...
+
+  cover:
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+
+  cover-html:
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out

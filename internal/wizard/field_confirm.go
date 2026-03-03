@@ -77,7 +77,7 @@ func (f *ConfirmField) View() string {
 		}
 
 		styledLabel := ui.ChoiceLabel(item, active)
-		b.WriteString(fmt.Sprintf("   %s%s  %s\n", cursor, num, styledLabel))
+		fmt.Fprintf(&b, "   %s%s  %s\n", cursor, num, styledLabel)
 	}
 
 	return b.String()
