@@ -6,8 +6,6 @@ import (
 	"strconv"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/huh"
-	lipglossv1 "github.com/charmbracelet/lipgloss"
 )
 
 var lightDark = lipgloss.LightDark(lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
@@ -111,13 +109,22 @@ func PinnedInfo(count int) string {
 	return MutedStyle.Render(fmt.Sprintf("(%d pinned options hidden)", count))
 }
 
-// HuhTheme returns a customized huh theme (used only for --pins multi-select).
-func HuhTheme() *huh.Theme {
-	t := huh.ThemeBase()
+// PinIcon renders the pin indicator "●" in green.
+func PinIcon() string {
+	return lipgloss.NewStyle().Foreground(Green).Render("●")
+}
 
-	t.Focused.Title = t.Focused.Title.Foreground(lipglossv1.Color("141")).Bold(true)
-	t.Focused.Description = t.Focused.Description.Foreground(lipglossv1.Color("248"))
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(lipglossv1.Color("84"))
+// PinEditIndicator renders the "pin" label for edit mode headers.
+func PinEditIndicator() string {
+	return lipgloss.NewStyle().Foreground(Accent).Bold(true).Render("pin")
+}
 
-	return t
+// PinsListNavHint renders the nav hint for pin list mode.
+func PinsListNavHint() string {
+	return lipgloss.NewStyle().Foreground(Dimmed).Render("  enter edit \u00b7 space toggle pin \u00b7 esc done")
+}
+
+// PinsEditNavHint renders the nav hint for pin edit mode.
+func PinsEditNavHint() string {
+	return lipgloss.NewStyle().Foreground(Dimmed).Render("  enter confirm \u00b7 esc cancel")
 }

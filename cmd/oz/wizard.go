@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	"github.com/svyatov/oz/internal/command"
@@ -41,7 +40,7 @@ func wizardCmd(name string) *cobra.Command {
 
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print command without executing")
 	cmd.Flags().StringVar(&presetName, "preset", "", "run with saved preset (non-interactive)")
-	cmd.Flags().BoolVar(&pins, "pins", false, "interactive multi-select to toggle pins")
+	cmd.Flags().BoolVar(&pins, "pins", false, "manage pinned options interactively")
 
 	cmd.AddCommand(doctorCmd(name))
 	cmd.AddCommand(explainCmd(name))
@@ -188,79 +187,18 @@ func runPins(name string) error {
 		state.Pins = make(map[string]any)
 	}
 
-	selected, err := promptPinSelection(options, state.Pins)
+	result, err := wizard.RunPins(options, state.Pins, state.LastUsed)
 	if err != nil {
-		return err
+		return fmt.Errorf("managing pins: %w", err)
 	}
 
-	state.Pins = resolvePinValues(options, selected, state.LastUsed)
+	state.Pins = result.Pins
 	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
 		return fmt.Errorf("saving pins: %w", err)
 	}
 
-	fmt.Printf("  %d option(s) pinned.\n", len(state.Pins))
+	fmt.Printf("  %s pinned.\n", ui.Plural(len(state.Pins), "option"))
 	return nil
-}
-
-func promptPinSelection(
-	options []config.Option, currentPins map[string]any,
-) ([]string, error) {
-	var optionNames []huh.Option[string]
-	var currentlyPinned []string
-	for _, o := range options {
-		label := o.Label
-		if o.Description != "" {
-			label += "  " + o.Description
-		}
-		optionNames = append(optionNames, huh.NewOption(label, o.Name))
-		if _, ok := currentPins[o.Name]; ok {
-			currentlyPinned = append(currentlyPinned, o.Name)
-		}
-	}
-
-	selected := currentlyPinned
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewMultiSelect[string]().
-				Title("Pinned options").
-				Description("Pinned options use their last-used value and are skipped in the wizard").
-				Options(optionNames...).
-				Value(&selected),
-		),
-	).WithTheme(ui.HuhTheme())
-
-	if err := form.Run(); err != nil {
-		return nil, fmt.Errorf("running pin selection: %w", err)
-	}
-	return selected, nil
-}
-
-func resolvePinValues(
-	options []config.Option, selected []string, lastUsed map[string]any,
-) map[string]any {
-	selectedSet := make(map[string]bool, len(selected))
-	for _, s := range selected {
-		selectedSet[s] = true
-	}
-
-	pins := make(map[string]any)
-	for _, o := range options {
-		if !selectedSet[o.Name] {
-			continue
-		}
-		v, ok := lastUsed[o.Name]
-		switch {
-		case ok:
-			pins[o.Name] = v
-		case o.Default != nil:
-			pins[o.Name] = o.Default
-		case o.Type == "confirm":
-			pins[o.Name] = false
-		default:
-			pins[o.Name] = ""
-		}
-	}
-	return pins
 }
 
 func buildPositionalArgs(argDefs []config.Arg, cliArgs []string) map[string]string {
