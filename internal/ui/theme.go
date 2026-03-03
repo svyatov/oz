@@ -109,6 +109,11 @@ func PinnedInfo(count int) string {
 	return MutedStyle.Render(fmt.Sprintf("(%d pinned options hidden)", count))
 }
 
+// DefaultTag renders a dimmed "(default)" suffix for select choices.
+func DefaultTag() string {
+	return lipgloss.NewStyle().Foreground(Dimmed).Render("(default)")
+}
+
 // PinIcon renders the pin indicator "●" in green.
 func PinIcon() string {
 	return lipgloss.NewStyle().Foreground(Green).Render("●")

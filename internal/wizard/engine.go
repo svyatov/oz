@@ -284,6 +284,10 @@ func (e *Engine) setFieldDefault(opt *config.Option) {
 		}
 	}
 
+	if sf, ok := e.currentField.(*SelectField); ok && opt.Default != nil {
+		sf.SetDefault(opt.Default)
+	}
+
 	if val != nil {
 		e.currentField.SetValue(val)
 	}
