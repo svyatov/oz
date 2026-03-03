@@ -2,6 +2,7 @@ version: "2"
 
 linters:
   enable:
+    # Style & correctness
     - gocritic
     - gosec
     - errorlint
@@ -10,6 +11,41 @@ linters:
     - unconvert
     - unparam
     - whitespace
+    - godot
+    - nolintlint
+    - errname
+    - predeclared
+    - dupword
+    - goprintffuncname
+
+    # Error handling
+    - wrapcheck
+    - nilerr
+    - nilnil
+
+    # Complexity
+    - gocognit
+    - gocyclo
+    - funlen
+
+    # Performance
+    - perfsprint
+    - bodyclose
+    - durationcheck
+    - mirror
+
+    # Modern Go
+    - modernize
+    - intrange
+    - copyloopvar
+    - recvcheck
+    - exhaustive
+
+    # Function hygiene
+    - nakedret
+    - thelper
+    - lll
+
   settings:
     gosec:
       excludes:
@@ -23,3 +59,12 @@ linters:
           disabled: true
         - name: package-comments
           disabled: true
+    lll:
+      line-length: 120
+    funlen:
+      lines: 60
+      statements: 40
+    gocognit:
+      min-complexity: 30
+    gocyclo:
+      min-complexity: 15

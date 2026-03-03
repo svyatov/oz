@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,7 +11,7 @@ import (
 // Run executes the command, connecting stdin/stdout/stderr to the terminal.
 func Run(parts []string) error {
 	if len(parts) == 0 {
-		return fmt.Errorf("empty command")
+		return errors.New("empty command")
 	}
 
 	cmd := exec.Command(parts[0], parts[1:]...)

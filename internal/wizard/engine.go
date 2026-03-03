@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -66,9 +67,7 @@ func NewEngine(wizardName, version string, options []config.Option, pinnedCount 
 
 // SetPinnedAnswers sets the answers for pinned options (needed for show_when).
 func (e *Engine) SetPinnedAnswers(pins map[string]any) {
-	for k, v := range pins {
-		e.answers[k] = v
-	}
+	maps.Copy(e.answers, pins)
 }
 
 func (e *Engine) Init() tea.Cmd {
@@ -156,8 +155,8 @@ func (e *Engine) View() tea.View {
 		fieldView := e.currentField.View()
 		// Replace placeholder step counter with real one
 		placeholder := ui.StepCounter(0, 0)
-		real := ui.StepCounter(displayPos, total)
-		fieldView = strings.Replace(fieldView, placeholder, real, 1)
+		actual := ui.StepCounter(displayPos, total)
+		fieldView = strings.Replace(fieldView, placeholder, actual, 1)
 		b.WriteString(fieldView)
 	}
 
@@ -311,7 +310,10 @@ func (e *Engine) recordCompletedStep() {
 }
 
 // Run executes the wizard and returns the result.
-func Run(wizardName, version string, options []config.Option, pinnedCount int, defaults map[string]any, pinnedAnswers map[string]any) (*Result, error) {
+func Run(
+	wizardName, version string, options []config.Option,
+	pinnedCount int, defaults, pinnedAnswers map[string]any,
+) (*Result, error) {
 	engine := NewEngine(wizardName, version, options, pinnedCount, defaults)
 	engine.SetPinnedAnswers(pinnedAnswers)
 

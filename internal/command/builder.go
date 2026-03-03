@@ -29,7 +29,7 @@ type Part struct {
 // Build constructs the full CLI command from the wizard config, positional args, and answers.
 func Build(w *config.Wizard, positionalArgs map[string]string, answers map[string]any) []Part {
 	var parts []Part
-	for _, s := range strings.Fields(w.Command) {
+	for s := range strings.FieldsSeq(w.Command) {
 		parts = append(parts, Part{s, PartCommand})
 	}
 

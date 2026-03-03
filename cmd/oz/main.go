@@ -63,7 +63,7 @@ func listCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, _ []string) error {
 			wizards, err := config.ListWizards(configDir)
 			if err != nil {
-				return err
+				return fmt.Errorf("listing wizards: %w", err)
 			}
 			if len(wizards) == 0 {
 				fmt.Println("No wizards found in", config.WizardsDir(configDir))
@@ -89,7 +89,7 @@ func validateCmd() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			w, err := config.LoadWizard(args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("loading wizard: %w", err)
 			}
 			errs := config.Validate(w)
 			if len(errs) > 0 {

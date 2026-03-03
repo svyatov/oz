@@ -2,14 +2,14 @@ package config
 
 // Wizard is the top-level YAML config for a wizard.
 type Wizard struct {
-	Name        string          `yaml:"name"`
-	Description string          `yaml:"description"`
-	Command     string          `yaml:"command"`
-	FlagStyle   string          `yaml:"flag_style"` // "equals" (default) or "space"
-	Args        []Arg           `yaml:"args"`
-	Detect      *DetectVersion  `yaml:"detect_version"`
-	Compat      []CompatEntry   `yaml:"compat"`
-	Options     []Option        `yaml:"options"`
+	Name        string         `yaml:"name"`
+	Description string         `yaml:"description"`
+	Command     string         `yaml:"command"`
+	FlagStyle   string         `yaml:"flag_style"` // "equals" (default) or "space"
+	Args        []Arg          `yaml:"args"`
+	Detect      *DetectVersion `yaml:"detect_version"`
+	Compat      []CompatEntry  `yaml:"compat"`
+	Options     []Option       `yaml:"options"`
 }
 
 func (w *Wizard) EffectiveFlagStyle() string {
@@ -41,20 +41,20 @@ type CompatEntry struct {
 
 // Option is a single wizard step.
 type Option struct {
-	Name        string            `yaml:"name"`
-	Type        string            `yaml:"type"` // select, confirm, input, multi_select
-	Label       string            `yaml:"label"`
-	Description string            `yaml:"description"`
-	Flag        string            `yaml:"flag"`
-	FlagTrue    string            `yaml:"flag_true"`
-	FlagFalse   string            `yaml:"flag_false"`
-	FlagNone    string            `yaml:"flag_none"`
-	FlagStyle   string            `yaml:"flag_style"` // per-option override
-	Default     any               `yaml:"default"`
-	AllowNone   bool              `yaml:"allow_none"`
-	Required    bool              `yaml:"required"`
-	ShowWhen    map[string]any    `yaml:"show_when"`
-	Choices     []Choice          `yaml:"choices"`
+	Name        string         `yaml:"name"`
+	Type        string         `yaml:"type"` // select, confirm, input, multi_select
+	Label       string         `yaml:"label"`
+	Description string         `yaml:"description"`
+	Flag        string         `yaml:"flag"`
+	FlagTrue    string         `yaml:"flag_true"`
+	FlagFalse   string         `yaml:"flag_false"`
+	FlagNone    string         `yaml:"flag_none"`
+	FlagStyle   string         `yaml:"flag_style"` // per-option override
+	Default     any            `yaml:"default"`
+	AllowNone   bool           `yaml:"allow_none"`
+	Required    bool           `yaml:"required"`
+	ShowWhen    map[string]any `yaml:"show_when"`
+	Choices     []Choice       `yaml:"choices"`
 }
 
 func (o *Option) EffectiveFlagStyle(wizardDefault string) string {

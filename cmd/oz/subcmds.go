@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -71,50 +72,51 @@ func explainCmd(wizardName string) *cobra.Command {
 			options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
 
 			fmt.Printf("\n  %s\n\n", ui.Header(w.Name, detectedVersion))
-
 			for i, o := range options {
-				fmt.Printf("  %s  %s\n", ui.StepCounter(i+1, len(options)),
-					ui.TitleStyle.Render(o.Label))
-				if o.Description != "" {
-					fmt.Printf("         %s\n", ui.MutedStyle.Render(o.Description))
-				}
-				fmt.Printf("         Type: %s", o.Type)
-				if o.Flag != "" {
-					fmt.Printf("  Flag: %s", o.Flag)
-				}
-				if o.FlagTrue != "" {
-					fmt.Printf("  FlagTrue: %s", o.FlagTrue)
-				}
-				if o.FlagFalse != "" {
-					fmt.Printf("  FlagFalse: %s", o.FlagFalse)
-				}
-				fmt.Println()
-
-				if o.Default != nil {
-					fmt.Printf("         Default: %v\n", o.Default)
-				}
-
-				for _, c := range o.Choices {
-					desc := ""
-					if c.Description != "" {
-						desc = "  " + ui.MutedStyle.Render(c.Description)
-					}
-					fmt.Printf("           - %s%s\n", c.Label, desc)
-				}
-
-				if len(o.ShowWhen) > 0 {
-					conditions := make([]string, 0, len(o.ShowWhen))
-					for k, v := range o.ShowWhen {
-						conditions = append(conditions, fmt.Sprintf("%s=%v", k, v))
-					}
-					fmt.Printf("         Show when: %s\n", strings.Join(conditions, ", "))
-				}
-
-				fmt.Println()
+				printOptionExplanation(i+1, len(options), o)
 			}
 			return nil
 		},
 	}
+}
+
+func printOptionExplanation(step, total int, o config.Option) {
+	fmt.Printf("  %s  %s\n", ui.StepCounter(step, total),
+		ui.TitleStyle.Render(o.Label))
+	if o.Description != "" {
+		fmt.Printf("         %s\n", ui.MutedStyle.Render(o.Description))
+	}
+	fmt.Printf("         Type: %s", o.Type)
+	if o.Flag != "" {
+		fmt.Printf("  Flag: %s", o.Flag)
+	}
+	if o.FlagTrue != "" {
+		fmt.Printf("  FlagTrue: %s", o.FlagTrue)
+	}
+	if o.FlagFalse != "" {
+		fmt.Printf("  FlagFalse: %s", o.FlagFalse)
+	}
+	fmt.Println()
+
+	if o.Default != nil {
+		fmt.Printf("         Default: %v\n", o.Default)
+	}
+	for _, c := range o.Choices {
+		desc := ""
+		if c.Description != "" {
+			desc = "  " + ui.MutedStyle.Render(c.Description)
+		}
+		fmt.Printf("           - %s%s\n", c.Label, desc)
+	}
+	if len(o.ShowWhen) > 0 {
+		conditions := make([]string, 0, len(o.ShowWhen))
+		for k, v := range o.ShowWhen {
+			conditions = append(conditions, fmt.Sprintf("%s=%v", k, v))
+		}
+		fmt.Printf("         Show when: %s\n",
+			strings.Join(conditions, ", "))
+	}
+	fmt.Println()
 }
 
 func presetCmd(wizardName string) *cobra.Command {
@@ -140,7 +142,7 @@ func presetListCmd(wizardName string) *cobra.Command {
 			st := store.New(configDir)
 			names, err := st.ListPresets(wizardName)
 			if err != nil {
-				return err
+				return fmt.Errorf("listing presets: %w", err)
 			}
 			if len(names) == 0 {
 				fmt.Println("  No presets found.")
@@ -168,7 +170,7 @@ func presetShowCmd(wizardName string) *cobra.Command {
 			st := store.New(configDir)
 			values, err := st.LoadPreset(wizardName, args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("loading preset %q: %w", args[0], err)
 			}
 
 			fmt.Printf("\n  Preset: %s\n\n", args[0])
@@ -197,7 +199,7 @@ func presetExplainCmd(wizardName string) *cobra.Command {
 			st := store.New(configDir)
 			values, err := st.LoadPreset(wizardName, args[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("loading preset %q: %w", args[0], err)
 			}
 
 			// Build option lookup
@@ -254,11 +256,11 @@ func presetSaveCmd(wizardName string) *cobra.Command {
 				return fmt.Errorf("no state found: %w", err)
 			}
 			if len(state.LastUsed) == 0 {
-				return fmt.Errorf("no last-used values to save — run the wizard first")
+				return errors.New("no last-used values to save — run the wizard first")
 			}
 
 			if err := st.SavePreset(wizardName, args[0], state.LastUsed); err != nil {
-				return err
+				return fmt.Errorf("saving preset %q: %w", args[0], err)
 			}
 			fmt.Printf("  Preset %q saved.\n", args[0])
 			return nil
@@ -274,7 +276,7 @@ func presetDeleteCmd(wizardName string) *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			st := store.New(configDir)
 			if err := st.DeletePreset(wizardName, args[0]); err != nil {
-				return err
+				return fmt.Errorf("deleting preset %q: %w", args[0], err)
 			}
 			fmt.Printf("  Preset %q deleted.\n", args[0])
 			return nil

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -68,103 +69,90 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	}
 
 	st := store.New(configDir)
-
-	// Detect version
 	detectedVersion, err := compat.DetectVersion(w.Detect)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
 	}
-
-	// Major version for state scoping
 	majorVersion := majorVer(detectedVersion)
-
-	// Filter options by compat matrix
 	options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
 
-	// Load state
 	state, err := st.LoadState(w.Name, majorVersion)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to load state: %v\n", err)
 		state = &store.StateEntry{}
 	}
 
-	// Build positional args map
 	positionalArgs := buildPositionalArgs(w.Args, args)
-
-	// If preset specified, run non-interactively
 	if presetName != "" {
 		return runWithPreset(w, st, positionalArgs, presetName, dryRun)
 	}
 
-	// Filter out pinned options
 	filteredOptions, pinnedCount := wizard.FilterPinned(options, state.Pins)
-
-	// Pin answers go into defaults so show_when can reference them
 	pinnedAnswers := make(map[string]any)
-	for k, v := range state.Pins {
-		pinnedAnswers[k] = v
-	}
+	maps.Copy(pinnedAnswers, state.Pins)
 
-	// Run interactive wizard
-	result, err := wizard.Run(w.Name, detectedVersion, filteredOptions, pinnedCount, state.LastUsed, pinnedAnswers)
+	result, err := wizard.Run(
+		w.Name, detectedVersion, filteredOptions,
+		pinnedCount, state.LastUsed, pinnedAnswers,
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("running wizard: %w", err)
 	}
 	if result.Aborted {
 		return nil
 	}
 
-	// Merge pinned values into answers
 	allAnswers := make(map[string]any)
-	for k, v := range pinnedAnswers {
-		allAnswers[k] = v
-	}
-	for k, v := range result.Answers {
-		allAnswers[k] = v
-	}
+	maps.Copy(allAnswers, pinnedAnswers)
+	maps.Copy(allAnswers, result.Answers)
 
-	// Build command
 	parts := command.Build(w, positionalArgs, allAnswers)
 	command.PrintCommand(parts)
 
 	if dryRun {
 		return nil
 	}
-
-	// Confirm execution
 	if !confirmPrompt("  Execute?") {
 		return nil
 	}
 
-	// Save state
+	saveRunState(st, w.Name, majorVersion, state, result.Answers, allAnswers)
+	fmt.Println()
+	if err := command.Run(command.PlainParts(parts)); err != nil {
+		return fmt.Errorf("executing command: %w", err)
+	}
+	return nil
+}
+
+func saveRunState(
+	st *store.Store, wizardName, majorVersion string,
+	state *store.StateEntry, answers wizard.Answers, allAnswers map[string]any,
+) {
 	if state.LastUsed == nil {
 		state.LastUsed = make(map[string]any)
 	}
-	for k, v := range result.Answers {
-		state.LastUsed[k] = v
-	}
-	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
+	maps.Copy(state.LastUsed, answers)
+	if err := st.SaveState(wizardName, majorVersion, state); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to save state: %v\n", err)
 	}
 
-	// Offer to save as preset
 	presetSaveName := promptPresetSave()
 	if presetSaveName != "" {
-		if err := st.SavePreset(w.Name, presetSaveName, allAnswers); err != nil {
+		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to save preset: %v\n", err)
 		} else {
 			fmt.Printf("  Preset %q saved.\n", presetSaveName)
 		}
 	}
-
-	fmt.Println()
-	return command.Run(command.PlainParts(parts))
 }
 
-func runWithPreset(w *config.Wizard, st *store.Store, positionalArgs map[string]string, presetName string, dryRun bool) error {
+func runWithPreset(
+	w *config.Wizard, st *store.Store,
+	positionalArgs map[string]string, presetName string, dryRun bool,
+) error {
 	values, err := st.LoadPreset(w.Name, presetName)
 	if err != nil {
-		return err
+		return fmt.Errorf("loading preset %q: %w", presetName, err)
 	}
 
 	parts := command.Build(w, positionalArgs, values)
@@ -174,7 +162,10 @@ func runWithPreset(w *config.Wizard, st *store.Store, positionalArgs map[string]
 		return nil
 	}
 
-	return command.Run(command.PlainParts(parts))
+	if err := command.Run(command.PlainParts(parts)); err != nil {
+		return fmt.Errorf("executing command: %w", err)
+	}
+	return nil
 }
 
 func runPins(name string) error {
@@ -197,7 +188,23 @@ func runPins(name string) error {
 		state.Pins = make(map[string]any)
 	}
 
-	// Build multi-select of all options
+	selected, err := promptPinSelection(options, state.Pins)
+	if err != nil {
+		return err
+	}
+
+	state.Pins = resolvePinValues(options, selected, state.LastUsed)
+	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
+		return fmt.Errorf("saving pins: %w", err)
+	}
+
+	fmt.Printf("  %d option(s) pinned.\n", len(state.Pins))
+	return nil
+}
+
+func promptPinSelection(
+	options []config.Option, currentPins map[string]any,
+) ([]string, error) {
 	var optionNames []huh.Option[string]
 	var currentlyPinned []string
 	for _, o := range options {
@@ -206,13 +213,12 @@ func runPins(name string) error {
 			label += "  " + o.Description
 		}
 		optionNames = append(optionNames, huh.NewOption(label, o.Name))
-		if _, ok := state.Pins[o.Name]; ok {
+		if _, ok := currentPins[o.Name]; ok {
 			currentlyPinned = append(currentlyPinned, o.Name)
 		}
 	}
 
 	selected := currentlyPinned
-
 	form := huh.NewForm(
 		huh.NewGroup(
 			huh.NewMultiSelect[string]().
@@ -224,42 +230,37 @@ func runPins(name string) error {
 	).WithTheme(ui.HuhTheme())
 
 	if err := form.Run(); err != nil {
-		return err
+		return nil, fmt.Errorf("running pin selection: %w", err)
 	}
+	return selected, nil
+}
 
-	// Update pins: pinned options get their last-used value (or default)
-	newPins := make(map[string]any)
-	selectedSet := make(map[string]bool)
+func resolvePinValues(
+	options []config.Option, selected []string, lastUsed map[string]any,
+) map[string]any {
+	selectedSet := make(map[string]bool, len(selected))
 	for _, s := range selected {
 		selectedSet[s] = true
 	}
 
+	pins := make(map[string]any)
 	for _, o := range options {
 		if !selectedSet[o.Name] {
 			continue
 		}
-		// Use last-used value if available, otherwise default
-		if v, ok := state.LastUsed[o.Name]; ok {
-			newPins[o.Name] = v
-		} else if o.Default != nil {
-			newPins[o.Name] = o.Default
-		} else {
-			// For confirm, default to false; for others, empty string
-			if o.Type == "confirm" {
-				newPins[o.Name] = false
-			} else {
-				newPins[o.Name] = ""
-			}
+		v, ok := lastUsed[o.Name]
+		switch {
+		case ok:
+			pins[o.Name] = v
+		case o.Default != nil:
+			pins[o.Name] = o.Default
+		case o.Type == "confirm":
+			pins[o.Name] = false
+		default:
+			pins[o.Name] = ""
 		}
 	}
-
-	state.Pins = newPins
-	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
-		return fmt.Errorf("saving pins: %w", err)
-	}
-
-	fmt.Printf("  %d option(s) pinned.\n", len(newPins))
-	return nil
+	return pins
 }
 
 func buildPositionalArgs(argDefs []config.Arg, cliArgs []string) map[string]string {

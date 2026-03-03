@@ -80,12 +80,10 @@ func FilterOptions(options []config.Option, compat []config.CompatEntry, version
 }
 
 // matchVersionRange checks if version satisfies a comma-separated constraint string.
-// Supports: ">= X.Y", "< X.Y", "> X.Y", "<= X.Y", "= X.Y", "X.Y"
+// Supports: ">= X.Y", "< X.Y", "> X.Y", "<= X.Y", "= X.Y", "X.Y".
 func matchVersionRange(version, constraint string) bool {
-	parts := strings.Split(constraint, ",")
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if !matchSingleConstraint(version, part) {
+	for part := range strings.SplitSeq(constraint, ",") {
+		if !matchSingleConstraint(version, strings.TrimSpace(part)) {
 			return false
 		}
 	}
@@ -130,12 +128,9 @@ func compareVersions(a, b string) int {
 	aParts := strings.Split(a, ".")
 	bParts := strings.Split(b, ".")
 
-	maxLen := len(aParts)
-	if len(bParts) > maxLen {
-		maxLen = len(bParts)
-	}
+	maxLen := max(len(aParts), len(bParts))
 
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		av, bv := 0, 0
 		if i < len(aParts) {
 			av, _ = strconv.Atoi(aParts[i])

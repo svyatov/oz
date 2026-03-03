@@ -16,11 +16,33 @@ func TestValidate(t *testing.T) {
 		}
 	}
 
-	tests := []struct {
-		name    string
-		modify  func(*Wizard)
-		wantErr string // substring expected in errors; "" means no errors
-	}{
+	for _, tt := range validationCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			w := minimal()
+			tt.modify(w)
+			errs := Validate(w)
+			combined := FormatErrors(errs)
+			if tt.wantErr == "" {
+				if len(errs) != 0 {
+					t.Errorf("expected no errors, got:\n%s", combined)
+				}
+			} else {
+				if !strings.Contains(combined, tt.wantErr) {
+					t.Errorf("expected error containing %q, got:\n%s", tt.wantErr, combined)
+				}
+			}
+		})
+	}
+}
+
+type validationCase struct {
+	name    string
+	modify  func(*Wizard)
+	wantErr string
+}
+
+func validationCases() []validationCase {
+	return []validationCase{
 		{"valid_minimal", func(w *Wizard) {}, ""},
 		{"missing_name", func(w *Wizard) { w.Name = "" }, "name is required"},
 		{"missing_command", func(w *Wizard) { w.Command = "" }, "command is required"},
@@ -69,23 +91,6 @@ func TestValidate(t *testing.T) {
 			w.Compat = []CompatEntry{{Versions: ">= 1.0", Options: []string{"nope"}}}
 		}, "references unknown option"},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := minimal()
-			tt.modify(w)
-			errs := Validate(w)
-			combined := FormatErrors(errs)
-			if tt.wantErr == "" {
-				if len(errs) != 0 {
-					t.Errorf("expected no errors, got:\n%s", combined)
-				}
-			} else {
-				if !strings.Contains(combined, tt.wantErr) {
-					t.Errorf("expected error containing %q, got:\n%s", tt.wantErr, combined)
-				}
-			}
-		})
-	}
 }
 
 func TestFormatErrors(t *testing.T) {
@@ -96,8 +101,8 @@ func TestFormatErrors(t *testing.T) {
 	})
 	t.Run("multiple", func(t *testing.T) {
 		errs := []error{
-			&validationErr{"a"},
-			&validationErr{"b"},
+			&validationError{"a"},
+			&validationError{"b"},
 		}
 		got := FormatErrors(errs)
 		if !strings.Contains(got, "a") || !strings.Contains(got, "b") {
@@ -106,9 +111,9 @@ func TestFormatErrors(t *testing.T) {
 	})
 }
 
-type validationErr struct{ msg string }
+type validationError struct{ msg string }
 
-func (e *validationErr) Error() string { return e.msg }
+func (e *validationError) Error() string { return e.msg }
 
 func TestEffectiveFlagStyle(t *testing.T) {
 	t.Run("wizard_default", func(t *testing.T) {

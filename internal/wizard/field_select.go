@@ -82,7 +82,7 @@ func (f *SelectField) View() string {
 	}
 
 	n := f.itemCount()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, active)
 
@@ -112,7 +112,7 @@ func (f *SelectField) Value() any { return f.value }
 func (f *SelectField) SetValue(v any) {
 	s := fmt.Sprintf("%v", v)
 	f.value = s
-	for i := 0; i < f.itemCount(); i++ {
+	for i := range f.itemCount() {
 		if f.valueAt(i) == s {
 			f.cursor = i
 			return

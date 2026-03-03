@@ -71,7 +71,7 @@ func (s *Store) LoadState(wizard, version string) (*StateEntry, error) {
 func (s *Store) SaveState(wizard, version string, entry *StateEntry) error {
 	path := s.statePath(wizard)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+		return fmt.Errorf("creating state directory: %w", err)
 	}
 
 	if version != "" {
@@ -80,9 +80,12 @@ func (s *Store) SaveState(wizard, version string, entry *StateEntry) error {
 
 	data, err := yaml.Marshal(entry)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshaling state: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("writing state: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) saveVersionedState(path, version string, entry *StateEntry) error {
@@ -100,9 +103,12 @@ func (s *Store) saveVersionedState(path, version string, entry *StateEntry) erro
 
 	data, err := yaml.Marshal(&vs)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshaling versioned state: %w", err)
 	}
-	return os.WriteFile(path, data, 0o644)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("writing versioned state: %w", err)
+	}
+	return nil
 }
 
 // --- Presets ---
@@ -153,13 +159,16 @@ func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
 func (s *Store) SavePreset(wizard, name string, values map[string]any) error {
 	dir := s.presetsDir(wizard)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("creating presets directory: %w", err)
 	}
 	data, err := yaml.Marshal(values)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshaling preset %q: %w", name, err)
 	}
-	return os.WriteFile(s.presetPath(wizard, name), data, 0o644)
+	if err := os.WriteFile(s.presetPath(wizard, name), data, 0o644); err != nil {
+		return fmt.Errorf("writing preset %q: %w", name, err)
+	}
+	return nil
 }
 
 // DeletePreset removes a named preset.

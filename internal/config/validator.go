@@ -22,8 +22,21 @@ func Validate(w *Wizard) []error {
 		add("flag_style must be 'equals' or 'space', got %q", w.FlagStyle)
 	}
 
-	// Validate args
-	for i, a := range w.Args {
+	validateArgs(w.Args, add)
+	validateDetect(w.Detect, add)
+
+	if len(w.Compat) > 0 && w.Detect == nil {
+		add("compat requires detect_version to be set")
+	}
+
+	optionNames := validateOptions(w.Options, add)
+	validateReferences(w.Options, w.Compat, optionNames, add)
+
+	return errs
+}
+
+func validateArgs(args []Arg, add func(string, ...any)) {
+	for i, a := range args {
 		if a.Name == "" {
 			add("args[%d]: name is required", i)
 		}
@@ -31,29 +44,28 @@ func Validate(w *Wizard) []error {
 			add("args[%d] (%s): position must be >= 1", i, a.Name)
 		}
 	}
+}
 
-	// Validate detect_version
-	if w.Detect != nil {
-		if w.Detect.Command == "" {
-			add("detect_version.command is required")
-		}
-		if w.Detect.Pattern == "" {
-			add("detect_version.pattern is required")
-		}
+func validateDetect(dv *DetectVersion, add func(string, ...any)) {
+	if dv == nil {
+		return
 	}
-
-	// Validate compat requires detect_version
-	if len(w.Compat) > 0 && w.Detect == nil {
-		add("compat requires detect_version to be set")
+	if dv.Command == "" {
+		add("detect_version.command is required")
 	}
+	if dv.Pattern == "" {
+		add("detect_version.pattern is required")
+	}
+}
 
-	// Build option name set for reference validation
+var validOptionTypes = map[string]bool{
+	"select": true, "confirm": true, "input": true, "multi_select": true,
+}
+
+func validateOptions(options []Option, add func(string, ...any)) map[string]bool {
 	optionNames := make(map[string]bool)
-	validTypes := map[string]bool{
-		"select": true, "confirm": true, "input": true, "multi_select": true,
-	}
 
-	for i, o := range w.Options {
+	for i, o := range options {
 		prefix := fmt.Sprintf("options[%d]", i)
 		if o.Name != "" {
 			prefix = fmt.Sprintf("options[%d] (%s)", i, o.Name)
@@ -66,7 +78,7 @@ func Validate(w *Wizard) []error {
 		}
 		optionNames[o.Name] = true
 
-		if !validTypes[o.Type] {
+		if !validOptionTypes[o.Type] {
 			add("%s: type must be one of select, confirm, input, multi_select; got %q", prefix, o.Type)
 		}
 		if o.Label == "" {
@@ -75,13 +87,9 @@ func Validate(w *Wizard) []error {
 		if o.FlagStyle != "" && o.FlagStyle != "equals" && o.FlagStyle != "space" {
 			add("%s: flag_style must be 'equals' or 'space', got %q", prefix, o.FlagStyle)
 		}
-
-		// select / multi_select need choices
 		if (o.Type == "select" || o.Type == "multi_select") && len(o.Choices) == 0 {
 			add("%s: choices are required for type %q", prefix, o.Type)
 		}
-
-		// Validate choices
 		for j, c := range o.Choices {
 			if c.Value == "" {
 				add("%s: choices[%d]: value is required", prefix, j)
@@ -89,25 +97,24 @@ func Validate(w *Wizard) []error {
 		}
 	}
 
-	// Validate show_when references
-	for i, o := range w.Options {
+	return optionNames
+}
+
+func validateReferences(options []Option, compat []CompatEntry, optionNames map[string]bool, add func(string, ...any)) {
+	for i, o := range options {
 		for ref := range o.ShowWhen {
 			if !optionNames[ref] {
 				add("options[%d] (%s): show_when references unknown option %q", i, o.Name, ref)
 			}
 		}
 	}
-
-	// Validate compat option references
-	for i, c := range w.Compat {
+	for i, c := range compat {
 		for _, name := range c.Options {
 			if !optionNames[name] {
 				add("compat[%d]: references unknown option %q", i, name)
 			}
 		}
 	}
-
-	return errs
 }
 
 // FormatErrors formats validation errors as a single string.

@@ -3,10 +3,11 @@ package ui
 import (
 	"fmt"
 	"os"
+	"strconv"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/huh"
 	lipglossv1 "github.com/charmbracelet/lipgloss"
-	"charm.land/lipgloss/v2"
 )
 
 var lightDark = lipgloss.LightDark(lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
@@ -60,7 +61,7 @@ func ChoiceDesc(desc string) string {
 
 // NumberGutter renders a choice number — green when active, dimmed when not.
 func NumberGutter(n int, active bool) string {
-	s := fmt.Sprintf("%d", n)
+	s := strconv.Itoa(n)
 	if active {
 		return lipgloss.NewStyle().Foreground(Green).Bold(true).Render(s)
 	}
