@@ -60,6 +60,16 @@ cmd/oz/main.go          CLI entrypoint (cobra)
 - Use `maps.Copy`, `strings.FieldsSeq`, `slices` — prefer stdlib over hand-rolled utilities
 - Exhaustive switch via `exhaustive` linter — all enum-like cases must be handled
 
+## Versioning and Releases
+
+- [Semantic Versioning](https://semver.org/) for all releases
+- [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages: `type(scope): description`
+  - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`, `build`, `style`
+  - `feat` → minor bump, `fix` → patch bump, `feat!`/`BREAKING CHANGE` → major bump
+- [Keep a Changelog](https://keepachangelog.com/) format in `CHANGELOG.md`
+  - Sections: Added, Changed, Deprecated, Removed, Fixed, Security
+  - Every user-facing change gets a changelog entry under `[Unreleased]`
+
 ## Code Quality
 
 - All new code must have tests and pass lint
