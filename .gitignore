@@ -1,2 +1,4 @@
-*.test
 /oz
+*.test
+*.out
+.DS_Store
