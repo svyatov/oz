@@ -107,6 +107,7 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 
 	parts := command.Build(w, positionalArgs, allAnswers)
 	command.PrintCommand(parts)
+	saveLastUsed(st, w.Name, majorVersion, state, result.Answers)
 
 	if dryRun {
 		return nil
@@ -115,7 +116,7 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 		return nil
 	}
 
-	saveRunState(st, w.Name, majorVersion, state, result.Answers, allAnswers)
+	promptAndSavePreset(st, w.Name, allAnswers)
 	fmt.Println()
 	if err := command.Run(command.PlainParts(parts)); err != nil {
 		return fmt.Errorf("executing command: %w", err)
@@ -123,9 +124,9 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	return nil
 }
 
-func saveRunState(
+func saveLastUsed(
 	st *store.Store, wizardName, majorVersion string,
-	state *store.StateEntry, answers wizard.Answers, allAnswers map[string]any,
+	state *store.StateEntry, answers wizard.Answers,
 ) {
 	if state.LastUsed == nil {
 		state.LastUsed = make(map[string]any)
@@ -134,7 +135,9 @@ func saveRunState(
 	if err := st.SaveState(wizardName, majorVersion, state); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to save state: %v\n", err)
 	}
+}
 
+func promptAndSavePreset(st *store.Store, wizardName string, allAnswers map[string]any) {
 	presetSaveName := promptPresetSave()
 	if presetSaveName != "" {
 		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
