@@ -12,7 +12,7 @@ import (
 var lightDark = lipgloss.LightDark(detectDarkBackground())
 
 func detectDarkBackground() bool {
-	if !term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stderr.Fd()) {
+	if !term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd()) || !term.IsTerminal(os.Stderr.Fd()) {
 		return true
 	}
 	return lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
