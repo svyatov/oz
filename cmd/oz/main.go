@@ -23,6 +23,7 @@ func main() {
 		Version:       version,
 	}
 	root.PersistentFlags().StringVar(&configDir, "config-dir", config.DefaultConfigDir(), "config directory")
+	root.ValidArgsFunction = completeWizardNames
 	root.AddCommand(listCmd())
 	root.AddCommand(validateCmd())
 
@@ -42,7 +43,7 @@ func main() {
 // detectWizardArg returns the wizard name if the first positional arg isn't a builtin.
 func detectWizardArg(args []string) (string, bool) {
 	builtins := map[string]bool{
-		"list": true, "validate": true, "help": true, "completion": true,
+		"list": true, "validate": true, "help": true, "completion": true, "__complete": true,
 	}
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -54,6 +55,22 @@ func detectWizardArg(args []string) (string, bool) {
 		return a, true
 	}
 	return "", false
+}
+
+func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+	wizards, err := config.ListWizards(configDir)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	names := make([]string, 0, len(wizards))
+	for _, w := range wizards {
+		if w.Description != "" {
+			names = append(names, fmt.Sprintf("%s\t★ %s", w.Name, w.Description))
+		} else {
+			names = append(names, w.Name+"\t★")
+		}
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
 func listCmd() *cobra.Command {
