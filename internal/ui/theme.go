@@ -6,9 +6,17 @@ import (
 	"strconv"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/term"
 )
 
-var lightDark = lipgloss.LightDark(lipgloss.HasDarkBackground(os.Stdin, os.Stdout))
+var lightDark = lipgloss.LightDark(detectDarkBackground())
+
+func detectDarkBackground() bool {
+	if !term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stderr.Fd()) {
+		return true
+	}
+	return lipgloss.HasDarkBackground(os.Stdin, os.Stderr)
+}
 
 // Rich color palette — distinct hues, not just gray shades.
 var (
