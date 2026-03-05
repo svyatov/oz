@@ -87,9 +87,25 @@ func ChoiceLabel(label string, active bool) string {
 	return lipgloss.NewStyle().Foreground(Normal).Render(label)
 }
 
+var (
+	hintKeyStyle = lipgloss.NewStyle().Foreground(Muted)
+	hintStyle    = lipgloss.NewStyle().Foreground(Dimmed)
+)
+
+func hintKey(key, desc string) string {
+	return hintKeyStyle.Render(key) + hintStyle.Render(" "+desc)
+}
+
+func hintSep() string { return hintStyle.Render(" \u00b7 ") }
+
 // NavHint renders the navigation hint line (dimmest text).
 func NavHint() string {
-	return lipgloss.NewStyle().Foreground(Dimmed).Render("  shift+tab back \u00b7 tab/enter next \u00b7 esc quit")
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("shift+tab", "back") + hintSep() +
+		hintKey("tab/enter", "next") + hintSep() +
+		hintKey("esc", "quit")
 }
 
 // StepCounter returns a formatted step counter like "01/05" in accent color.
@@ -134,10 +150,17 @@ func PinEditIndicator() string {
 
 // PinsListNavHint renders the nav hint for pin list mode.
 func PinsListNavHint() string {
-	return lipgloss.NewStyle().Foreground(Dimmed).Render("  enter edit \u00b7 space toggle pin \u00b7 esc done")
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("enter", "edit") + hintSep() +
+		hintKey("space", "toggle pin") + hintSep() +
+		hintKey("esc", "done")
 }
 
 // PinsEditNavHint renders the nav hint for pin edit mode.
 func PinsEditNavHint() string {
-	return lipgloss.NewStyle().Foreground(Dimmed).Render("  enter confirm \u00b7 esc cancel")
+	return "  " +
+		hintKey("enter", "confirm") + hintSep() +
+		hintKey("esc", "cancel")
 }
