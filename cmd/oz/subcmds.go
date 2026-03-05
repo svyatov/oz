@@ -28,12 +28,12 @@ func doctorCmd(wizardName string) *cobra.Command {
 			fmt.Printf("  Wizard: %s\n", w.Name)
 			fmt.Printf("  Command: %s\n", w.Command)
 
-			if w.Detect == nil {
+			if w.Version == nil {
 				fmt.Println("  Version detection: not configured")
 				return nil
 			}
 
-			ver, err := compat.DetectVersion(w.Detect)
+			ver, err := compat.DetectVersion(w.Version)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "  Version detection: %s %v\n",
 					ui.MutedStyle.Render("failed —"), err)
@@ -41,6 +41,19 @@ func doctorCmd(wizardName string) *cobra.Command {
 			}
 
 			fmt.Printf("  Detected version: %s\n", ver)
+
+			if w.Version.CustomVersionCmd != "" {
+				fmt.Printf("  Version template: %s\n", w.Version.CustomVersionCmd)
+				fmt.Printf("  Effective command: %s\n", w.EffectiveCommand(ver))
+			}
+			if w.Version.CustomVersionVerify != "" {
+				fmt.Printf("  Verify template: %s\n", w.Version.CustomVersionVerify)
+			}
+			if w.Version.AvailVersionsCmd != "" {
+				fmt.Printf("  Available versions: command — %s\n", w.Version.AvailVersionsCmd)
+			} else if w.Version.AvailVersions != "" {
+				fmt.Printf("  Available versions: static — %s\n", w.Version.AvailVersions)
+			}
 
 			// Show which compat entry matches
 			if len(w.Compat) > 0 {
@@ -68,10 +81,15 @@ func explainCmd(wizardName string) *cobra.Command {
 				return err
 			}
 
-			detectedVersion, _ := compat.DetectVersion(w.Detect)
+			detectedVersion, _ := compat.DetectVersion(w.Version)
 			options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
 
-			fmt.Printf("\n  %s\n\n", ui.Header(w.Name, detectedVersion))
+			fmt.Printf("\n  %s\n", ui.Header(w.Name, detectedVersion))
+			effectiveCmd := w.EffectiveCommand(detectedVersion)
+			if effectiveCmd != w.Command {
+				fmt.Printf("  %s\n", ui.MutedStyle.Render("command: "+effectiveCmd))
+			}
+			fmt.Println()
 			for i, o := range options {
 				printOptionExplanation(i+1, len(options), o)
 			}
@@ -173,6 +191,9 @@ func presetShowCmd(wizardName string) *cobra.Command {
 				return fmt.Errorf("loading preset %q: %w", args[0], err)
 			}
 
+			detectedVersion, _ := compat.DetectVersion(w.Version)
+			w.Command = w.EffectiveCommand(detectedVersion)
+
 			fmt.Printf("\n  Preset: %s\n\n", args[0])
 			for k, v := range values {
 				fmt.Printf("  %s: %v\n", k, v)
@@ -201,6 +222,9 @@ func presetExplainCmd(wizardName string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("loading preset %q: %w", args[0], err)
 			}
+
+			detectedVersion, _ := compat.DetectVersion(w.Version)
+			w.Command = w.EffectiveCommand(detectedVersion)
 
 			// Build option lookup
 			optMap := make(map[string]config.Option)
@@ -248,7 +272,7 @@ func presetSaveCmd(wizardName string) *cobra.Command {
 
 			st := store.New(configDir)
 
-			detectedVersion, _ := compat.DetectVersion(w.Detect)
+			detectedVersion, _ := compat.DetectVersion(w.Version)
 			majorVersion := majorVer(detectedVersion)
 
 			state, err := st.LoadState(w.Name, majorVersion)

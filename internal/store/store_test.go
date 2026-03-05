@@ -67,6 +67,50 @@ func TestLoadStateMissingFile(t *testing.T) {
 	}
 }
 
+func TestVersionPinRoundTrip(t *testing.T) {
+	s := New(t.TempDir())
+
+	pin, err := s.LoadVersionPin("wiz")
+	if err != nil {
+		t.Fatalf("LoadVersionPin (missing): %v", err)
+	}
+	if pin != "" {
+		t.Errorf("expected empty pin, got %q", pin)
+	}
+
+	if err := s.SaveVersionPin("wiz", "7.1.0"); err != nil {
+		t.Fatalf("SaveVersionPin: %v", err)
+	}
+	pin, err = s.LoadVersionPin("wiz")
+	if err != nil {
+		t.Fatalf("LoadVersionPin: %v", err)
+	}
+	if pin != "7.1.0" {
+		t.Errorf("got %q, want 7.1.0", pin)
+	}
+}
+
+func TestVersionPinPreservesState(t *testing.T) {
+	s := New(t.TempDir())
+
+	entry := &StateEntry{LastUsed: map[string]any{"a": "1"}}
+	if err := s.SaveState("wiz", "7.0", entry); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	if err := s.SaveVersionPin("wiz", "7.1.0"); err != nil {
+		t.Fatalf("SaveVersionPin: %v", err)
+	}
+
+	got, err := s.LoadState("wiz", "7.0")
+	if err != nil {
+		t.Fatalf("LoadState after pin: %v", err)
+	}
+	if got.LastUsed["a"] != "1" {
+		t.Errorf("state was not preserved: %v", got.LastUsed)
+	}
+}
+
 func TestPresetRoundTrip(t *testing.T) {
 	s := New(t.TempDir())
 	vals := map[string]any{"lang": "go", "verbose": true}

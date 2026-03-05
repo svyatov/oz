@@ -108,6 +108,63 @@ func TestMatchedRange(t *testing.T) {
 	}
 }
 
+func TestExpandTemplate(t *testing.T) {
+	tests := []struct {
+		name, template, version, want string
+	}{
+		{"basic", "rails _{{version}}_ new", "7.1.0", "rails _7.1.0_ new"},
+		{"multiple", "{{version}} and {{version}}", "1.0", "1.0 and 1.0"},
+		{"empty_version", "rails _{{version}}_ new", "", "rails __ new"},
+		{"no_placeholder", "rails new", "7.1.0", "rails new"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExpandTemplate(tt.template, tt.version)
+			if got != tt.want {
+				t.Errorf("ExpandTemplate(%q, %q) = %q, want %q", tt.template, tt.version, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseAvailableVersions(t *testing.T) {
+	tests := []struct {
+		name  string
+		csv   string
+		want  []string
+	}{
+		{"basic", "7.2.1, 7.1.0, 7.0.8", []string{"7.2.1", "7.1.0", "7.0.8"}},
+		{"whitespace", " 7.2.1 , 7.1.0 ", []string{"7.2.1", "7.1.0"}},
+		{"empty_entries", "7.2.1,,7.1.0,", []string{"7.2.1", "7.1.0"}},
+		{"duplicates", "7.2.1, 7.1.0, 7.2.1", []string{"7.2.1", "7.1.0"}},
+		{"empty", "", nil},
+		{"only_commas", ",,,", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseAvailableVersions(tt.csv)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+			for i, v := range got {
+				if v != tt.want[i] {
+					t.Errorf("got[%d] = %q, want %q", i, v, tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestFetchAvailableVersions(t *testing.T) {
+	versions, err := FetchAvailableVersions("echo 7.2.1, 7.1.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(versions) != 2 || versions[0] != "7.2.1" || versions[1] != "7.1.0" {
+		t.Errorf("got %v, want [7.2.1, 7.1.0]", versions)
+	}
+}
+
 func TestFilterOptions(t *testing.T) {
 	opts := []config.Option{
 		{Name: "a", Type: "input", Label: "A"},

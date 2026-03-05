@@ -23,10 +23,10 @@ func Validate(w *Wizard) []error {
 	}
 
 	validateArgs(w.Args, add)
-	validateDetect(w.Detect, add)
+	validateVersionControl(w.Version, add)
 
-	if len(w.Compat) > 0 && w.Detect == nil {
-		add("compat requires detect_version to be set")
+	if len(w.Compat) > 0 && w.Version == nil {
+		add("compat requires version_control to be set")
 	}
 
 	optionNames := validateOptions(w.Options, add)
@@ -46,15 +46,26 @@ func validateArgs(args []Arg, add func(string, ...any)) {
 	}
 }
 
-func validateDetect(dv *DetectVersion, add func(string, ...any)) {
-	if dv == nil {
+func validateVersionControl(vc *VersionControl, add func(string, ...any)) {
+	if vc == nil {
 		return
 	}
-	if dv.Command == "" {
-		add("detect_version.command is required")
+	if vc.Command == "" {
+		add("version_control.command is required")
 	}
-	if dv.Pattern == "" {
-		add("detect_version.pattern is required")
+	if vc.Pattern == "" {
+		add("version_control.pattern is required")
+	}
+	if vc.CustomVersionCmd != "" && !strings.Contains(vc.CustomVersionCmd, "{{version}}") {
+		add("version_control.custom_version_command must contain {{version}}")
+	}
+	if vc.CustomVersionVerify != "" {
+		if vc.CustomVersionCmd == "" {
+			add("version_control.custom_version_verify_command requires custom_version_command")
+		}
+		if !strings.Contains(vc.CustomVersionVerify, "{{version}}") {
+			add("version_control.custom_version_verify_command must contain {{version}}")
+		}
 	}
 }
 

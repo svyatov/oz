@@ -61,6 +61,21 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 	return w, nil
 }
 
+func resolveVersion(w *config.Wizard, st *store.Store) (*wizard.VersionResult, string) {
+	versionPin, _ := st.LoadVersionPin(w.Name)
+	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
+		vr = &wizard.VersionResult{}
+	}
+
+	displayVersion := vr.Selected
+	if vr.Selected != "" && vr.Selected != vr.Detected {
+		displayVersion = vr.Selected + " (override)"
+	}
+	return vr, displayVersion
+}
+
 func runWizard(name string, args []string, presetName string, dryRun bool) error {
 	w, err := loadWizardConfig(name)
 	if err != nil {
@@ -68,12 +83,14 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	}
 
 	st := store.New(configDir)
-	detectedVersion, err := compat.DetectVersion(w.Detect)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
+	vr, displayVersion := resolveVersion(w, st)
+	if vr.Aborted {
+		return nil
 	}
-	majorVersion := majorVer(detectedVersion)
-	options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
+
+	w.Command = w.EffectiveCommand(vr.Selected)
+	majorVersion := majorVer(vr.Selected)
+	options := compat.FilterOptions(w.Options, w.Compat, vr.Selected)
 
 	state, err := st.LoadState(w.Name, majorVersion)
 	if err != nil {
@@ -91,7 +108,7 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	maps.Copy(pinnedAnswers, state.Pins)
 
 	result, err := wizard.Run(
-		w.Name, detectedVersion, filteredOptions,
+		w.Name, displayVersion, filteredOptions,
 		pinnedCount, state.LastUsed, pinnedAnswers,
 	)
 	if err != nil {
@@ -108,15 +125,20 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	parts := command.Build(w, positionalArgs, allAnswers)
 	command.PrintCommand(parts)
 	saveLastUsed(st, w.Name, majorVersion, state, result.Answers)
+	return confirmAndExecute(st, w.Name, parts, allAnswers, dryRun)
+}
 
+func confirmAndExecute(
+	st *store.Store, wizardName string,
+	parts []command.Part, allAnswers map[string]any, dryRun bool,
+) error {
 	if dryRun {
 		return nil
 	}
 	if !confirmPrompt("  Execute?") {
 		return nil
 	}
-
-	promptAndSavePreset(st, w.Name, allAnswers)
+	promptAndSavePreset(st, wizardName, allAnswers)
 	fmt.Println()
 	if err := command.Run(command.PlainParts(parts)); err != nil {
 		return fmt.Errorf("executing command: %w", err)
@@ -178,7 +200,7 @@ func runPins(name string) error {
 
 	st := store.New(configDir)
 
-	detectedVersion, _ := compat.DetectVersion(w.Detect)
+	detectedVersion, _ := compat.DetectVersion(w.Version)
 	majorVersion := majorVer(detectedVersion)
 	options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
 
@@ -190,7 +212,9 @@ func runPins(name string) error {
 		state.Pins = make(map[string]any)
 	}
 
-	result, err := wizard.RunPins(options, state.Pins, state.LastUsed)
+	hasCustomVersion := w.Version != nil && w.Version.CustomVersionCmd != ""
+	versionPin, _ := st.LoadVersionPin(w.Name)
+	result, err := wizard.RunPins(options, state.Pins, state.LastUsed, hasCustomVersion, versionPin)
 	if err != nil {
 		return fmt.Errorf("managing pins: %w", err)
 	}
@@ -198,6 +222,11 @@ func runPins(name string) error {
 	state.Pins = result.Pins
 	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
 		return fmt.Errorf("saving pins: %w", err)
+	}
+	if hasCustomVersion {
+		if err := st.SaveVersionPin(w.Name, result.VersionPin); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to save version pin: %v\n", err)
+		}
 	}
 
 	fmt.Printf("  %s pinned.\n", ui.Plural(len(state.Pins), "option"))

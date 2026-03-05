@@ -20,7 +20,8 @@ const (
 
 // PinsResult is returned by RunPins.
 type PinsResult struct {
-	Pins map[string]any
+	Pins       map[string]any
+	VersionPin string
 }
 
 // PinsModel is a Bubbletea model for interactive pin management.
@@ -28,6 +29,9 @@ type PinsModel struct {
 	options  []config.Option
 	pins     map[string]any
 	lastUsed map[string]any
+
+	hasCustomVersion bool
+	versionPin       string
 
 	mode      pinsMode
 	cursor    int
@@ -37,7 +41,10 @@ type PinsModel struct {
 	done bool
 }
 
-func newPinsModel(options []config.Option, pins, lastUsed map[string]any) *PinsModel {
+func newPinsModel(
+	options []config.Option, pins, lastUsed map[string]any,
+	hasCustomVersion bool, versionPin string,
+) *PinsModel {
 	if pins == nil {
 		pins = make(map[string]any)
 	}
@@ -45,10 +52,34 @@ func newPinsModel(options []config.Option, pins, lastUsed map[string]any) *PinsM
 		lastUsed = make(map[string]any)
 	}
 	return &PinsModel{
-		options:  options,
-		pins:     pins,
-		lastUsed: lastUsed,
+		options:          options,
+		pins:             pins,
+		lastUsed:         lastUsed,
+		hasCustomVersion: hasCustomVersion,
+		versionPin:       versionPin,
 	}
+}
+
+// itemCount returns the total number of items in the list.
+func (m *PinsModel) itemCount() int {
+	n := len(m.options)
+	if m.hasCustomVersion {
+		n++
+	}
+	return n
+}
+
+// versionOffset returns 1 if the version pin entry exists (at index 0), else 0.
+func (m *PinsModel) versionOffset() int {
+	if m.hasCustomVersion {
+		return 1
+	}
+	return 0
+}
+
+// isVersionIdx returns true if idx points to the synthetic version pin entry.
+func (m *PinsModel) isVersionIdx(idx int) bool {
+	return m.hasCustomVersion && idx == 0
 }
 
 func (m *PinsModel) Init() tea.Cmd { return nil }
@@ -64,7 +95,7 @@ func (m *PinsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	n := len(m.options)
+	n := m.itemCount()
 
 	switch msg.String() {
 	case "up", "k":
@@ -99,8 +130,13 @@ func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	submitted, cmd := m.editField.Update(msg)
 	if submitted {
-		opt := &m.options[m.editIdx]
-		m.pins[opt.Name] = m.editField.Value()
+		if m.isVersionIdx(m.editIdx) {
+			m.versionPin = fmt.Sprintf("%v", m.editField.Value())
+		} else {
+			optIdx := m.editIdx - m.versionOffset()
+			opt := &m.options[optIdx]
+			m.pins[opt.Name] = m.editField.Value()
+		}
 		m.mode = pinsListMode
 		m.editField = nil
 	}
@@ -110,7 +146,18 @@ func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	m.cursor = idx
 	m.editIdx = idx
-	opt := &m.options[idx]
+
+	if m.isVersionIdx(idx) {
+		m.editField = NewInputField("Version", "Enter \"default\" or a version string")
+		if m.versionPin != "" {
+			m.editField.SetValue(m.versionPin)
+		}
+		m.mode = pinsEditMode
+		return m, m.editField.Init()
+	}
+
+	optIdx := idx - m.versionOffset()
+	opt := &m.options[optIdx]
 	m.editField = buildPinsField(opt)
 
 	val := resolveDefault(opt, m.pins, m.lastUsed)
@@ -123,11 +170,21 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 }
 
 func (m *PinsModel) togglePin(idx int) {
-	name := m.options[idx].Name
+	if m.isVersionIdx(idx) {
+		if m.versionPin != "" {
+			m.versionPin = ""
+		} else {
+			m.versionPin = "default"
+		}
+		return
+	}
+
+	optIdx := idx - m.versionOffset()
+	name := m.options[optIdx].Name
 	if _, pinned := m.pins[name]; pinned {
 		delete(m.pins, name)
 	} else {
-		opt := &m.options[idx]
+		opt := &m.options[optIdx]
 		m.pins[name] = resolveDefault(opt, m.pins, m.lastUsed)
 	}
 }
@@ -147,45 +204,70 @@ func (m *PinsModel) viewList() string {
 
 	b.WriteString("\n  " + ui.TitleStyle.Render("Manage pins") + "\n\n")
 
+	versionLabel := "Version"
 	maxLabel := 0
+	if m.hasCustomVersion && len(versionLabel) > maxLabel {
+		maxLabel = len(versionLabel)
+	}
 	for _, o := range m.options {
 		if len(o.Label) > maxLabel {
 			maxLabel = len(o.Label)
 		}
 	}
 
-	for i, o := range m.options {
+	n := m.itemCount()
+	for i := range n {
 		active := i == m.cursor
-		num := ui.NumberGutter(i+1, active)
-
-		var cursor string
-		if active {
-			cursor = " " + ui.Cursor() + " "
+		if m.isVersionIdx(i) {
+			b.WriteString(m.viewVersionRow(i, active, maxLabel, versionLabel))
 		} else {
-			cursor = "   "
+			b.WriteString(m.viewOptionRow(i, active, maxLabel))
 		}
-
-		_, pinned := m.pins[o.Name]
-		pin := "  "
-		if pinned {
-			pin = ui.PinIcon() + " "
-		}
-
-		label := ui.ChoiceLabel(o.Label, active)
-		pad := strings.Repeat(" ", maxLabel-len(o.Label))
-
-		var value string
-		if pinned {
-			value = ui.CompletedStepAnswer(FormatAnswer(&o, m.pins[o.Name]))
-		} else {
-			value = ui.MutedStyle.Render("\u2500")
-		}
-
-		fmt.Fprintf(&b, "   %s%s  %s%s%s  %s\n", cursor, num, pin, label, pad, value)
 	}
 
 	b.WriteString("\n" + ui.PinsListNavHint() + "\n")
 	return b.String()
+}
+
+func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel int, label string) string {
+	num := ui.NumberGutter(i+1, active)
+	cursor := "   "
+	if active {
+		cursor = " " + ui.Cursor() + " "
+	}
+	pinned := m.versionPin != ""
+	pin := "  "
+	if pinned {
+		pin = ui.PinIcon() + " "
+	}
+	styledLabel := ui.ChoiceLabel(label, active)
+	pad := strings.Repeat(" ", maxLabel-len(label))
+	value := ui.MutedStyle.Render("\u2500")
+	if pinned {
+		value = ui.CompletedStepAnswer(m.versionPin)
+	}
+	return fmt.Sprintf("   %s%s  %s%s%s  %s\n", cursor, num, pin, styledLabel, pad, value)
+}
+
+func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel int) string {
+	num := ui.NumberGutter(i+1, active)
+	cursor := "   "
+	if active {
+		cursor = " " + ui.Cursor() + " "
+	}
+	o := m.options[i-m.versionOffset()]
+	_, pinned := m.pins[o.Name]
+	pin := "  "
+	if pinned {
+		pin = ui.PinIcon() + " "
+	}
+	label := ui.ChoiceLabel(o.Label, active)
+	pad := strings.Repeat(" ", maxLabel-len(o.Label))
+	value := ui.MutedStyle.Render("\u2500")
+	if pinned {
+		value = ui.CompletedStepAnswer(FormatAnswer(&o, m.pins[o.Name]))
+	}
+	return fmt.Sprintf("   %s%s  %s%s%s  %s\n", cursor, num, pin, label, pad, value)
 }
 
 func (m *PinsModel) viewEdit() string {
@@ -241,16 +323,20 @@ func resolveDefault(opt *config.Option, pins, lastUsed map[string]any) any {
 }
 
 // RunPins shows the interactive pin management UI and returns updated pins.
-func RunPins(options []config.Option, currentPins, lastUsed map[string]any) (*PinsResult, error) {
+func RunPins(
+	options []config.Option, currentPins, lastUsed map[string]any,
+	hasCustomVersion bool, currentVersionPin string,
+) (*PinsResult, error) {
 	pins := make(map[string]any, len(currentPins))
 	maps.Copy(pins, currentPins)
 
-	model := newPinsModel(options, pins, lastUsed)
+	model := newPinsModel(options, pins, lastUsed, hasCustomVersion, currentVersionPin)
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {
 		return nil, fmt.Errorf("pins UI error: %w", err)
 	}
 
-	return &PinsResult{Pins: finalModel.(*PinsModel).pins}, nil
+	final := finalModel.(*PinsModel)
+	return &PinsResult{Pins: final.pins, VersionPin: final.versionPin}, nil
 }

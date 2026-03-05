@@ -1,5 +1,7 @@
 package config
 
+import "strings"
+
 // Wizard is the top-level YAML config for a wizard.
 type Wizard struct {
 	Name        string         `yaml:"name"`
@@ -7,7 +9,7 @@ type Wizard struct {
 	Command     string         `yaml:"command"`
 	FlagStyle   string         `yaml:"flag_style"` // "equals" (default) or "space"
 	Args        []Arg          `yaml:"args"`
-	Detect      *DetectVersion `yaml:"detect_version"`
+	Version     *VersionControl `yaml:"version_control"`
 	Compat      []CompatEntry  `yaml:"compat"`
 	Options     []Option       `yaml:"options"`
 }
@@ -27,10 +29,23 @@ type Arg struct {
 	Position int    `yaml:"position"`
 }
 
-// DetectVersion configures automatic version detection.
-type DetectVersion struct {
-	Command string `yaml:"command"`
-	Pattern string `yaml:"pattern"`
+// VersionControl configures version detection and custom version support.
+type VersionControl struct {
+	Command             string `yaml:"command"`
+	Pattern             string `yaml:"pattern"`
+	CustomVersionCmd    string `yaml:"custom_version_command"`
+	CustomVersionVerify string `yaml:"custom_version_verify_command"`
+	AvailVersionsCmd    string `yaml:"available_versions_command"`
+	AvailVersions       string `yaml:"available_versions"`
+}
+
+// EffectiveCommand returns the command template expanded with version,
+// or the wizard's base command if no template is set.
+func (w *Wizard) EffectiveCommand(version string) string {
+	if version != "" && w.Version != nil && w.Version.CustomVersionCmd != "" {
+		return strings.ReplaceAll(w.Version.CustomVersionCmd, "{{version}}", version)
+	}
+	return w.Command
 }
 
 // CompatEntry maps a version range to allowed option names.

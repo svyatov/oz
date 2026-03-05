@@ -10,26 +10,26 @@ import (
 	"github.com/svyatov/oz/internal/config"
 )
 
-// DetectVersion runs the detect_version command and extracts the version string.
-func DetectVersion(dv *config.DetectVersion) (string, error) {
-	if dv == nil {
+// DetectVersion runs the version_control command and extracts the version string.
+func DetectVersion(vc *config.VersionControl) (string, error) {
+	if vc == nil {
 		return "", nil
 	}
 
-	parts := strings.Fields(dv.Command)
+	parts := strings.Fields(vc.Command)
 	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("running %q: %w\n%s", dv.Command, err, out)
+		return "", fmt.Errorf("running %q: %w\n%s", vc.Command, err, out)
 	}
 
-	re, err := regexp.Compile(dv.Pattern)
+	re, err := regexp.Compile(vc.Pattern)
 	if err != nil {
-		return "", fmt.Errorf("compiling pattern %q: %w", dv.Pattern, err)
+		return "", fmt.Errorf("compiling pattern %q: %w", vc.Pattern, err)
 	}
 
 	matches := re.FindSubmatch(out)
 	if len(matches) < 2 {
-		return "", fmt.Errorf("pattern %q did not match output: %s", dv.Pattern, strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("pattern %q did not match output: %s", vc.Pattern, strings.TrimSpace(string(out)))
 	}
 
 	return string(matches[1]), nil
@@ -120,6 +120,46 @@ func matchSingleConstraint(version, constraint string) bool {
 		return cmp == 0
 	}
 	return false
+}
+
+// ExpandTemplate replaces {{version}} in a template string.
+func ExpandTemplate(template, version string) string {
+	return strings.ReplaceAll(template, "{{version}}", version)
+}
+
+// VerifyVersion runs the verify command with the given version and checks exit status.
+func VerifyVersion(verifyCmd, version string) error {
+	expanded := ExpandTemplate(verifyCmd, version)
+	parts := strings.Fields(expanded)
+	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("version %s not available: %w\n%s", version, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// FetchAvailableVersions runs a command that returns comma-separated versions.
+func FetchAvailableVersions(cmd string) ([]string, error) {
+	parts := strings.Fields(cmd)
+	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("fetching versions: %w\n%s", err, strings.TrimSpace(string(out)))
+	}
+	return ParseAvailableVersions(string(out)), nil
+}
+
+// ParseAvailableVersions splits a comma-separated version string into a deduplicated slice.
+func ParseAvailableVersions(csv string) []string {
+	seen := make(map[string]bool)
+	var versions []string
+	for part := range strings.SplitSeq(csv, ",") {
+		v := strings.TrimSpace(part)
+		if v != "" && !seen[v] {
+			seen[v] = true
+			versions = append(versions, v)
+		}
+	}
+	return versions
 }
 
 // compareVersions compares two dotted version strings numerically.
