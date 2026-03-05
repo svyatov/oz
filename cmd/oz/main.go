@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -23,15 +25,15 @@ func main() {
 		Version:       version,
 	}
 	root.PersistentFlags().StringVar(&configDir, "config-dir", config.DefaultConfigDir(), "config directory")
-	root.ValidArgsFunction = completeWizardNames
+
+	run := runCmd()
+	root.AddCommand(run)
 	root.AddCommand(listCmd())
 	root.AddCommand(validateCmd())
+	root.AddCommand(editCmd())
 
-	// Before cobra parses, check if the first positional arg is a wizard name.
-	// If so, build a dynamic subcommand tree for it.
-	args := os.Args[1:]
-	if wizardName, ok := detectWizardArg(args); ok {
-		root.AddCommand(wizardCmd(wizardName))
+	if name := detectWizardName(os.Args[1:]); name != "" {
+		run.AddCommand(wizardCmd(name))
 	}
 
 	if err := root.Execute(); err != nil {
@@ -40,21 +42,30 @@ func main() {
 	}
 }
 
-// detectWizardArg returns the wizard name if the first positional arg isn't a builtin.
-func detectWizardArg(args []string) (string, bool) {
-	builtins := map[string]bool{
-		"list": true, "validate": true, "help": true, "completion": true, "__complete": true,
+func runCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:               "run",
+		Short:             "Run a wizard",
+		ValidArgsFunction: completeWizardNames,
 	}
+}
+
+// detectWizardName finds the wizard name argument after "run" in os.Args.
+func detectWizardName(args []string) string {
+	foundRun := false
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
 			continue
 		}
-		if builtins[a] {
-			return "", false
+		if !foundRun {
+			if a == "run" {
+				foundRun = true
+			}
+			continue
 		}
-		return a, true
+		return a
 	}
-	return "", false
+	return ""
 }
 
 func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
@@ -71,6 +82,40 @@ func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobr
 		}
 	}
 	return names, cobra.ShellCompDirectiveNoFileComp
+}
+
+func editCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "edit <wizard>",
+		Short: "Open wizard config in editor",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			path := config.WizardPath(configDir, args[0])
+			if _, err := os.Stat(path); err != nil {
+				return fmt.Errorf("wizard config not found: %s", path)
+			}
+			editor, err := findEditor()
+			if err != nil {
+				return fmt.Errorf("finding editor: %w", err)
+			}
+			return syscall.Exec(editor, []string{editor, path}, os.Environ())
+		},
+		ValidArgsFunction: completeWizardNames,
+	}
+}
+
+func findEditor() (string, error) {
+	name := "vi"
+	if v := os.Getenv("VISUAL"); v != "" {
+		name = v
+	} else if v := os.Getenv("EDITOR"); v != "" {
+		name = v
+	}
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return "", fmt.Errorf("looking up %q: %w", name, err)
+	}
+	return path, nil
 }
 
 func listCmd() *cobra.Command {

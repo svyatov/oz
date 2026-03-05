@@ -41,10 +41,14 @@ func ParseWizard(data []byte) (*Wizard, error) {
 	return &w, nil
 }
 
+// WizardPath returns the full path to a wizard config file.
+func WizardPath(configDir, name string) string {
+	return filepath.Join(WizardsDir(configDir), name+".yml")
+}
+
 // FindWizard looks up a wizard by name in the config directory.
 func FindWizard(configDir, name string) (*Wizard, error) {
-	path := filepath.Join(WizardsDir(configDir), name+".yml")
-	return LoadWizard(path)
+	return LoadWizard(WizardPath(configDir, name))
 }
 
 // ListWizards returns all wizard configs found in the config directory.
