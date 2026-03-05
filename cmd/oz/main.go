@@ -31,6 +31,8 @@ func main() {
 	root.AddCommand(listCmd())
 	root.AddCommand(validateCmd())
 	root.AddCommand(editCmd())
+	root.AddCommand(deleteCmd())
+	root.AddCommand(createCmd())
 
 	if name := detectWizardName(os.Args[1:]); name != "" {
 		run.AddCommand(wizardCmd(name))
@@ -55,9 +57,13 @@ func runCmd() *cobra.Command {
 }
 
 // detectWizardName finds the wizard name argument after "run" in os.Args.
+// Returns empty during shell completion to avoid registering partial input as a subcommand.
 func detectWizardName(args []string) string {
 	foundRun := false
 	for _, a := range args {
+		if a == "__complete" || a == "__completeNoDesc" {
+			return ""
+		}
 		if strings.HasPrefix(a, "-") {
 			continue
 		}
@@ -143,6 +149,55 @@ func listCmd() *cobra.Command {
 				fmt.Printf("  %s%s\n", w.Name, desc)
 			}
 			return nil
+		},
+	}
+}
+
+func deleteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <wizard>",
+		Short: "Delete a wizard config",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			path := config.WizardPath(configDir, args[0])
+			if _, err := os.Stat(path); err != nil {
+				return fmt.Errorf("wizard config not found: %s", path)
+			}
+			if !confirmPrompt(fmt.Sprintf("Delete %s?", path)) {
+				return nil
+			}
+			if err := os.Remove(path); err != nil {
+				return fmt.Errorf("deleting wizard: %w", err)
+			}
+			fmt.Printf("  Deleted %s\n", args[0])
+			return nil
+		},
+		ValidArgsFunction: completeWizardNames,
+	}
+}
+
+func createCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create <wizard>",
+		Short: "Create a new wizard config from template",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			path := config.WizardPath(configDir, args[0])
+			if _, err := os.Stat(path); err == nil {
+				return fmt.Errorf("wizard %q already exists: %s", args[0], path)
+			}
+			if err := os.MkdirAll(config.WizardsDir(configDir), 0o755); err != nil {
+				return fmt.Errorf("creating wizards directory: %w", err)
+			}
+			if err := os.WriteFile(path, []byte(wizardTemplate(args[0])), 0o644); err != nil {
+				return fmt.Errorf("writing wizard config: %w", err)
+			}
+			fmt.Printf("  Created %s\n", path)
+			editor, err := findEditor()
+			if err != nil {
+				return fmt.Errorf("finding editor: %w", err)
+			}
+			return syscall.Exec(editor, []string{editor, path}, os.Environ())
 		},
 	}
 }
