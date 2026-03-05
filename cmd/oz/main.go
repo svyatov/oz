@@ -80,9 +80,9 @@ func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobr
 	names := make([]string, 0, len(wizards))
 	for _, w := range wizards {
 		if w.Description != "" {
-			names = append(names, fmt.Sprintf("%s\t★ %s", w.Name, w.Description))
+			names = append(names, fmt.Sprintf("%s\t%s", w.Name, w.Description))
 		} else {
-			names = append(names, w.Name+"\t★")
+			names = append(names, w.Name)
 		}
 	}
 	return names, cobra.ShellCompDirectiveNoFileComp
