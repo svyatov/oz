@@ -21,7 +21,6 @@ func wizardCmd(name string) *cobra.Command {
 	var (
 		dryRun     bool
 		presetName string
-		pins       bool
 	)
 
 	cmd := &cobra.Command{
@@ -31,20 +30,17 @@ func wizardCmd(name string) *cobra.Command {
 		// Accept any args (positional args for the wizard)
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if pins {
-				return runPins(name)
-			}
 			return runWizard(name, args, presetName, dryRun)
 		},
 	}
 
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print command without executing")
-	cmd.Flags().StringVar(&presetName, "preset", "", "run with saved preset (non-interactive)")
-	cmd.Flags().BoolVar(&pins, "pins", false, "manage pinned options interactively")
+	cmd.Flags().BoolVarP(&dryRun, "dry-run", "n", false, "print command without executing")
+	cmd.Flags().StringVarP(&presetName, "with-preset", "p", "", "run with saved preset (non-interactive)")
 
 	cmd.AddCommand(doctorCmd(name))
 	cmd.AddCommand(explainCmd(name))
-	cmd.AddCommand(presetCmd(name))
+	cmd.AddCommand(pinsCmd(name))
+	cmd.AddCommand(presetsCmd(name))
 
 	return cmd
 }

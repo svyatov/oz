@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Rename `preset` subcommand to `presets` (plural, consistent with collection semantics)
+- Rename `--preset` flag to `--with-preset` (`-p`) to avoid shadowing the subcommand name
+- Add `-n` shorthand for `--dry-run`
+- Convert `--pins` flag to `pins` subcommand with `show` and `clear` sub-commands
+
 ### Added
 
 - Interactive Bubbletea wizard UI with rich color palette

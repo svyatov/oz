@@ -137,22 +137,96 @@ func printOptionExplanation(step, total int, o config.Option) {
 	fmt.Println()
 }
 
-func presetCmd(wizardName string) *cobra.Command {
+func pinsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "preset",
-		Short: "Manage presets",
+		Use:   "pins",
+		Short: "Manage pinned options",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return runPins(wizardName)
+		},
 	}
 
-	cmd.AddCommand(presetListCmd(wizardName))
-	cmd.AddCommand(presetShowCmd(wizardName))
-	cmd.AddCommand(presetExplainCmd(wizardName))
-	cmd.AddCommand(presetSaveCmd(wizardName))
-	cmd.AddCommand(presetDeleteCmd(wizardName))
+	cmd.AddCommand(pinsShowCmd(wizardName))
+	cmd.AddCommand(pinsClearCmd(wizardName))
 
 	return cmd
 }
 
-func presetListCmd(wizardName string) *cobra.Command {
+func pinsShowCmd(wizardName string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show",
+		Short: "Display current pins",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			w, err := loadWizardConfig(wizardName)
+			if err != nil {
+				return err
+			}
+
+			st := store.New(configDir)
+			detectedVersion, _ := compat.DetectVersion(w.Version)
+			majorVersion := majorVer(detectedVersion)
+
+			state, err := st.LoadState(w.Name, majorVersion)
+			if err != nil {
+				return fmt.Errorf("loading state: %w", err)
+			}
+			if len(state.Pins) == 0 {
+				fmt.Println("  No pins set.")
+				return nil
+			}
+			for k, v := range state.Pins {
+				fmt.Printf("  %s: %v\n", k, v)
+			}
+			return nil
+		},
+	}
+}
+
+func pinsClearCmd(wizardName string) *cobra.Command {
+	return &cobra.Command{
+		Use:   "clear",
+		Short: "Remove all pins",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			w, err := loadWizardConfig(wizardName)
+			if err != nil {
+				return err
+			}
+
+			st := store.New(configDir)
+			detectedVersion, _ := compat.DetectVersion(w.Version)
+			majorVersion := majorVer(detectedVersion)
+
+			state, err := st.LoadState(w.Name, majorVersion)
+			if err != nil {
+				return fmt.Errorf("loading state: %w", err)
+			}
+
+			state.Pins = nil
+			if err := st.SaveState(w.Name, majorVersion, state); err != nil {
+				return fmt.Errorf("saving state: %w", err)
+			}
+			fmt.Println("  Pins cleared.")
+			return nil
+		},
+	}
+}
+
+func presetsCmd(wizardName string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "presets",
+		Short: "Manage presets",
+	}
+
+	cmd.AddCommand(presetsListCmd(wizardName))
+	cmd.AddCommand(presetsShowCmd(wizardName))
+	cmd.AddCommand(presetsExplainCmd(wizardName))
+	cmd.AddCommand(presetsSaveCmd(wizardName))
+	cmd.AddCommand(presetsDeleteCmd(wizardName))
+
+	return cmd
+}
+
+func presetsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List presets",
@@ -174,7 +248,7 @@ func presetListCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetShowCmd(wizardName string) *cobra.Command {
+func presetsShowCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show <name>",
 		Short: "Show preset values and generated command",
@@ -206,7 +280,7 @@ func presetShowCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetExplainCmd(wizardName string) *cobra.Command {
+func presetsExplainCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "explain <name>",
 		Short: "Annotated view with labels and descriptions",
@@ -259,7 +333,7 @@ func presetExplainCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetSaveCmd(wizardName string) *cobra.Command {
+func presetsSaveCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "save <name>",
 		Short: "Save last-used values as named preset",
@@ -292,7 +366,7 @@ func presetSaveCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetDeleteCmd(wizardName string) *cobra.Command {
+func presetsDeleteCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <name>",
 		Short: "Delete a preset",

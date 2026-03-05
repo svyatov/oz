@@ -43,6 +43,21 @@ cmd/oz/main.go          CLI entrypoint (cobra)
   → command/runner.go   Execute or copy the built command
   → store/store.go      Persist last-used state + presets as YAML
   → ui/theme.go         Lipgloss color palette and styles
+
+oz run <wizard>
+├── -n, --dry-run
+├── -p, --with-preset <name>
+├── doctor
+├── explain
+├── pins                    interactive TUI manager
+│   ├── show                display current pins
+│   └── clear               remove all pins
+└── presets
+    ├── list
+    ├── show <name>
+    ├── explain <name>
+    ├── save <name>
+    └── delete <name>
 ```
 
 **Key abstractions:**
