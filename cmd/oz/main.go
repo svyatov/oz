@@ -46,7 +46,11 @@ func runCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:               "run",
 		Short:             "Run a wizard",
+		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: completeWizardNames,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
+		},
 	}
 }
 

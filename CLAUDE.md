@@ -70,6 +70,13 @@ cmd/oz/main.go          CLI entrypoint (cobra)
   - Sections: Added, Changed, Deprecated, Removed, Fixed, Security
   - Every user-facing change gets a changelog entry under `[Unreleased]`
 
+## Shell Completion
+
+When adding or modifying subcommands, verify shell completion works:
+- Run `go build ./cmd/oz/ && ./oz __complete "" 2>/dev/null` — all top-level commands must appear
+- Cobra hides commands without `Run`/`RunE` and without subcommands — always provide a `RunE` (can just call `cmd.Help()`)
+- Test nested completions too: `./oz __complete <parent> "" 2>/dev/null`
+
 ## Code Quality
 
 - All new code must have tests and pass lint
