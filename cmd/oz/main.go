@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/svyatov/oz/internal/config"
+	"github.com/svyatov/oz/internal/ui"
 )
 
 var version = "dev"
@@ -141,13 +142,23 @@ func listCmd() *cobra.Command {
 				fmt.Println("No wizards found in", config.WizardsDir(configDir))
 				return nil
 			}
+			maxLen := 0
 			for _, w := range wizards {
+				if len(w.Name) > maxLen {
+					maxLen = len(w.Name)
+				}
+			}
+
+			fmt.Println()
+			for _, w := range wizards {
+				name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, w.Name))
 				desc := ""
 				if w.Description != "" {
-					desc = "  " + w.Description
+					desc = "  " + ui.MutedStyle.Render(w.Description)
 				}
-				fmt.Printf("  %s%s\n", w.Name, desc)
+				fmt.Println(name + desc)
 			}
+			fmt.Println()
 			return nil
 		},
 	}
