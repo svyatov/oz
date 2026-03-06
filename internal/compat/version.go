@@ -16,8 +16,7 @@ func DetectVersion(vc *config.VersionControl) (string, error) {
 		return "", nil
 	}
 
-	parts := strings.Fields(vc.Command)
-	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	out, err := exec.Command("sh", "-c", vc.Command).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("running %q: %w\n%s", vc.Command, err, out)
 	}
@@ -130,29 +129,34 @@ func ExpandTemplate(template, version string) string {
 // VerifyVersion runs the verify command with the given version and checks exit status.
 func VerifyVersion(verifyCmd, version string) error {
 	expanded := ExpandTemplate(verifyCmd, version)
-	parts := strings.Fields(expanded)
-	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	out, err := exec.Command("sh", "-c", expanded).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("version %s not available: %w\n%s", version, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-// FetchAvailableVersions runs a command that returns comma-separated versions.
+// FetchAvailableVersions runs a shell command and parses its output as versions.
+// Trailing newlines are stripped before parsing so that single-line output
+// (e.g. from echo) stays comma-split rather than triggering newline mode.
 func FetchAvailableVersions(cmd string) ([]string, error) {
-	parts := strings.Fields(cmd)
-	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("fetching versions: %w\n%s", err, strings.TrimSpace(string(out)))
 	}
-	return ParseAvailableVersions(string(out)), nil
+	return ParseAvailableVersions(strings.TrimRight(string(out), "\n")), nil
 }
 
-// ParseAvailableVersions splits a comma-separated version string into a deduplicated slice.
-func ParseAvailableVersions(csv string) []string {
+// ParseAvailableVersions splits a version string into a deduplicated slice.
+// Multi-line input is split by newlines; single-line input is split by commas.
+func ParseAvailableVersions(raw string) []string {
+	sep := ","
+	if strings.Contains(raw, "\n") {
+		sep = "\n"
+	}
 	seen := make(map[string]bool)
 	var versions []string
-	for part := range strings.SplitSeq(csv, ",") {
+	for part := range strings.SplitSeq(raw, sep) {
 		v := strings.TrimSpace(part)
 		if v != "" && !seen[v] {
 			seen[v] = true

@@ -129,20 +129,24 @@ func TestExpandTemplate(t *testing.T) {
 
 func TestParseAvailableVersions(t *testing.T) {
 	tests := []struct {
-		name  string
-		csv   string
-		want  []string
+		name string
+		raw  string
+		want []string
 	}{
-		{"basic", "7.2.1, 7.1.0, 7.0.8", []string{"7.2.1", "7.1.0", "7.0.8"}},
-		{"whitespace", " 7.2.1 , 7.1.0 ", []string{"7.2.1", "7.1.0"}},
-		{"empty_entries", "7.2.1,,7.1.0,", []string{"7.2.1", "7.1.0"}},
-		{"duplicates", "7.2.1, 7.1.0, 7.2.1", []string{"7.2.1", "7.1.0"}},
+		{"comma_basic", "7.2.1, 7.1.0, 7.0.8", []string{"7.2.1", "7.1.0", "7.0.8"}},
+		{"comma_whitespace", " 7.2.1 , 7.1.0 ", []string{"7.2.1", "7.1.0"}},
+		{"comma_empty_entries", "7.2.1,,7.1.0,", []string{"7.2.1", "7.1.0"}},
+		{"comma_duplicates", "7.2.1, 7.1.0, 7.2.1", []string{"7.2.1", "7.1.0"}},
+		{"newline_basic", "7.2.1\n7.1.0\n7.0.8", []string{"7.2.1", "7.1.0", "7.0.8"}},
+		{"newline_trailing", "7.2.1\n7.1.0\n", []string{"7.2.1", "7.1.0"}},
+		{"newline_blank_line", "7.2.1\n\n7.1.0", []string{"7.2.1", "7.1.0"}},
+		{"newline_duplicates", "7.2.1\n7.1.0\n7.2.1", []string{"7.2.1", "7.1.0"}},
 		{"empty", "", nil},
 		{"only_commas", ",,,", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ParseAvailableVersions(tt.csv)
+			got := ParseAvailableVersions(tt.raw)
 			if len(got) != len(tt.want) {
 				t.Fatalf("got %v, want %v", got, tt.want)
 			}
@@ -156,7 +160,7 @@ func TestParseAvailableVersions(t *testing.T) {
 }
 
 func TestFetchAvailableVersions(t *testing.T) {
-	versions, err := FetchAvailableVersions("echo 7.2.1, 7.1.0")
+	versions, err := FetchAvailableVersions("printf '7.2.1, 7.1.0'")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
