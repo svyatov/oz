@@ -17,10 +17,11 @@ import (
 
 // VersionResult holds the outcome of version loading.
 type VersionResult struct {
-	Detected string
-	Selected string
-	Versions []string
-	Aborted  bool
+	Detected    string
+	Selected    string
+	Versions    []string
+	Aborted     bool
+	Interactive bool // true when the user saw a version selector
 }
 
 type versionPhase int
@@ -68,9 +69,10 @@ type VersionLoaderModel struct {
 	hasVersionCmd bool
 
 	// Select phase
-	cursor   int
-	items    []versionItem
-	customAt int // index of "Custom..." sentinel
+	preselect string // version to pre-select (from previous go-back)
+	cursor    int
+	items     []versionItem
+	customAt  int // index of "Custom..." sentinel
 
 	// Input phase
 	ti        textinput.Model
@@ -257,9 +259,13 @@ func (m *VersionLoaderModel) buildItems() {
 	m.customAt = len(m.items)
 	m.items = append(m.items, versionItem{isCustom: true})
 
-	// Pre-select detected version
+	// Pre-select: prefer previous choice, fall back to detected version
+	target := m.preselect
+	if target == "" {
+		target = m.detected
+	}
 	for i, item := range m.items {
-		if item.isDetected {
+		if item.version == target {
 			m.cursor = i
 			break
 		}
@@ -309,6 +315,13 @@ func (m *VersionLoaderModel) selectItem(idx int) (tea.Model, tea.Cmd) {
 
 func (m *VersionLoaderModel) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
+	case "shift+tab":
+		if len(m.items) > 0 {
+			m.phase = phaseSelect
+			m.verifyErr = ""
+			return m, nil
+		}
+		return m, nil
 	case "esc", "ctrl+c":
 		if len(m.items) > 0 {
 			m.phase = phaseSelect
@@ -384,7 +397,7 @@ func (m *VersionLoaderModel) viewLoading() string {
 func (m *VersionLoaderModel) viewSelect() string {
 	var b strings.Builder
 
-	b.WriteString("\n  " + ui.Header(m.wizardName, m.detected) + "\n\n")
+	b.WriteString("\n  " + ui.Header(m.wizardName, m.detected, m.vc.Label) + "\n\n")
 
 	for i, item := range m.items {
 		active := i == m.cursor
@@ -417,7 +430,7 @@ func (m *VersionLoaderModel) viewSelect() string {
 func (m *VersionLoaderModel) viewInput() string {
 	var b strings.Builder
 
-	b.WriteString("\n  " + ui.Header(m.wizardName, m.detected) + "\n\n")
+	b.WriteString("\n  " + ui.Header(m.wizardName, m.detected, m.vc.Label) + "\n\n")
 
 	prompt := "Use different version?"
 	if m.detected != "" {
@@ -441,13 +454,13 @@ func (m *VersionLoaderModel) viewVerifying() string {
 	if m.showSpinner {
 		tag = " " + ui.VersionVerifyingTag(m.spinner.View())
 	}
-	return fmt.Sprintf("\n  %s%s\n", ui.Header(m.wizardName, version), tag)
+	return fmt.Sprintf("\n  %s%s\n", ui.Header(m.wizardName, version, m.vc.Label), tag)
 }
 
 // RunVersionLoader runs version detection, fetches available versions,
 // and presents a version selector if applicable.
 func RunVersionLoader(
-	wizardName string, vc *config.VersionControl, pin string,
+	wizardName string, vc *config.VersionControl, pin string, preselect string,
 ) (*VersionResult, error) {
 	if vc == nil {
 		return &VersionResult{}, nil
@@ -466,6 +479,7 @@ func RunVersionLoader(
 	}
 
 	model := newVersionLoaderModel(wizardName, vc, pin)
+	model.preselect = preselect
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {
@@ -473,5 +487,6 @@ func RunVersionLoader(
 	}
 
 	result := finalModel.(*VersionLoaderModel).result
+	result.Interactive = true
 	return &result, nil
 }

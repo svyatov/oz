@@ -84,7 +84,7 @@ func explainCmd(wizardName string) *cobra.Command {
 			detectedVersion, _ := compat.DetectVersion(w.Version)
 			options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
 
-			fmt.Printf("\n  %s\n", ui.Header(w.Name, detectedVersion))
+			fmt.Printf("\n  %s\n", ui.Header(w.Name, detectedVersion, versionLabel(w)))
 			effectiveCmd := w.EffectiveCommand(detectedVersion)
 			if effectiveCmd != w.Command {
 				fmt.Printf("  %s\n", ui.MutedStyle.Render("command: "+effectiveCmd))

@@ -1,3 +1,4 @@
+// Package compat detects tool versions and filters options by semver range.
 package compat
 
 import (
@@ -11,6 +12,7 @@ import (
 )
 
 // DetectVersion runs the version_control command and extracts the version string.
+// Called once per CLI invocation; the pattern regex is compiled here rather than cached.
 func DetectVersion(vc *config.VersionControl) (string, error) {
 	if vc == nil {
 		return "", nil
@@ -167,6 +169,8 @@ func ParseAvailableVersions(raw string) []string {
 }
 
 // compareVersions compares two dotted version strings numerically.
+// Non-numeric segments (e.g. pre-release suffixes like "-rc1") are ignored;
+// only the leading digits of each part are compared.
 // Returns -1, 0, or 1.
 func compareVersions(a, b string) int {
 	aParts := strings.Split(a, ".")

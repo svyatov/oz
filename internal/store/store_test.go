@@ -147,6 +147,39 @@ func TestPresetRoundTrip(t *testing.T) {
 	}
 }
 
+func TestPathTraversalRejected(t *testing.T) {
+	s := New(t.TempDir())
+	tests := []struct {
+		name    string
+		preset  string
+		wantErr bool
+	}{
+		{"dot-dot escape", "../escape", true},
+		{"nested slash", "foo/bar", true},
+		{"backslash", `foo\bar`, true},
+		{"double dot in middle", "foo..bar", true},
+		{"empty name", "", true},
+		{"valid name", "my-preset", false},
+		{"valid with dots", "v1.2.3", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := s.SavePreset("wiz", tt.preset, map[string]any{"k": "v"})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SavePreset(%q) error = %v, wantErr %v", tt.preset, err, tt.wantErr)
+			}
+			_, err = s.LoadPreset("wiz", tt.preset)
+			if tt.wantErr && err == nil {
+				t.Errorf("LoadPreset(%q) expected error", tt.preset)
+			}
+			err = s.DeletePreset("wiz", tt.preset)
+			if tt.wantErr && err == nil {
+				t.Errorf("DeletePreset(%q) expected error", tt.preset)
+			}
+		})
+	}
+}
+
 func TestListPresetsEmpty(t *testing.T) {
 	s := New(t.TempDir())
 	names, err := s.ListPresets("wiz")

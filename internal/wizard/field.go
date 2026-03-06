@@ -1,3 +1,4 @@
+// Package wizard implements the interactive Bubbletea-based wizard engine and field types.
 package wizard
 
 import (

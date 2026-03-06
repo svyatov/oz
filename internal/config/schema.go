@@ -1,3 +1,4 @@
+// Package config defines wizard configuration types and handles YAML parsing and validation.
 package config
 
 import (
@@ -27,6 +28,7 @@ func (w *Wizard) EffectiveFlagStyle() string {
 
 // VersionControl configures version detection and custom version support.
 type VersionControl struct {
+	Label               string `yaml:"label"`
 	Command             string `yaml:"command"`
 	Pattern             string `yaml:"pattern"`
 	CustomVersionCmd    string `yaml:"custom_version_command"`

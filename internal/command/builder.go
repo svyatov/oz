@@ -1,3 +1,4 @@
+// Package command builds and executes shell commands from wizard answers.
 package command
 
 import (

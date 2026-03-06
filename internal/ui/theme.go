@@ -1,3 +1,4 @@
+// Package ui provides the Lipgloss color palette and rendering helpers for the wizard TUI.
 package ui
 
 import (
@@ -117,10 +118,14 @@ func StepCounter(current, total int) string {
 }
 
 // Header renders the wizard header with name and optional version.
-func Header(name, version string) string {
+func Header(name, version, versionLabel string) string {
 	s := TitleStyle.Render(name)
 	if version != "" {
-		s += MutedStyle.Render(" \u2014 " + version)
+		tag := version
+		if versionLabel != "" {
+			tag = versionLabel + " v" + version
+		}
+		s += MutedStyle.Render(" / " + tag)
 	}
 	return s
 }

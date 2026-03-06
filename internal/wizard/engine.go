@@ -24,6 +24,7 @@ type CompletedStep struct {
 type Result struct {
 	Answers Answers
 	Aborted bool
+	GoBack  bool
 }
 
 // choicesLoadedMsg is sent when a choices_from command completes.
@@ -34,9 +35,10 @@ type choicesLoadedMsg struct {
 
 // Engine is a bubbletea model that runs the wizard step-by-step.
 type Engine struct {
-	wizardName string
-	version    string
-	overridden bool
+	wizardName    string
+	version       string
+	versionLabel  string
+	overridden    bool
 	options    []config.Option
 	pinnedCnt  int
 	answers    Answers
@@ -45,6 +47,7 @@ type Engine struct {
 	// Navigation
 	stepIndex int   // index into visibleSteps
 	history   []int // stack of visited step indices for back navigation
+	canGoBack bool  // allow back-navigation before the first step
 
 	// Current field
 	currentField Field
@@ -58,14 +61,15 @@ type Engine struct {
 	completedSteps []CompletedStep
 
 	// State
-	done    bool
-	aborted bool
-	width   int
+	done     bool
+	aborted  bool
+	wentBack bool
+	width    int
 }
 
 // NewEngine creates a new wizard engine.
 func NewEngine(
-	wizardName, version string, overridden bool,
+	wizardName, version, versionLabel string, overridden bool,
 	options []config.Option, pinnedCount int, defaults map[string]any,
 ) *Engine {
 	if defaults == nil {
@@ -73,9 +77,10 @@ func NewEngine(
 	}
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return &Engine{
-		wizardName: wizardName,
-		version:    version,
-		overridden: overridden,
+		wizardName:   wizardName,
+		version:      version,
+		versionLabel: versionLabel,
+		overridden:   overridden,
 		options:    options,
 		pinnedCnt:  pinnedCount,
 		answers:    make(Answers),
@@ -86,7 +91,7 @@ func NewEngine(
 }
 
 func (e *Engine) headerLine() string {
-	h := ui.Header(e.wizardName, e.version)
+	h := ui.Header(e.wizardName, e.version, e.versionLabel)
 	if e.overridden {
 		h += " " + ui.VersionOverrideTag()
 	}
@@ -134,8 +139,16 @@ func (e *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		e.done = true
 		return e, tea.Quit
 	case "shift+tab":
-		if !e.loading && e.goBack() {
+		if e.loading {
+			return e, nil
+		}
+		if e.goBack() {
 			return e, e.initCurrentField()
+		}
+		if e.canGoBack {
+			e.wentBack = true
+			e.done = true
+			return e, tea.Quit
 		}
 		return e, nil
 	}
@@ -238,14 +251,15 @@ func (e *Engine) View() tea.View {
 // GetResult returns the wizard result after completion.
 func (e *Engine) GetResult() Result {
 	return Result{
-		Answers: e.answers,
-		Aborted: e.aborted,
+		Answers:  e.answers,
+		Aborted:  e.aborted,
+		GoBack:   e.wentBack,
 	}
 }
 
 // finalView renders the summary that persists in scrollback after the wizard ends.
 func (e *Engine) finalView() string {
-	if e.aborted {
+	if e.aborted || e.wentBack {
 		return ""
 	}
 
@@ -424,10 +438,12 @@ func (e *Engine) recordCompletedStep() {
 
 // Run executes the wizard and returns the result.
 func Run(
-	wizardName, version string, overridden bool, options []config.Option,
+	wizardName, version, versionLabel string, overridden bool, options []config.Option,
 	pinnedCount int, defaults, pinnedAnswers map[string]any,
+	canGoBack bool,
 ) (*Result, error) {
-	engine := NewEngine(wizardName, version, overridden, options, pinnedCount, defaults)
+	engine := NewEngine(wizardName, version, versionLabel, overridden, options, pinnedCount, defaults)
+	engine.canGoBack = canGoBack
 	engine.SetPinnedAnswers(pinnedAnswers)
 
 	p := tea.NewProgram(engine)

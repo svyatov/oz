@@ -18,6 +18,15 @@ var version = "dev"
 var configDir string
 
 func main() {
+	root := newRootCmd(os.Args[1:])
+
+	if err := root.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func newRootCmd(args []string) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "oz",
 		Short:         "Config-driven CLI wizard framework",
@@ -35,14 +44,11 @@ func main() {
 	root.AddCommand(deleteCmd())
 	root.AddCommand(createCmd())
 
-	if name := detectWizardName(os.Args[1:]); name != "" {
+	if name := detectWizardName(args); name != "" {
 		run.AddCommand(wizardCmd(name))
 	}
 
-	if err := root.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+	return root
 }
 
 func runCmd() *cobra.Command {

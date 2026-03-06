@@ -14,23 +14,28 @@ import (
 
 // InputField wraps bubbles/textinput for free-text entry.
 type InputField struct {
-	label       string
-	description string
-	ti          textinput.Model
-	rule        *config.InputRule
-	required    bool
-	errMsg      string
+	label           string
+	description     string
+	ti              textinput.Model
+	rule            *config.InputRule
+	compiledPattern *regexp.Regexp
+	required        bool
+	errMsg          string
 }
 
 func NewInputField(label, description string, rule *config.InputRule, required bool) *InputField {
 	ti := textinput.New()
-	return &InputField{
+	f := &InputField{
 		label:       label,
 		description: description,
 		ti:          ti,
 		rule:        rule,
 		required:    required,
 	}
+	if rule != nil && rule.Pattern != "" {
+		f.compiledPattern, _ = regexp.Compile(rule.Pattern)
+	}
+	return f
 }
 
 func (f *InputField) Init() tea.Cmd {
@@ -102,14 +107,10 @@ func (f *InputField) validate() string {
 }
 
 func (f *InputField) validatePattern(val string) string {
-	if f.rule == nil || f.rule.Pattern == "" {
+	if f.compiledPattern == nil {
 		return ""
 	}
-	re, err := regexp.Compile(f.rule.Pattern)
-	if err != nil {
-		return "Invalid validation pattern"
-	}
-	if !re.MatchString(val) {
+	if !f.compiledPattern.MatchString(val) {
 		return f.ruleMessage("Must match pattern: " + f.rule.Pattern)
 	}
 	return ""

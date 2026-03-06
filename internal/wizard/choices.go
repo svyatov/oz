@@ -30,7 +30,7 @@ func ResolveChoices(choicesFrom string, answers Answers) ([]config.Choice, error
 
 // interpolateCommand replaces {{name}} (no dot) with shell-escaped answer values.
 func interpolateCommand(cmd string, answers Answers) string {
-	return config.ChoicesFromInterpolationRe().ReplaceAllStringFunc(cmd, func(match string) string {
+	return config.ChoicesFromInterpolationRe.ReplaceAllStringFunc(cmd, func(match string) string {
 		name := match[2 : len(match)-2] // strip {{ and }}
 		val, ok := answers[name]
 		if !ok {

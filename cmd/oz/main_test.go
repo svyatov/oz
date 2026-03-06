@@ -1,0 +1,142 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+const testWizardYAML = `name: testwiz
+description: A test wizard
+command: echo
+options:
+  - name: greeting
+    type: select
+    label: Pick greeting
+    flag: --greet
+    choices:
+      - hello
+      - world
+  - name: verbose
+    type: confirm
+    label: Verbose?
+    flag: --verbose
+`
+
+func setupTestConfig(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	wizDir := filepath.Join(dir, "wizards")
+	if err := os.MkdirAll(wizDir, 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wizDir, "testwiz.yml"), []byte(testWizardYAML), 0o644); err != nil {
+		t.Fatalf("writing test wizard: %v", err)
+	}
+	return dir
+}
+
+func execCmd(t *testing.T, args ...string) error {
+	t.Helper()
+	configDir = ""
+	cmd := newRootCmd(args)
+	cmd.SetArgs(args)
+	if err := cmd.Execute(); err != nil {
+		return fmt.Errorf("executing command: %w", err)
+	}
+	return nil
+}
+
+func TestListCmd(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "list"); err != nil {
+		t.Fatalf("list: %v", err)
+	}
+}
+
+func TestListCmdEmpty(t *testing.T) {
+	dir := t.TempDir()
+	if err := execCmd(t, "--config-dir", dir, "list"); err != nil {
+		t.Fatalf("list empty: %v", err)
+	}
+}
+
+func TestValidateCmd(t *testing.T) {
+	dir := setupTestConfig(t)
+	path := filepath.Join(dir, "wizards", "testwiz.yml")
+
+	if err := execCmd(t, "validate", path); err != nil {
+		t.Fatalf("validate valid: %v", err)
+	}
+}
+
+func TestValidateCmdInvalid(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "bad.yml")
+	if err := os.WriteFile(path, []byte("name: \"\"\ncommand: \"\"\noptions: []\n"), 0o644); err != nil {
+		t.Fatalf("writing bad wizard: %v", err)
+	}
+
+	if err := execCmd(t, "validate", path); err == nil {
+		t.Fatal("expected validation error for invalid wizard")
+	}
+}
+
+func TestValidateCmdMissing(t *testing.T) {
+	if err := execCmd(t, "validate", "/nonexistent/path.yml"); err == nil {
+		t.Fatal("expected error for missing file")
+	}
+}
+
+func TestDeleteCmdMissing(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "delete", "nonexistent"); err == nil {
+		t.Fatal("expected error for nonexistent wizard")
+	}
+}
+
+func TestDoctorCmd(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "doctor"); err != nil {
+		t.Fatalf("doctor: %v", err)
+	}
+}
+
+func TestExplainCmd(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "explain"); err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+}
+
+func TestDoctorCmdMissingWizard(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "wizards"), 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	if err := execCmd(t, "--config-dir", dir, "run", "nonexistent", "doctor"); err == nil {
+		t.Fatal("expected error for missing wizard")
+	}
+}
+
+func TestPresetsListEmpty(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "list"); err != nil {
+		t.Fatalf("presets list: %v", err)
+	}
+}
+
+func TestPinsShowEmpty(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "show"); err != nil {
+		t.Fatalf("pins show: %v", err)
+	}
+}
+
+func TestPinsClear(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear"); err != nil {
+		t.Fatalf("pins clear: %v", err)
+	}
+}

@@ -162,7 +162,7 @@ func validateChoicesFromInterpolations(o Option, idx int, optionNames map[string
 		return
 	}
 	// Find {{name}} interpolations (without leading dot, which is Go template syntax like {{.Names}})
-	for _, match := range choicesFromInterpolationRe.FindAllStringSubmatch(o.ChoicesFrom, -1) {
+	for _, match := range ChoicesFromInterpolationRe.FindAllStringSubmatch(o.ChoicesFrom, -1) {
 		ref := match[1]
 		if !optionNames[ref] {
 			add("options[%d] (%s): choices_from interpolation references unknown option %q", idx, o.Name, ref)
@@ -170,13 +170,8 @@ func validateChoicesFromInterpolations(o Option, idx int, optionNames map[string
 	}
 }
 
-// choicesFromInterpolationRe matches {{name}} but not {{.name}} (Go template syntax).
-var choicesFromInterpolationRe = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}`)
-
-// ChoicesFromInterpolationRe returns the compiled regex for choices_from interpolation.
-func ChoicesFromInterpolationRe() *regexp.Regexp {
-	return choicesFromInterpolationRe
-}
+// ChoicesFromInterpolationRe matches {{name}} but not {{.name}} (Go template syntax).
+var ChoicesFromInterpolationRe = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}`)
 
 // FormatErrors formats validation errors as a single string.
 func FormatErrors(errs []error) string {

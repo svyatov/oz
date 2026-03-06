@@ -55,15 +55,63 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 	return w, nil
 }
 
-func resolveVersion(w *config.Wizard, st *store.Store) (*wizard.VersionResult, bool) {
+func resolveVersion(w *config.Wizard, st *store.Store, preselect string) (*wizard.VersionResult, bool) {
 	versionPin, _ := st.LoadVersionPin(w.Name)
-	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin)
+	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin, preselect)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
 		vr = &wizard.VersionResult{}
 	}
 	overridden := vr.Selected != "" && vr.Selected != vr.Detected
 	return vr, overridden
+}
+
+type wizardSession struct {
+	vr            *wizard.VersionResult
+	result        *wizard.Result
+	state         *store.StateEntry
+	pinnedAnswers map[string]any
+}
+
+func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun bool) (*wizardSession, error) {
+	var prevSelected string
+	for {
+		vr, overridden := resolveVersion(w, st, prevSelected)
+		if vr.Aborted {
+			return &wizardSession{result: &wizard.Result{Aborted: true}}, nil
+		}
+
+		w.Command = w.EffectiveCommand(vr.Selected)
+		options := compat.FilterOptions(w.Options, w.Compat, vr.Selected)
+
+		majorVersion := majorVer(vr.Selected)
+		state, err := st.LoadState(w.Name, majorVersion)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load state: %v\n", err)
+			state = &store.StateEntry{}
+		}
+
+		if presetName != "" {
+			return nil, runWithPreset(w, st, presetName, dryRun)
+		}
+
+		filteredOptions, pinnedCount := wizard.FilterPinned(options, state.Pins)
+		pinnedAnswers := make(map[string]any)
+		maps.Copy(pinnedAnswers, state.Pins)
+
+		result, err := wizard.Run(
+			w.Name, vr.Selected, versionLabel(w), overridden, filteredOptions,
+			pinnedCount, state.LastUsed, pinnedAnswers, vr.Interactive,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("running wizard: %w", err)
+		}
+		if result.GoBack && vr.Interactive {
+			prevSelected = vr.Selected
+			continue
+		}
+		return &wizardSession{vr: vr, result: result, state: state, pinnedAnswers: pinnedAnswers}, nil
+	}
 }
 
 func runWizard(name string, presetName string, dryRun bool) error {
@@ -73,47 +121,23 @@ func runWizard(name string, presetName string, dryRun bool) error {
 	}
 
 	st := store.New(configDir)
-	vr, overridden := resolveVersion(w, st)
-	if vr.Aborted {
+	s, err := runWizardLoop(w, st, presetName, dryRun)
+	if err != nil {
+		return err
+	}
+	if s.result.Aborted {
 		return nil
 	}
 
-	w.Command = w.EffectiveCommand(vr.Selected)
-	majorVersion := majorVer(vr.Selected)
-	options := compat.FilterOptions(w.Options, w.Compat, vr.Selected)
-
-	state, err := st.LoadState(w.Name, majorVersion)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to load state: %v\n", err)
-		state = &store.StateEntry{}
-	}
-
-	if presetName != "" {
-		return runWithPreset(w, st, presetName, dryRun)
-	}
-
-	filteredOptions, pinnedCount := wizard.FilterPinned(options, state.Pins)
-	pinnedAnswers := make(map[string]any)
-	maps.Copy(pinnedAnswers, state.Pins)
-
-	result, err := wizard.Run(
-		w.Name, vr.Selected, overridden, filteredOptions,
-		pinnedCount, state.LastUsed, pinnedAnswers,
-	)
-	if err != nil {
-		return fmt.Errorf("running wizard: %w", err)
-	}
-	if result.Aborted {
-		return nil
-	}
+	majorVersion := majorVer(s.vr.Selected)
 
 	allAnswers := make(map[string]any)
-	maps.Copy(allAnswers, pinnedAnswers)
-	maps.Copy(allAnswers, result.Answers)
+	maps.Copy(allAnswers, s.pinnedAnswers)
+	maps.Copy(allAnswers, s.result.Answers)
 
 	parts := command.Build(w, allAnswers)
 	command.PrintCommand(parts)
-	saveLastUsed(st, w.Name, majorVersion, state, result.Answers)
+	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Answers)
 	return confirmAndExecute(st, w.Name, parts, allAnswers, dryRun)
 }
 
@@ -220,6 +244,13 @@ func runPins(name string) error {
 
 	fmt.Printf("  %s pinned.\n", ui.Plural(len(state.Pins), "option"))
 	return nil
+}
+
+func versionLabel(w *config.Wizard) string {
+	if w.Version != nil {
+		return w.Version.Label
+	}
+	return ""
 }
 
 func majorVer(version string) string {

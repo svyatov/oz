@@ -1,6 +1,8 @@
+// Package store persists last-used state, pins, and presets as YAML files.
 package store
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +10,16 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+func validateName(name string) error {
+	if name == "" {
+		return errors.New("invalid name: must not be empty")
+	}
+	if strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+		return fmt.Errorf("invalid name %q: must not contain path separators or '..'", name)
+	}
+	return nil
+}
 
 // Store manages state and preset files for wizards.
 type Store struct {
@@ -94,7 +106,9 @@ func (s *Store) saveVersionedState(path, version string, entry *StateEntry) erro
 
 	existing, err := os.ReadFile(path)
 	if err == nil {
-		_ = yaml.Unmarshal(existing, &vs)
+		if err := yaml.Unmarshal(existing, &vs); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
+		}
 	}
 	if vs.Versions == nil {
 		vs.Versions = make(map[string]*StateEntry)
@@ -138,7 +152,9 @@ func (s *Store) SaveVersionPin(wizard, pin string) error {
 	var vs VersionedState
 	existing, err := os.ReadFile(path)
 	if err == nil {
-		_ = yaml.Unmarshal(existing, &vs)
+		if err := yaml.Unmarshal(existing, &vs); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
+		}
 	}
 	vs.VersionPin = pin
 
@@ -185,6 +201,9 @@ func (s *Store) ListPresets(wizard string) ([]string, error) {
 
 // LoadPreset reads a named preset, returning a map of option name → value.
 func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
+	if err := validateName(name); err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(s.presetPath(wizard, name))
 	if err != nil {
 		return nil, fmt.Errorf("reading preset %q: %w", name, err)
@@ -198,6 +217,9 @@ func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
 
 // SavePreset writes a named preset.
 func (s *Store) SavePreset(wizard, name string, values map[string]any) error {
+	if err := validateName(name); err != nil {
+		return err
+	}
 	dir := s.presetsDir(wizard)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("creating presets directory: %w", err)
@@ -214,6 +236,9 @@ func (s *Store) SavePreset(wizard, name string, values map[string]any) error {
 
 // DeletePreset removes a named preset.
 func (s *Store) DeletePreset(wizard, name string) error {
+	if err := validateName(name); err != nil {
+		return err
+	}
 	path := s.presetPath(wizard, name)
 	if err := os.Remove(path); err != nil {
 		return fmt.Errorf("deleting preset %q: %w", name, err)
