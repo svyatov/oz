@@ -55,9 +55,9 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 	return w, nil
 }
 
-func resolveVersion(w *config.Wizard, st *store.Store, preselect string) (*wizard.VersionResult, bool) {
+func resolveVersion(w *config.Wizard, st *store.Store, cached *wizard.VersionResult) (*wizard.VersionResult, bool) {
 	versionPin, _ := st.LoadVersionPin(w.Name)
-	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin, preselect)
+	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin, cached)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
 		vr = &wizard.VersionResult{}
@@ -74,9 +74,9 @@ type wizardSession struct {
 }
 
 func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun bool) (*wizardSession, error) {
-	var prevSelected string
+	var prevResult *wizard.VersionResult
 	for {
-		vr, overridden := resolveVersion(w, st, prevSelected)
+		vr, overridden := resolveVersion(w, st, prevResult)
 		if vr.Aborted {
 			return &wizardSession{result: &wizard.Result{Aborted: true}}, nil
 		}
@@ -107,7 +107,7 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 			return nil, fmt.Errorf("running wizard: %w", err)
 		}
 		if result.GoBack && vr.Interactive {
-			prevSelected = vr.Selected
+			prevResult = vr
 			continue
 		}
 		return &wizardSession{vr: vr, result: result, state: state, pinnedAnswers: pinnedAnswers}, nil

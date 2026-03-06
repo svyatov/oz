@@ -56,6 +56,7 @@ type VersionLoaderModel struct {
 	wizardName string
 	vc         *config.VersionControl
 	pin        string
+	cached     *VersionResult
 
 	phase         versionPhase
 	spinner       spinner.Model
@@ -108,6 +109,20 @@ func newVersionLoaderModel(
 }
 
 func (m *VersionLoaderModel) Init() tea.Cmd {
+	if m.cached != nil {
+		m.detected = m.cached.Detected
+		m.versions = m.cached.Versions
+		m.detectDone = true
+		m.versionsDone = true
+		if len(m.versions) > 0 {
+			m.buildItems()
+			m.phase = phaseSelect
+			return nil
+		}
+		m.phase = phaseInput
+		m.ti = textinput.New()
+		return m.ti.Focus()
+	}
 	return tea.Batch(
 		m.detectVersion,
 		m.fetchVersions,
@@ -460,7 +475,7 @@ func (m *VersionLoaderModel) viewVerifying() string {
 // RunVersionLoader runs version detection, fetches available versions,
 // and presents a version selector if applicable.
 func RunVersionLoader(
-	wizardName string, vc *config.VersionControl, pin string, preselect string,
+	wizardName string, vc *config.VersionControl, pin string, cached *VersionResult,
 ) (*VersionResult, error) {
 	if vc == nil {
 		return &VersionResult{}, nil
@@ -479,7 +494,10 @@ func RunVersionLoader(
 	}
 
 	model := newVersionLoaderModel(wizardName, vc, pin)
-	model.preselect = preselect
+	if cached != nil {
+		model.cached = cached
+		model.preselect = cached.Selected
+	}
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {
