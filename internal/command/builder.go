@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -26,40 +25,52 @@ type Part struct {
 	Kind PartKind
 }
 
-// Build constructs the full CLI command from the wizard config, positional args, and answers.
-func Build(w *config.Wizard, positionalArgs map[string]string, answers map[string]any) []Part {
+// Build constructs the full CLI command from the wizard config and answers.
+func Build(w *config.Wizard, answers map[string]any) []Part {
 	var parts []Part
 	for s := range strings.FieldsSeq(w.Command) {
 		parts = append(parts, Part{s, PartCommand})
 	}
 
-	// Add positional args sorted by position
-	type posArg struct {
-		position int
-		value    string
-	}
-	var posArgs []posArg
-	for _, a := range w.Args {
-		if v, ok := positionalArgs[a.Name]; ok && v != "" {
-			posArgs = append(posArgs, posArg{a.Position, v})
-		}
-	}
-	sort.Slice(posArgs, func(i, j int) bool { return posArgs[i].position < posArgs[j].position })
-	for _, pa := range posArgs {
-		parts = append(parts, Part{pa.value, PartArg})
-	}
-
-	// Add flags from options
+	// Collect positional options (emitted between command and flags)
+	var positionalParts []Part
 	defaultStyle := w.EffectiveFlagStyle()
+
 	for _, opt := range w.Options {
 		val, ok := answers[opt.Name]
 		if !ok {
 			continue
 		}
+
+		if opt.Positional {
+			s := fmt.Sprintf("%v", val)
+			if s != "" && s != "_none" {
+				positionalParts = append(positionalParts, Part{s, PartArg})
+			}
+			continue
+		}
+
 		flags := buildOptionFlags(opt, val, defaultStyle)
 		for _, f := range flags {
 			parts = append(parts, Part{f, PartFlag})
 		}
+	}
+
+	// Insert positional args right after command words, before flags
+	if len(positionalParts) > 0 {
+		// Find where command words end and flags begin
+		cmdEnd := 0
+		for i, p := range parts {
+			if p.Kind == PartCommand {
+				cmdEnd = i + 1
+			}
+		}
+		// Insert positional args after command
+		result := make([]Part, 0, len(parts)+len(positionalParts))
+		result = append(result, parts[:cmdEnd]...)
+		result = append(result, positionalParts...)
+		result = append(result, parts[cmdEnd:]...)
+		parts = result
 	}
 
 	return parts
@@ -137,8 +148,15 @@ func buildConfirmFlags(opt config.Option, val any) []string {
 	if !ok {
 		return nil
 	}
-	if b && opt.FlagTrue != "" {
-		return []string{opt.FlagTrue}
+
+	flagTrue := opt.FlagTrue
+	// Shorthand: if flag is set and flag_true is empty, use flag as flag_true
+	if flagTrue == "" && opt.Flag != "" {
+		flagTrue = opt.Flag
+	}
+
+	if b && flagTrue != "" {
+		return []string{flagTrue}
 	}
 	if !b && opt.FlagFalse != "" {
 		return []string{opt.FlagFalse}
@@ -174,6 +192,13 @@ func buildMultiSelectFlags(opt config.Option, val any, style string) []string {
 	if !ok || len(vals) == 0 || opt.Flag == "" {
 		return nil
 	}
+
+	// If separator is set, join values into a single flag
+	if opt.Separator != "" {
+		joined := strings.Join(vals, opt.Separator)
+		return []string{formatFlag(opt.Flag, joined, style)}
+	}
+
 	var flags []string
 	for _, v := range vals {
 		flags = append(flags, formatFlag(opt.Flag, v, style))

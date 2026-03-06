@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestValidate(t *testing.T) {
@@ -43,7 +46,9 @@ type validationCase struct {
 
 func validationCases() []validationCase {
 	cases := baseCases()
-	return append(cases, versionControlCases()...)
+	cases = append(cases, versionControlCases()...)
+	cases = append(cases, newFeatureCases()...)
+	return cases
 }
 
 func baseCases() []validationCase {
@@ -52,12 +57,6 @@ func baseCases() []validationCase {
 		{"missing_name", func(w *Wizard) { w.Name = "" }, "name is required"},
 		{"missing_command", func(w *Wizard) { w.Command = "" }, "command is required"},
 		{"invalid_flag_style", func(w *Wizard) { w.FlagStyle = "bad" }, "flag_style must be"},
-		{"arg_missing_name", func(w *Wizard) {
-			w.Args = []Arg{{Position: 1}}
-		}, "name is required"},
-		{"arg_position_zero", func(w *Wizard) {
-			w.Args = []Arg{{Name: "a", Position: 0}}
-		}, "position must be >= 1"},
 		{"compat_without_detect", func(w *Wizard) {
 			w.Compat = []CompatEntry{{Versions: ">= 1.0", Options: []string{"opt1"}}}
 		}, "compat requires version_control"},
@@ -73,14 +72,14 @@ func baseCases() []validationCase {
 		{"select_without_choices", func(w *Wizard) {
 			w.Options[0].Type = "select"
 			w.Options[0].Choices = nil
-		}, "choices are required"},
+		}, "choices or choices_from required"},
 		{"multi_select_without_choices", func(w *Wizard) {
 			w.Options[0].Type = "multi_select"
 			w.Options[0].Choices = nil
-		}, "choices are required"},
+		}, "choices or choices_from required"},
 		{"choice_empty_value", func(w *Wizard) {
 			w.Options[0].Type = "select"
-			w.Options[0].Choices = []Choice{{Value: "", Label: "x"}}
+			w.Options[0].Choices = FlexChoices{{Value: "", Label: "x"}}
 		}, "value is required"},
 		{"show_when_unknown_option", func(w *Wizard) {
 			w.Options[0].ShowWhen = map[string]any{"nonexistent": true}
@@ -122,6 +121,68 @@ func versionControlCases() []validationCase {
 				CustomVersionVerify: "cmd _{{version}}_ --version",
 				AvailVersions:       "7.2.1, 7.1.0",
 			}
+		}, ""},
+	}
+}
+
+func newFeatureCases() []validationCase {
+	return []validationCase{
+		{"choices_from_valid", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].ChoicesFrom = "ls *.txt"
+		}, ""},
+		{"choices_and_choices_from_conflict", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "a"}}
+			w.Options[0].ChoicesFrom = "ls"
+		}, "choices and choices_from are mutually exclusive"},
+		{"separator_on_non_multi_select", func(w *Wizard) {
+			w.Options[0].Separator = ","
+		}, "separator is only valid for multi_select"},
+		{"separator_on_multi_select_valid", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].Separator = ","
+			w.Options[0].ChoicesFrom = "echo a"
+		}, ""},
+		{"validate_on_non_input", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "a"}}
+			w.Options[0].Validate = &InputRule{Pattern: ".*"}
+		}, "validate is only valid for input"},
+		{"validate_bad_pattern", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{Pattern: "[invalid"}
+		}, "validate.pattern is invalid"},
+		{"validate_valid", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{Pattern: `^\d+$`, Message: "must be number"}
+		}, ""},
+		{"positional_conflicts_with_flag", func(w *Wizard) {
+			w.Options[0].Positional = true
+			w.Options[0].Flag = "--name"
+		}, "positional is mutually exclusive with flag"},
+		{"positional_conflicts_with_flag_true", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].Positional = true
+			w.Options[0].FlagTrue = "--yes"
+		}, "positional is mutually exclusive with flag"},
+		{"positional_valid", func(w *Wizard) {
+			w.Options[0].Positional = true
+		}, ""},
+		{"hide_when_unknown_option", func(w *Wizard) {
+			w.Options[0].HideWhen = map[string]any{"nonexistent": true}
+		}, "hide_when references unknown option"},
+		{"hide_when_valid", func(w *Wizard) {
+			w.Options = append(w.Options, Option{
+				Name: "opt2", Type: "input", Label: "Opt 2",
+				HideWhen: map[string]any{"opt1": "x"},
+			})
+		}, ""},
+		{"choices_from_unknown_interpolation", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].ChoicesFrom = "cmd --profile={{unknown}}"
+		}, "choices_from interpolation references unknown option"},
+		{"choices_from_dot_interpolation_ignored", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].ChoicesFrom = "docker images --format '{{.Names}}'"
 		}, ""},
 	}
 }
@@ -215,4 +276,61 @@ func TestEffectiveFlagStyle(t *testing.T) {
 			t.Errorf("got %q, want equals", got)
 		}
 	})
+}
+
+func TestFlexChoicesUnmarshal(t *testing.T) {
+	tests := []struct {
+		name    string
+		yaml    string
+		want    []Choice
+		wantErr bool
+	}{
+		{
+			"string_shorthand",
+			"choices:\n  - sqlite\n  - postgres",
+			[]Choice{{Value: "sqlite", Label: "sqlite"}, {Value: "postgres", Label: "postgres"}},
+			false,
+		},
+		{
+			"full_object",
+			"choices:\n  - value: mysql\n    label: MySQL 8\n    description: Popular",
+			[]Choice{{Value: "mysql", Label: "MySQL 8", Description: "Popular"}},
+			false,
+		},
+		{
+			"mixed",
+			"choices:\n  - sqlite\n  - value: mysql\n    label: MySQL 8",
+			[]Choice{{Value: "sqlite", Label: "sqlite"}, {Value: "mysql", Label: "MySQL 8"}},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out struct {
+				Choices FlexChoices `yaml:"choices"`
+			}
+			err := yamlUnmarshal([]byte(tt.yaml), &out)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			if len(out.Choices) != len(tt.want) {
+				t.Fatalf("got %d choices, want %d", len(out.Choices), len(tt.want))
+			}
+			for i, c := range out.Choices {
+				if c.Value != tt.want[i].Value || c.Label != tt.want[i].Label || c.Description != tt.want[i].Description {
+					t.Errorf("[%d] got %+v, want %+v", i, c, tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func yamlUnmarshal(data []byte, v any) error {
+	if err := yaml.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+	return nil
 }

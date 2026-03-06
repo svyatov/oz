@@ -27,10 +27,8 @@ func wizardCmd(name string) *cobra.Command {
 		Use:                name,
 		Short:              fmt.Sprintf("Run %s wizard", name),
 		DisableFlagParsing: false,
-		// Accept any args (positional args for the wizard)
-		Args: cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWizard(name, args, presetName, dryRun)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return runWizard(name, presetName, dryRun)
 		},
 	}
 
@@ -57,29 +55,25 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 	return w, nil
 }
 
-func resolveVersion(w *config.Wizard, st *store.Store) (*wizard.VersionResult, string) {
+func resolveVersion(w *config.Wizard, st *store.Store) (*wizard.VersionResult, bool) {
 	versionPin, _ := st.LoadVersionPin(w.Name)
 	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
 		vr = &wizard.VersionResult{}
 	}
-
-	displayVersion := vr.Selected
-	if vr.Selected != "" && vr.Selected != vr.Detected {
-		displayVersion = vr.Selected + " (override)"
-	}
-	return vr, displayVersion
+	overridden := vr.Selected != "" && vr.Selected != vr.Detected
+	return vr, overridden
 }
 
-func runWizard(name string, args []string, presetName string, dryRun bool) error {
+func runWizard(name string, presetName string, dryRun bool) error {
 	w, err := loadWizardConfig(name)
 	if err != nil {
 		return err
 	}
 
 	st := store.New(configDir)
-	vr, displayVersion := resolveVersion(w, st)
+	vr, overridden := resolveVersion(w, st)
 	if vr.Aborted {
 		return nil
 	}
@@ -94,9 +88,8 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 		state = &store.StateEntry{}
 	}
 
-	positionalArgs := buildPositionalArgs(w.Args, args)
 	if presetName != "" {
-		return runWithPreset(w, st, positionalArgs, presetName, dryRun)
+		return runWithPreset(w, st, presetName, dryRun)
 	}
 
 	filteredOptions, pinnedCount := wizard.FilterPinned(options, state.Pins)
@@ -104,7 +97,7 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	maps.Copy(pinnedAnswers, state.Pins)
 
 	result, err := wizard.Run(
-		w.Name, displayVersion, filteredOptions,
+		w.Name, vr.Selected, overridden, filteredOptions,
 		pinnedCount, state.LastUsed, pinnedAnswers,
 	)
 	if err != nil {
@@ -118,7 +111,7 @@ func runWizard(name string, args []string, presetName string, dryRun bool) error
 	maps.Copy(allAnswers, pinnedAnswers)
 	maps.Copy(allAnswers, result.Answers)
 
-	parts := command.Build(w, positionalArgs, allAnswers)
+	parts := command.Build(w, allAnswers)
 	command.PrintCommand(parts)
 	saveLastUsed(st, w.Name, majorVersion, state, result.Answers)
 	return confirmAndExecute(st, w.Name, parts, allAnswers, dryRun)
@@ -168,14 +161,14 @@ func promptAndSavePreset(st *store.Store, wizardName string, allAnswers map[stri
 
 func runWithPreset(
 	w *config.Wizard, st *store.Store,
-	positionalArgs map[string]string, presetName string, dryRun bool,
+	presetName string, dryRun bool,
 ) error {
 	values, err := st.LoadPreset(w.Name, presetName)
 	if err != nil {
 		return fmt.Errorf("loading preset %q: %w", presetName, err)
 	}
 
-	parts := command.Build(w, positionalArgs, values)
+	parts := command.Build(w, values)
 	command.PrintCommand(parts)
 
 	if dryRun {
@@ -227,18 +220,6 @@ func runPins(name string) error {
 
 	fmt.Printf("  %s pinned.\n", ui.Plural(len(state.Pins), "option"))
 	return nil
-}
-
-func buildPositionalArgs(argDefs []config.Arg, cliArgs []string) map[string]string {
-	result := make(map[string]string)
-	argIdx := 0
-	for _, a := range argDefs {
-		if argIdx < len(cliArgs) {
-			result[a.Name] = cliArgs[argIdx]
-			argIdx++
-		}
-	}
-	return result
 }
 
 func majorVer(version string) string {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -22,7 +23,6 @@ func Validate(w *Wizard) []error {
 		add("flag_style must be 'equals' or 'space', got %q", w.FlagStyle)
 	}
 
-	validateArgs(w.Args, add)
 	validateVersionControl(w.Version, add)
 
 	if len(w.Compat) > 0 && w.Version == nil {
@@ -33,17 +33,6 @@ func Validate(w *Wizard) []error {
 	validateReferences(w.Options, w.Compat, optionNames, add)
 
 	return errs
-}
-
-func validateArgs(args []Arg, add func(string, ...any)) {
-	for i, a := range args {
-		if a.Name == "" {
-			add("args[%d]: name is required", i)
-		}
-		if a.Position < 1 {
-			add("args[%d] (%s): position must be >= 1", i, a.Name)
-		}
-	}
 }
 
 func validateVersionControl(vc *VersionControl, add func(string, ...any)) {
@@ -89,26 +78,60 @@ func validateOptions(options []Option, add func(string, ...any)) map[string]bool
 		}
 		optionNames[o.Name] = true
 
-		if !validOptionTypes[o.Type] {
-			add("%s: type must be one of select, confirm, input, multi_select; got %q", prefix, o.Type)
-		}
-		if o.Label == "" {
-			add("%s: label is required", prefix)
-		}
-		if o.FlagStyle != "" && o.FlagStyle != "equals" && o.FlagStyle != "space" {
-			add("%s: flag_style must be 'equals' or 'space', got %q", prefix, o.FlagStyle)
-		}
-		if (o.Type == "select" || o.Type == "multi_select") && len(o.Choices) == 0 {
-			add("%s: choices are required for type %q", prefix, o.Type)
-		}
-		for j, c := range o.Choices {
-			if c.Value == "" {
-				add("%s: choices[%d]: value is required", prefix, j)
-			}
-		}
+		validateOptionFields(o, prefix, add)
 	}
 
 	return optionNames
+}
+
+func validateOptionFields(o Option, prefix string, add func(string, ...any)) {
+	if !validOptionTypes[o.Type] {
+		add("%s: type must be one of select, confirm, input, multi_select; got %q", prefix, o.Type)
+	}
+	if o.Label == "" {
+		add("%s: label is required", prefix)
+	}
+	if o.FlagStyle != "" && o.FlagStyle != "equals" && o.FlagStyle != "space" {
+		add("%s: flag_style must be 'equals' or 'space', got %q", prefix, o.FlagStyle)
+	}
+
+	validateOptionChoices(o, prefix, add)
+	validateOptionTypeConstraints(o, prefix, add)
+}
+
+func validateOptionChoices(o Option, prefix string, add func(string, ...any)) {
+	hasChoices := len(o.Choices) > 0
+	hasChoicesFrom := o.ChoicesFrom != ""
+	if hasChoices && hasChoicesFrom {
+		add("%s: choices and choices_from are mutually exclusive", prefix)
+	}
+	if (o.Type == "select" || o.Type == "multi_select") && !hasChoices && !hasChoicesFrom {
+		add("%s: choices or choices_from required for type %q", prefix, o.Type)
+	}
+	for j, c := range o.Choices {
+		if c.Value == "" {
+			add("%s: choices[%d]: value is required", prefix, j)
+		}
+	}
+}
+
+func validateOptionTypeConstraints(o Option, prefix string, add func(string, ...any)) {
+	if o.Separator != "" && o.Type != "multi_select" {
+		add("%s: separator is only valid for multi_select type", prefix)
+	}
+	if o.Validate != nil {
+		if o.Type != "input" {
+			add("%s: validate is only valid for input type", prefix)
+		}
+		if o.Validate.Pattern != "" {
+			if _, err := regexp.Compile(o.Validate.Pattern); err != nil {
+				add("%s: validate.pattern is invalid: %v", prefix, err)
+			}
+		}
+	}
+	if o.Positional && (o.Flag != "" || o.FlagTrue != "" || o.FlagFalse != "") {
+		add("%s: positional is mutually exclusive with flag, flag_true, flag_false", prefix)
+	}
 }
 
 func validateReferences(options []Option, compat []CompatEntry, optionNames map[string]bool, add func(string, ...any)) {
@@ -118,6 +141,12 @@ func validateReferences(options []Option, compat []CompatEntry, optionNames map[
 				add("options[%d] (%s): show_when references unknown option %q", i, o.Name, ref)
 			}
 		}
+		for ref := range o.HideWhen {
+			if !optionNames[ref] {
+				add("options[%d] (%s): hide_when references unknown option %q", i, o.Name, ref)
+			}
+		}
+		validateChoicesFromInterpolations(o, i, optionNames, add)
 	}
 	for i, c := range compat {
 		for _, name := range c.Options {
@@ -126,6 +155,27 @@ func validateReferences(options []Option, compat []CompatEntry, optionNames map[
 			}
 		}
 	}
+}
+
+func validateChoicesFromInterpolations(o Option, idx int, optionNames map[string]bool, add func(string, ...any)) {
+	if o.ChoicesFrom == "" {
+		return
+	}
+	// Find {{name}} interpolations (without leading dot, which is Go template syntax like {{.Names}})
+	for _, match := range choicesFromInterpolationRe.FindAllStringSubmatch(o.ChoicesFrom, -1) {
+		ref := match[1]
+		if !optionNames[ref] {
+			add("options[%d] (%s): choices_from interpolation references unknown option %q", idx, o.Name, ref)
+		}
+	}
+}
+
+// choicesFromInterpolationRe matches {{name}} but not {{.name}} (Go template syntax).
+var choicesFromInterpolationRe = regexp.MustCompile(`\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}`)
+
+// ChoicesFromInterpolationRe returns the compiled regex for choices_from interpolation.
+func ChoicesFromInterpolationRe() *regexp.Regexp {
+	return choicesFromInterpolationRe
 }
 
 // FormatErrors formats validation errors as a single string.

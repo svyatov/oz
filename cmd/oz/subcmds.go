@@ -104,7 +104,28 @@ func printOptionExplanation(step, total int, o config.Option) {
 	if o.Description != "" {
 		fmt.Printf("         %s\n", ui.MutedStyle.Render(o.Description))
 	}
+
+	printOptionFlags(o)
+	printOptionDetails(o)
+
+	for _, c := range o.Choices {
+		desc := ""
+		if c.Description != "" {
+			desc = "  " + ui.MutedStyle.Render(c.Description)
+		}
+		fmt.Printf("           - %s%s\n", c.Label, desc)
+	}
+
+	printConditions("Show when", o.ShowWhen)
+	printConditions("Hide when", o.HideWhen)
+	fmt.Println()
+}
+
+func printOptionFlags(o config.Option) {
 	fmt.Printf("         Type: %s", o.Type)
+	if o.Positional {
+		fmt.Print("  (positional)")
+	}
 	if o.Flag != "" {
 		fmt.Printf("  Flag: %s", o.Flag)
 	}
@@ -114,27 +135,49 @@ func printOptionExplanation(step, total int, o config.Option) {
 	if o.FlagFalse != "" {
 		fmt.Printf("  FlagFalse: %s", o.FlagFalse)
 	}
+	if o.Separator != "" {
+		fmt.Printf("  Separator: %q", o.Separator)
+	}
 	fmt.Println()
+}
 
+func printOptionDetails(o config.Option) {
 	if o.Default != nil {
 		fmt.Printf("         Default: %v\n", o.Default)
 	}
-	for _, c := range o.Choices {
-		desc := ""
-		if c.Description != "" {
-			desc = "  " + ui.MutedStyle.Render(c.Description)
-		}
-		fmt.Printf("           - %s%s\n", c.Label, desc)
+	if o.Required {
+		fmt.Println("         Required: yes")
 	}
-	if len(o.ShowWhen) > 0 {
-		conditions := make([]string, 0, len(o.ShowWhen))
-		for k, v := range o.ShowWhen {
-			conditions = append(conditions, fmt.Sprintf("%s=%v", k, v))
-		}
-		fmt.Printf("         Show when: %s\n",
-			strings.Join(conditions, ", "))
+	if o.Validate != nil {
+		printValidateInfo(o.Validate)
 	}
-	fmt.Println()
+	if o.ChoicesFrom != "" {
+		fmt.Printf("         Choices from: %s\n",
+			ui.MutedStyle.Render(o.ChoicesFrom))
+	}
+}
+
+func printValidateInfo(v *config.InputRule) {
+	if v.Pattern != "" {
+		fmt.Printf("         Pattern: %s\n", v.Pattern)
+	}
+	if v.MinLength > 0 {
+		fmt.Printf("         Min length: %d\n", v.MinLength)
+	}
+	if v.MaxLength > 0 {
+		fmt.Printf("         Max length: %d\n", v.MaxLength)
+	}
+}
+
+func printConditions(label string, conds map[string]any) {
+	if len(conds) == 0 {
+		return
+	}
+	conditions := make([]string, 0, len(conds))
+	for k, v := range conds {
+		conditions = append(conditions, fmt.Sprintf("%s=%v", k, v))
+	}
+	fmt.Printf("         %s: %s\n", label, strings.Join(conditions, ", "))
 }
 
 func pinsCmd(wizardName string) *cobra.Command {
@@ -273,7 +316,7 @@ func presetsShowCmd(wizardName string) *cobra.Command {
 				fmt.Printf("  %s: %v\n", k, v)
 			}
 
-			parts := command.Build(w, nil, values)
+			parts := command.Build(w, values)
 			command.PrintCommand(parts)
 			return nil
 		},
@@ -326,7 +369,7 @@ func presetsExplainCmd(wizardName string) *cobra.Command {
 				}
 			}
 
-			parts := command.Build(w, nil, values)
+			parts := command.Build(w, values)
 			command.PrintCommand(parts)
 			return nil
 		},

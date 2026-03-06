@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/svyatov/oz/internal/config"
@@ -27,8 +28,67 @@ func EvalShowWhen(showWhen map[string]any, answers Answers) bool {
 	return true
 }
 
+// EvalHideWhen checks whether an option's hide_when conditions are met.
+func EvalHideWhen(hideWhen map[string]any, answers Answers) bool {
+	if len(hideWhen) == 0 {
+		return false
+	}
+	for name, expected := range hideWhen {
+		actual, ok := answers[name]
+		if !ok {
+			return false
+		}
+		if !valuesMatch(actual, expected) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsVisible returns true if the option should be shown given current answers.
+func IsVisible(opt config.Option, answers Answers) bool {
+	return EvalShowWhen(opt.ShowWhen, answers) && !EvalHideWhen(opt.HideWhen, answers)
+}
+
 func valuesMatch(actual, expected any) bool {
+	// Expected is a list: OR semantics — match if actual equals any element
+	if expectedList, ok := toStringSlice(expected); ok {
+		// Actual is also a list (multi_select): match if any expected is IN actual
+		if actualList, ok := toStringSlice(actual); ok {
+			for _, e := range expectedList {
+				if slices.Contains(actualList, e) {
+					return true
+				}
+			}
+			return false
+		}
+		// Actual is scalar: match if actual equals any expected
+		actualStr := fmt.Sprintf("%v", actual)
+		return slices.Contains(expectedList, actualStr)
+	}
+
+	// Expected is scalar, actual is a list (multi_select membership)
+	if actualList, ok := toStringSlice(actual); ok {
+		return slices.Contains(actualList, fmt.Sprintf("%v", expected))
+	}
+
+	// Both scalar: string equality
 	return fmt.Sprintf("%v", actual) == fmt.Sprintf("%v", expected)
+}
+
+// toStringSlice converts []any or []string to []string, returns false if not a slice.
+func toStringSlice(v any) ([]string, bool) {
+	switch vv := v.(type) {
+	case []string:
+		return vv, true
+	case []any:
+		out := make([]string, len(vv))
+		for i, item := range vv {
+			out[i] = fmt.Sprintf("%v", item)
+		}
+		return out, true
+	}
+	return nil, false
 }
 
 // FilterPinned removes options that are pinned, returning the filtered list
@@ -44,11 +104,11 @@ func FilterPinned(options []config.Option, pins map[string]any) (filtered []conf
 	return
 }
 
-// VisibleSteps returns the indices of options that pass show_when evaluation.
+// VisibleSteps returns the indices of options that pass show_when and hide_when evaluation.
 func VisibleSteps(options []config.Option, answers Answers) []int {
 	var indices []int
 	for i, o := range options {
-		if EvalShowWhen(o.ShowWhen, answers) {
+		if IsVisible(o, answers) {
 			indices = append(indices, i)
 		}
 	}

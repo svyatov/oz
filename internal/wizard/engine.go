@@ -1,10 +1,12 @@
 package wizard
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/svyatov/oz/internal/config"
@@ -24,10 +26,17 @@ type Result struct {
 	Aborted bool
 }
 
+// choicesLoadedMsg is sent when a choices_from command completes.
+type choicesLoadedMsg struct {
+	choices []config.Choice
+	err     error
+}
+
 // Engine is a bubbletea model that runs the wizard step-by-step.
 type Engine struct {
 	wizardName string
 	version    string
+	overridden bool
 	options    []config.Option
 	pinnedCnt  int
 	answers    Answers
@@ -40,6 +49,11 @@ type Engine struct {
 	// Current field
 	currentField Field
 
+	// Loading state for choices_from
+	loading  bool
+	loadErr  error
+	spinner  spinner.Model
+
 	// Completed steps for display
 	completedSteps []CompletedStep
 
@@ -50,19 +64,33 @@ type Engine struct {
 }
 
 // NewEngine creates a new wizard engine.
-func NewEngine(wizardName, version string, options []config.Option, pinnedCount int, defaults map[string]any) *Engine {
+func NewEngine(
+	wizardName, version string, overridden bool,
+	options []config.Option, pinnedCount int, defaults map[string]any,
+) *Engine {
 	if defaults == nil {
 		defaults = make(map[string]any)
 	}
+	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return &Engine{
 		wizardName: wizardName,
 		version:    version,
+		overridden: overridden,
 		options:    options,
 		pinnedCnt:  pinnedCount,
 		answers:    make(Answers),
 		defaults:   defaults,
+		spinner:    s,
 		width:      80,
 	}
+}
+
+func (e *Engine) headerLine() string {
+	h := ui.Header(e.wizardName, e.version)
+	if e.overridden {
+		h += " " + ui.VersionOverrideTag()
+	}
+	return h
 }
 
 // SetPinnedAnswers sets the answers for pinned options (needed for show_when).
@@ -81,44 +109,68 @@ func (e *Engine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		e.width = msg.Width
 		return e, nil
 
+	case spinner.TickMsg:
+		if e.loading {
+			var cmd tea.Cmd
+			e.spinner, cmd = e.spinner.Update(msg)
+			return e, cmd
+		}
+		return e, nil
+
+	case choicesLoadedMsg:
+		return e.handleChoicesLoaded(msg)
+
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "ctrl+c", "esc":
-			e.aborted = true
-			e.done = true
-			return e, tea.Quit
-		case "shift+tab":
-			if e.goBack() {
-				return e, e.initCurrentField()
-			}
-			return e, nil
-		}
-
-		if e.currentField == nil {
-			return e, nil
-		}
-
-		submitted, cmd := e.currentField.Update(msg)
-		if submitted {
-			e.saveCurrentAnswer()
-			e.recordCompletedStep()
-			e.stepIndex++
-			e.advanceToNextVisible()
-
-			visible := VisibleSteps(e.options, e.answers)
-			if e.stepIndex >= len(visible) {
-				e.done = true
-				return e, tea.Quit
-			}
-
-			e.history = append(e.history, e.stepIndex)
-			return e, e.initCurrentField()
-		}
-
-		return e, cmd
+		return e.handleKeyPress(msg)
 	}
 
 	return e, nil
+}
+
+func (e *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		e.aborted = true
+		e.done = true
+		return e, tea.Quit
+	case "shift+tab":
+		if !e.loading && e.goBack() {
+			return e, e.initCurrentField()
+		}
+		return e, nil
+	}
+
+	// During loading: enter retries, other keys ignored
+	if e.loading {
+		if e.loadErr != nil && msg.String() == "enter" {
+			e.loadErr = nil
+			return e, e.initCurrentField()
+		}
+		return e, nil
+	}
+
+	if e.currentField == nil {
+		return e, nil
+	}
+
+	submitted, cmd := e.currentField.Update(msg)
+	if !submitted {
+		return e, cmd
+	}
+
+	e.saveCurrentAnswer()
+	e.recordCompletedStep()
+	e.stepIndex++
+	e.advanceToNextVisible()
+
+	visible := VisibleSteps(e.options, e.answers)
+	if e.stepIndex >= len(visible) {
+		e.done = true
+		return e, tea.Quit
+	}
+
+	e.history = append(e.history, e.stepIndex)
+	return e, e.initCurrentField()
 }
 
 func (e *Engine) View() tea.View {
@@ -129,7 +181,7 @@ func (e *Engine) View() tea.View {
 	var b strings.Builder
 
 	// Header
-	b.WriteString("\n  " + ui.Header(e.wizardName, e.version) + "\n")
+	b.WriteString("\n  " + e.headerLine() + "\n")
 
 	// Pinned info
 	if e.pinnedCnt > 0 {
@@ -146,18 +198,35 @@ func (e *Engine) View() tea.View {
 
 	b.WriteString("\n")
 
-	// Current field with step counter
-	visible := VisibleSteps(e.options, e.answers)
-	total := len(visible)
-	displayPos := e.stepIndex + 1
+	// Loading state
+	if e.loading {
+		opt := e.currentOption()
+		if opt != nil {
+			visible := VisibleSteps(e.options, e.answers)
+			total := len(visible)
+			displayPos := e.stepIndex + 1
+			b.WriteString("  " + ui.StepCounter(displayPos, total) + "  ")
+			if e.loadErr != nil {
+				b.WriteString(ui.WarningText("Error loading choices: "+e.loadErr.Error()) + "\n")
+				b.WriteString("         " + ui.NavHintText("enter=retry  shift+tab=back") + "\n")
+			} else {
+				b.WriteString(e.spinner.View() + " " + ui.FieldTitle("Loading "+opt.Label+"...") + "\n")
+			}
+		}
+	} else {
+		// Current field with step counter
+		visible := VisibleSteps(e.options, e.answers)
+		total := len(visible)
+		displayPos := e.stepIndex + 1
 
-	if e.currentField != nil {
-		fieldView := e.currentField.View()
-		// Replace placeholder step counter with real one
-		placeholder := ui.StepCounter(0, 0)
-		actual := ui.StepCounter(displayPos, total)
-		fieldView = strings.Replace(fieldView, placeholder, actual, 1)
-		b.WriteString(fieldView)
+		if e.currentField != nil {
+			fieldView := e.currentField.View()
+			// Replace placeholder step counter with real one
+			placeholder := ui.StepCounter(0, 0)
+			actual := ui.StepCounter(displayPos, total)
+			fieldView = strings.Replace(fieldView, placeholder, actual, 1)
+			b.WriteString(fieldView)
+		}
 	}
 
 	// Nav hint
@@ -181,11 +250,38 @@ func (e *Engine) finalView() string {
 	}
 
 	var b strings.Builder
-	b.WriteString("\n  " + ui.Header(e.wizardName, e.version) + "\n\n")
+	b.WriteString("\n  " + e.headerLine() + "\n\n")
 	for _, cs := range e.completedSteps {
 		b.WriteString(ui.CompletedStepLine(cs.StepNum, cs.Label, cs.Answer) + "\n")
 	}
 	return b.String()
+}
+
+func (e *Engine) handleChoicesLoaded(msg choicesLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		e.loadErr = msg.err
+		return e, nil
+	}
+
+	opt := e.currentOption()
+	if opt == nil {
+		e.done = true
+		return e, tea.Quit
+	}
+
+	if len(msg.choices) == 0 {
+		e.loadErr = errors.New("no choices available")
+		return e, nil
+	}
+
+	// Update the option's choices in-place
+	opt.Choices = config.FlexChoices(msg.choices)
+	e.loading = false
+	e.loadErr = nil
+
+	e.currentField = e.buildField(opt)
+	e.setFieldDefault(opt)
+	return e, e.currentField.Init()
 }
 
 func (e *Engine) advanceToNextVisible() {
@@ -193,7 +289,7 @@ func (e *Engine) advanceToNextVisible() {
 	for e.stepIndex < len(visible) {
 		idx := visible[e.stepIndex]
 		opt := e.options[idx]
-		if EvalShowWhen(opt.ShowWhen, e.answers) {
+		if IsVisible(opt, e.answers) {
 			break
 		}
 		e.stepIndex++
@@ -238,6 +334,19 @@ func (e *Engine) initCurrentField() tea.Cmd {
 		e.history = append(e.history, e.stepIndex)
 	}
 
+	// If choices_from is set, enter loading state
+	if opt.ChoicesFrom != "" && len(opt.Choices) == 0 {
+		e.loading = true
+		e.loadErr = nil
+		e.currentField = nil
+		resolveCmd := func() tea.Msg {
+			choices, err := ResolveChoices(opt.ChoicesFrom, e.answers)
+			return choicesLoadedMsg{choices: choices, err: err}
+		}
+		return tea.Batch(e.spinner.Tick, resolveCmd)
+	}
+
+	e.loading = false
 	e.currentField = e.buildField(opt)
 	e.setFieldDefault(opt)
 
@@ -251,11 +360,11 @@ func (e *Engine) buildField(opt *config.Option) Field {
 	case "confirm":
 		return NewConfirmField(opt.Label, opt.Description)
 	case "input":
-		return NewInputField(opt.Label, opt.Description)
+		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
 	case "multi_select":
 		return NewMultiSelectField(*opt)
 	default:
-		return NewInputField(opt.Label, opt.Description)
+		return NewInputField(opt.Label, opt.Description, nil, false)
 	}
 }
 
@@ -315,10 +424,10 @@ func (e *Engine) recordCompletedStep() {
 
 // Run executes the wizard and returns the result.
 func Run(
-	wizardName, version string, options []config.Option,
+	wizardName, version string, overridden bool, options []config.Option,
 	pinnedCount int, defaults, pinnedAnswers map[string]any,
 ) (*Result, error) {
-	engine := NewEngine(wizardName, version, options, pinnedCount, defaults)
+	engine := NewEngine(wizardName, version, overridden, options, pinnedCount, defaults)
 	engine.SetPinnedAnswers(pinnedAnswers)
 
 	p := tea.NewProgram(engine)

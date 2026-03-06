@@ -148,7 +148,7 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	m.editIdx = idx
 
 	if m.isVersionIdx(idx) {
-		m.editField = NewInputField("Version", "Enter \"default\" or a version string")
+		m.editField = NewInputField("Version", "Enter \"default\" or a version string", nil, false)
 		if m.versionPin != "" {
 			m.editField.SetValue(m.versionPin)
 		}
@@ -291,11 +291,11 @@ func buildPinsField(opt *config.Option) Field {
 	case "confirm":
 		return NewConfirmField(opt.Label, opt.Description)
 	case "input":
-		return NewInputField(opt.Label, opt.Description)
+		return NewInputField(opt.Label, opt.Description, nil, false)
 	case "multi_select":
 		return NewMultiSelectField(*opt)
 	default:
-		return NewInputField(opt.Label, opt.Description)
+		return NewInputField(opt.Label, opt.Description, nil, false)
 	}
 }
 

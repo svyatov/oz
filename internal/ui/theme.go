@@ -27,7 +27,7 @@ var (
 	Muted   = lightDark(lipgloss.Color("#6B7280"), lipgloss.Color("#8B95A5")) // completed labels, choice descriptions
 	Dimmed  = lightDark(lipgloss.Color("#9CA3AF"), lipgloss.Color("#4B5563")) // nav hints, inactive numbers
 	Normal  = lightDark(lipgloss.Color("#1F2937"), lipgloss.Color("#E5E9F0")) // choice labels, default text
-	Warning = lightDark(lipgloss.Color("#B8860B"), lipgloss.Color("#DAA520"))
+	Warning = lightDark(lipgloss.Color("#CC3333"), lipgloss.Color("#FF6B6B"))
 )
 
 var (
@@ -120,7 +120,7 @@ func StepCounter(current, total int) string {
 func Header(name, version string) string {
 	s := TitleStyle.Render(name)
 	if version != "" {
-		s += MutedStyle.Render(fmt.Sprintf(" \u2014 %s detected", version))
+		s += MutedStyle.Render(" \u2014 " + version)
 	}
 	return s
 }
@@ -131,6 +131,16 @@ func PinnedInfo(count int) string {
 		return ""
 	}
 	return MutedStyle.Render(fmt.Sprintf("(%d pinned options hidden)", count))
+}
+
+// VersionVerifyingTag renders an inline "(verifying ⠇)" tag in muted style.
+func VersionVerifyingTag(spinnerView string) string {
+	return MutedStyle.Render("(verifying " + spinnerView + ")")
+}
+
+// VersionOverrideTag renders a green "(override)" tag.
+func VersionOverrideTag() string {
+	return lipgloss.NewStyle().Foreground(Green).Render("(override)")
 }
 
 // DefaultTag renders a dimmed "(default)" suffix for select choices.
@@ -163,4 +173,14 @@ func PinsEditNavHint() string {
 	return "  " +
 		hintKey("enter", "confirm") + hintSep() +
 		hintKey("esc", "cancel")
+}
+
+// WarningText renders a warning message in the warning color.
+func WarningText(msg string) string {
+	return lipgloss.NewStyle().Foreground(Warning).Render(msg)
+}
+
+// NavHintText renders arbitrary hint text in the dimmed style.
+func NavHintText(msg string) string {
+	return hintStyle.Render(msg)
 }

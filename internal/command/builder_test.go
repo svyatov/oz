@@ -17,27 +17,38 @@ func TestFormatFlag(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := formatFlag(tt.flag, tt.value, tt.style)
 			if got != tt.want {
-				t.Errorf("formatFlag(%q, %q, %q) = %q, want %q", tt.flag, tt.value, tt.style, got, tt.want)
+				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestBuildConfirmFlags(t *testing.T) {
-	opt := config.Option{FlagTrue: "--yes", FlagFalse: "--no"}
-
 	tests := []struct {
 		name string
+		opt  config.Option
 		val  any
 		want []string
 	}{
-		{"true_with_flag_true", true, []string{"--yes"}},
-		{"false_with_flag_false", false, []string{"--no"}},
-		{"non_bool", "string", nil},
+		{"true_with_flag_true",
+			config.Option{FlagTrue: "--yes", FlagFalse: "--no"},
+			true, []string{"--yes"}},
+		{"false_with_flag_false",
+			config.Option{FlagTrue: "--yes", FlagFalse: "--no"},
+			false, []string{"--no"}},
+		{"non_bool",
+			config.Option{FlagTrue: "--yes"}, "string", nil},
+		{"flag_shorthand_true",
+			config.Option{Flag: "--verbose"}, true, []string{"--verbose"}},
+		{"flag_shorthand_false",
+			config.Option{Flag: "--verbose"}, false, nil},
+		{"flag_true_precedence",
+			config.Option{Flag: "--verbose", FlagTrue: "--yes"},
+			true, []string{"--yes"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfirmFlags(opt, tt.val)
+			got := buildConfirmFlags(tt.opt, tt.val)
 			assertStringSlice(t, got, tt.want)
 		})
 	}
@@ -54,7 +65,7 @@ func TestBuildSelectFlags(t *testing.T) {
 		{"normal_value", "go", []string{"--lang=go"}},
 		{"none_with_flag_none", "_none", []string{"--no-lang"}},
 		{"empty_with_flag_none", "", []string{"--no-lang"}},
-		{"no_flag", "go", nil}, // tested below with empty flag
+		{"no_flag", "go", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -88,56 +99,83 @@ func TestBuildInputFlags(t *testing.T) {
 }
 
 func TestBuildMultiSelectFlags(t *testing.T) {
-	opt := config.Option{Flag: "--feature"}
-
 	tests := []struct {
 		name string
+		opt  config.Option
 		val  any
 		want []string
 	}{
-		{"multiple", []string{"a", "b"}, []string{"--feature=a", "--feature=b"}},
-		{"empty_slice", []string{}, nil},
-		{"non_slice", "bad", nil},
+		{"repeated",
+			config.Option{Flag: "--feature"},
+			[]string{"a", "b"}, []string{"--feature=a", "--feature=b"}},
+		{"empty_slice",
+			config.Option{Flag: "--feature"}, []string{}, nil},
+		{"non_slice",
+			config.Option{Flag: "--feature"}, "bad", nil},
+		{"separator_comma",
+			config.Option{Flag: "--features", Separator: ","},
+			[]string{"auth", "api"}, []string{"--features=auth,api"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildMultiSelectFlags(opt, tt.val, "equals")
+			got := buildMultiSelectFlags(tt.opt, tt.val, "equals")
 			assertStringSlice(t, got, tt.want)
 		})
 	}
 }
 
 func TestBuild(t *testing.T) {
-	w := &config.Wizard{
-		Command: "docker run",
-		Args: []config.Arg{
-			{Name: "image", Position: 2},
-			{Name: "tag", Position: 1},
-		},
-		Options: []config.Option{
-			{Name: "verbose", Type: "confirm", FlagTrue: "-v"},
-			{Name: "port", Type: "input", Flag: "-p", Label: "Port"},
-		},
-	}
-	posArgs := map[string]string{"image": "nginx", "tag": "latest"}
-	answers := map[string]any{"verbose": true, "port": "8080"}
+	t.Run("flags_only", func(t *testing.T) {
+		w := &config.Wizard{
+			Command: "docker run",
+			Options: []config.Option{
+				{Name: "verbose", Type: "confirm", FlagTrue: "-v"},
+				{Name: "port", Type: "input", Flag: "-p", Label: "Port"},
+			},
+		}
+		answers := map[string]any{"verbose": true, "port": "8080"}
+		parts := Build(w, answers)
+		if got := FormatCommand(parts); got != "docker run -v -p=8080" {
+			t.Errorf("FormatCommand = %q", got)
+		}
+	})
 
-	parts := Build(w, posArgs, answers)
-	plain := PlainParts(parts)
-	formatted := FormatCommand(parts)
+	t.Run("positional_options", func(t *testing.T) {
+		w := &config.Wizard{
+			Command: "task",
+			Options: []config.Option{{
+				Name: "task_name", Type: "select", Label: "Task",
+				Positional: true,
+				Choices:    config.FlexChoices{{Value: "build", Label: "build"}},
+			}},
+		}
+		answers := map[string]any{"task_name": "build"}
+		assertStringSlice(t, PlainParts(Build(w, answers)), []string{"task", "build"})
+	})
 
-	wantPlain := []string{"docker", "run", "latest", "nginx", "-v", "-p=8080"}
-	assertStringSlice(t, plain, wantPlain)
-
-	if formatted != "docker run latest nginx -v -p=8080" {
-		t.Errorf("FormatCommand = %q", formatted)
-	}
+	t.Run("positional_before_flags", func(t *testing.T) {
+		w := &config.Wizard{
+			Command: "docker run",
+			Options: []config.Option{
+				{
+					Name: "image", Type: "select", Label: "Image",
+					Positional: true,
+					Choices:    config.FlexChoices{{Value: "nginx", Label: "nginx"}},
+				},
+				{Name: "detach", Type: "confirm", Flag: "-d"},
+			},
+		}
+		answers := map[string]any{"image": "nginx", "detach": true}
+		want := []string{"docker", "run", "nginx", "-d"}
+		assertStringSlice(t, PlainParts(Build(w, answers)), want)
+	})
 }
 
 func assertStringSlice(t *testing.T, got, want []string) {
 	t.Helper()
 	if len(got) != len(want) {
-		t.Fatalf("got %v (len %d), want %v (len %d)", got, len(got), want, len(want))
+		t.Fatalf("got %v (len %d), want %v (len %d)",
+			got, len(got), want, len(want))
 	}
 	for i := range got {
 		if got[i] != want[i] {

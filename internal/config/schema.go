@@ -1,17 +1,21 @@
 package config
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
 
 // Wizard is the top-level YAML config for a wizard.
 type Wizard struct {
-	Name        string         `yaml:"name"`
-	Description string         `yaml:"description"`
-	Command     string         `yaml:"command"`
-	FlagStyle   string         `yaml:"flag_style"` // "equals" (default) or "space"
-	Args        []Arg          `yaml:"args"`
+	Name        string          `yaml:"name"`
+	Description string          `yaml:"description"`
+	Command     string          `yaml:"command"`
+	FlagStyle   string          `yaml:"flag_style"` // "equals" (default) or "space"
 	Version     *VersionControl `yaml:"version_control"`
-	Compat      []CompatEntry  `yaml:"compat"`
-	Options     []Option       `yaml:"options"`
+	Compat      []CompatEntry   `yaml:"compat"`
+	Options     []Option        `yaml:"options"`
 }
 
 func (w *Wizard) EffectiveFlagStyle() string {
@@ -19,14 +23,6 @@ func (w *Wizard) EffectiveFlagStyle() string {
 		return "space"
 	}
 	return "equals"
-}
-
-// Arg is a positional argument for the command.
-type Arg struct {
-	Name     string `yaml:"name"`
-	Label    string `yaml:"label"`
-	Required bool   `yaml:"required"`
-	Position int    `yaml:"position"`
 }
 
 // VersionControl configures version detection and custom version support.
@@ -69,7 +65,12 @@ type Option struct {
 	AllowNone   bool           `yaml:"allow_none"`
 	Required    bool           `yaml:"required"`
 	ShowWhen    map[string]any `yaml:"show_when"`
-	Choices     []Choice       `yaml:"choices"`
+	HideWhen    map[string]any `yaml:"hide_when"`
+	Choices     FlexChoices    `yaml:"choices"`
+	ChoicesFrom string         `yaml:"choices_from"`
+	Separator   string         `yaml:"separator"`
+	Validate    *InputRule     `yaml:"validate"`
+	Positional  bool           `yaml:"positional"`
 }
 
 func (o *Option) EffectiveFlagStyle(wizardDefault string) string {
@@ -84,4 +85,40 @@ type Choice struct {
 	Value       string `yaml:"value"`
 	Label       string `yaml:"label"`
 	Description string `yaml:"description"`
+}
+
+// FlexChoices is a []Choice that accepts both string shorthand and full object syntax in YAML.
+type FlexChoices []Choice
+
+func (fc *FlexChoices) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.SequenceNode {
+		return fmt.Errorf("choices must be a sequence, got %v", value.Kind)
+	}
+
+	choices := make([]Choice, 0, len(value.Content))
+	for _, node := range value.Content {
+		switch node.Kind { //nolint:exhaustive // only scalar and mapping are valid
+		case yaml.ScalarNode:
+			s := node.Value
+			choices = append(choices, Choice{Value: s, Label: s})
+		case yaml.MappingNode:
+			var c Choice
+			if err := node.Decode(&c); err != nil {
+				return fmt.Errorf("decoding choice: %w", err)
+			}
+			choices = append(choices, c)
+		default:
+			return fmt.Errorf("choice must be a string or mapping, got %v", node.Kind)
+		}
+	}
+	*fc = choices
+	return nil
+}
+
+// InputRule defines validation constraints for input fields.
+type InputRule struct {
+	Pattern   string `yaml:"pattern"`
+	MinLength int    `yaml:"min_length"`
+	MaxLength int    `yaml:"max_length"`
+	Message   string `yaml:"message"`
 }

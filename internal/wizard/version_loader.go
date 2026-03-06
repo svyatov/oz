@@ -29,6 +29,7 @@ const (
 	phaseLoading versionPhase = iota
 	phaseSelect
 	phaseInput
+	phaseVerifying
 )
 
 // Messages for async operations.
@@ -40,6 +41,11 @@ type versionDetectedMsg struct {
 type versionsListedMsg struct {
 	versions []string
 	err      error
+}
+
+type versionVerifiedMsg struct {
+	version string
+	err     error
 }
 
 type spinnerDelayMsg struct{}
@@ -70,6 +76,7 @@ type VersionLoaderModel struct {
 	ti        textinput.Model
 	verifyErr string
 
+	done   bool
 	result VersionResult
 }
 
@@ -132,12 +139,12 @@ func (m *VersionLoaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return m.spinner.Tick() }
 
 	case spinner.TickMsg:
-		if m.phase != phaseLoading {
-			return m, nil
+		if m.phase == phaseLoading || m.phase == phaseVerifying {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
 		}
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+		return m, nil
 
 	case versionDetectedMsg:
 		m.detectDone = true
@@ -151,10 +158,13 @@ func (m *VersionLoaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.versionsErr = msg.err
 		return m.checkLoadingDone()
 
+	case versionVerifiedMsg:
+		return m.handleVerified(msg)
+
 	case tea.KeyPressMsg:
 		switch m.phase {
-		case phaseLoading:
-			// Keys ignored during loading
+		case phaseLoading, phaseVerifying:
+			return m.handleAbortKey(msg)
 		case phaseSelect:
 			return m.updateSelect(msg)
 		case phaseInput:
@@ -163,6 +173,33 @@ func (m *VersionLoaderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *VersionLoaderModel) finish() tea.Cmd {
+	m.done = true
+	return tea.Quit
+}
+
+func (m *VersionLoaderModel) handleAbortKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if msg.String() == "esc" || msg.String() == "ctrl+c" {
+		m.result.Aborted = true
+		return m, m.finish()
+	}
+	return m, nil
+}
+
+func (m *VersionLoaderModel) handleVerified(msg versionVerifiedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.phase = phaseInput
+		m.verifyErr = msg.err.Error()
+		return m, m.ti.Focus()
+	}
+	m.result = VersionResult{
+		Detected: m.detected,
+		Selected: msg.version,
+		Versions: m.versions,
+	}
+	return m, m.finish()
 }
 
 func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
@@ -185,7 +222,7 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 				Versions: m.versions,
 			}
 		}
-		return m, tea.Quit
+		return m, m.finish()
 	}
 
 	// No custom version support → return detected
@@ -195,7 +232,7 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 			Selected: m.detected,
 			Versions: m.versions,
 		}
-		return m, tea.Quit
+		return m, m.finish()
 	}
 
 	// Build version list or go to input
@@ -241,7 +278,7 @@ func (m *VersionLoaderModel) updateSelect(msg tea.KeyPressMsg) (tea.Model, tea.C
 		return m.selectItem(m.cursor)
 	case "esc", "ctrl+c":
 		m.result.Aborted = true
-		return m, tea.Quit
+		return m, m.finish()
 	}
 
 	if msg.Code >= '1' && msg.Code <= '9' {
@@ -267,7 +304,7 @@ func (m *VersionLoaderModel) selectItem(idx int) (tea.Model, tea.Cmd) {
 		Selected: item.version,
 		Versions: m.versions,
 	}
-	return m, tea.Quit
+	return m, m.finish()
 }
 
 func (m *VersionLoaderModel) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -279,38 +316,51 @@ func (m *VersionLoaderModel) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			return m, nil
 		}
 		m.result.Aborted = true
-		return m, tea.Quit
+		return m, m.finish()
 	case "enter", "tab":
-		version := strings.TrimSpace(m.ti.Value())
-		if version == "" {
-			// Use detected version
-			m.result = VersionResult{
-				Detected: m.detected,
-				Selected: m.detected,
-				Versions: m.versions,
-			}
-			return m, tea.Quit
-		}
-		if m.vc.CustomVersionVerify != "" {
-			if err := compat.VerifyVersion(m.vc.CustomVersionVerify, version); err != nil {
-				m.verifyErr = err.Error()
-				return m, nil
-			}
-		}
-		m.result = VersionResult{
-			Detected: m.detected,
-			Selected: version,
-			Versions: m.versions,
-		}
-		return m, tea.Quit
+		return m.submitInput()
 	}
 
+	// Clear error when user types
+	m.verifyErr = ""
 	var cmd tea.Cmd
 	m.ti, cmd = m.ti.Update(msg)
 	return m, cmd
 }
 
+func (m *VersionLoaderModel) submitInput() (tea.Model, tea.Cmd) {
+	version := strings.TrimSpace(m.ti.Value())
+	if version == "" {
+		m.result = VersionResult{
+			Detected: m.detected,
+			Selected: m.detected,
+			Versions: m.versions,
+		}
+		return m, m.finish()
+	}
+
+	if m.vc.CustomVersionVerify != "" {
+		m.phase = phaseVerifying
+		m.verifyErr = ""
+		verifyCmd := m.vc.CustomVersionVerify
+		return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
+			err := compat.VerifyVersion(verifyCmd, version)
+			return versionVerifiedMsg{version: version, err: err}
+		})
+	}
+
+	m.result = VersionResult{
+		Detected: m.detected,
+		Selected: version,
+		Versions: m.versions,
+	}
+	return m, m.finish()
+}
+
 func (m *VersionLoaderModel) View() tea.View {
+	if m.done {
+		return tea.NewView("")
+	}
 	switch m.phase {
 	case phaseLoading:
 		return tea.NewView(m.viewLoading())
@@ -318,6 +368,8 @@ func (m *VersionLoaderModel) View() tea.View {
 		return tea.NewView(m.viewSelect())
 	case phaseInput:
 		return tea.NewView(m.viewInput())
+	case phaseVerifying:
+		return tea.NewView(m.viewVerifying())
 	}
 	return tea.NewView("")
 }
@@ -352,7 +404,7 @@ func (m *VersionLoaderModel) viewSelect() string {
 
 		suffix := ""
 		if item.isDetected {
-			suffix = "  " + ui.MutedStyle.Render("(detected)")
+			suffix = "  " + ui.MutedStyle.Render("(current)")
 		}
 
 		fmt.Fprintf(&b, "   %s%s  %s%s\n", cursor, num, label, suffix)
@@ -369,16 +421,27 @@ func (m *VersionLoaderModel) viewInput() string {
 
 	prompt := "Use different version?"
 	if m.detected != "" {
-		prompt = fmt.Sprintf("Use different version? (leave blank for %s)", m.detected)
+		prompt = fmt.Sprintf(
+			"Use different version? (leave blank for %s)", m.detected,
+		)
 	}
 	b.WriteString("  " + ui.FieldTitle(prompt) + "\n\n")
 
 	if m.verifyErr != "" {
-		b.WriteString("  " + lipgloss.NewStyle().Foreground(ui.Warning).Render(m.verifyErr) + "\n\n")
+		b.WriteString("  " + ui.WarningText(m.verifyErr) + "\n\n")
 	}
 
 	b.WriteString("    " + m.ti.View() + "\n")
 	return b.String()
+}
+
+func (m *VersionLoaderModel) viewVerifying() string {
+	version := strings.TrimSpace(m.ti.Value())
+	tag := ""
+	if m.showSpinner {
+		tag = " " + ui.VersionVerifyingTag(m.spinner.View())
+	}
+	return fmt.Sprintf("\n  %s%s\n", ui.Header(m.wizardName, version), tag)
 }
 
 // RunVersionLoader runs version detection, fetches available versions,
