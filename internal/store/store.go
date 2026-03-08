@@ -101,21 +101,15 @@ func (s *Store) SaveState(wizard, version string, entry *StateEntry) error {
 	return nil
 }
 
-func (s *Store) saveVersionedState(path, version string, entry *StateEntry) error {
+func modifyVersionedState(path string, fn func(*VersionedState)) error {
 	var vs VersionedState
-
 	existing, err := os.ReadFile(path)
 	if err == nil {
 		if err := yaml.Unmarshal(existing, &vs); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
 		}
 	}
-	if vs.Versions == nil {
-		vs.Versions = make(map[string]*StateEntry)
-	}
-
-	vs.Versions[version] = entry
-
+	fn(&vs)
 	data, err := yaml.Marshal(&vs)
 	if err != nil {
 		return fmt.Errorf("marshaling versioned state: %w", err)
@@ -124,6 +118,15 @@ func (s *Store) saveVersionedState(path, version string, entry *StateEntry) erro
 		return fmt.Errorf("writing versioned state: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) saveVersionedState(path, version string, entry *StateEntry) error {
+	return modifyVersionedState(path, func(vs *VersionedState) {
+		if vs.Versions == nil {
+			vs.Versions = make(map[string]*StateEntry)
+		}
+		vs.Versions[version] = entry
+	})
 }
 
 // LoadVersionPin reads the version pin for a wizard.
@@ -148,24 +151,9 @@ func (s *Store) SaveVersionPin(wizard, pin string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
-
-	var vs VersionedState
-	existing, err := os.ReadFile(path)
-	if err == nil {
-		if err := yaml.Unmarshal(existing, &vs); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
-		}
-	}
-	vs.VersionPin = pin
-
-	data, err := yaml.Marshal(&vs)
-	if err != nil {
-		return fmt.Errorf("marshaling state: %w", err)
-	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return fmt.Errorf("writing state: %w", err)
-	}
-	return nil
+	return modifyVersionedState(path, func(vs *VersionedState) {
+		vs.VersionPin = pin
+	})
 }
 
 // --- Presets ---

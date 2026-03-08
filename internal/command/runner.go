@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // Run executes the command, connecting stdin/stdout/stderr to the terminal.
@@ -25,7 +24,7 @@ func Run(parts []string) error {
 	return nil
 }
 
-// DryRun prints the command without executing it.
-func DryRun(parts []string) {
-	fmt.Println(strings.Join(parts, " "))
+// DryRun prints the colored command without executing it.
+func DryRun(parts []Part) {
+	PrintCommand(parts)
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/svyatov/oz/internal/compat"
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/store"
-	"github.com/svyatov/oz/internal/ui"
 	"github.com/svyatov/oz/internal/wizard"
 )
 
@@ -136,18 +135,19 @@ func runWizard(name string, presetName string, dryRun bool) error {
 	maps.Copy(allAnswers, s.result.Answers)
 
 	parts := command.Build(w, allAnswers)
-	command.PrintCommand(parts)
 	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Answers)
-	return confirmAndExecute(st, w.Name, parts, allAnswers, dryRun)
+	if dryRun {
+		command.DryRun(parts)
+		return nil
+	}
+	command.PrintCommand(parts)
+	return confirmAndExecute(st, w.Name, parts, allAnswers)
 }
 
 func confirmAndExecute(
 	st *store.Store, wizardName string,
-	parts []command.Part, allAnswers map[string]any, dryRun bool,
+	parts []command.Part, allAnswers map[string]any,
 ) error {
-	if dryRun {
-		return nil
-	}
 	if !confirmPrompt("  Execute?") {
 		return nil
 	}
@@ -193,12 +193,11 @@ func runWithPreset(
 	}
 
 	parts := command.Build(w, values)
-	command.PrintCommand(parts)
-
 	if dryRun {
+		command.DryRun(parts)
 		return nil
 	}
-
+	command.PrintCommand(parts)
 	if err := command.Run(command.PlainParts(parts)); err != nil {
 		return fmt.Errorf("executing command: %w", err)
 	}
@@ -242,7 +241,11 @@ func runPins(name string) error {
 		}
 	}
 
-	fmt.Printf("  %s pinned.\n", ui.Plural(len(state.Pins), "option"))
+	word := "options"
+	if len(state.Pins) == 1 {
+		word = "option"
+	}
+	fmt.Printf("  %d %s pinned.\n", len(state.Pins), word)
 	return nil
 }
 
