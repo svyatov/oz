@@ -65,14 +65,19 @@ func runCmd() *cobra.Command {
 }
 
 // detectWizardName finds the wizard name argument after "run" in os.Args.
-// Returns empty during shell completion to avoid registering partial input as a subcommand.
+// During shell completion the last arg is the word being typed, so we skip it
+// to avoid registering partial input (e.g. "cre") as a subcommand.
 func detectWizardName(args []string) string {
+	completion := false
 	foundRun := false
-	for _, a := range args {
+	nameIdx := -1
+	name := ""
+	for i, a := range args {
 		if a == "__complete" || a == "__completeNoDesc" {
-			return ""
+			completion = true
+			continue
 		}
-		if strings.HasPrefix(a, "-") {
+		if a == "" || strings.HasPrefix(a, "-") {
 			continue
 		}
 		if !foundRun {
@@ -81,12 +86,20 @@ func detectWizardName(args []string) string {
 			}
 			continue
 		}
-		return a
+		name = a
+		nameIdx = i
+		break
 	}
-	return ""
+	if completion && nameIdx == len(args)-1 {
+		return ""
+	}
+	return name
 }
 
-func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+func completeWizardNames(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) >= 1 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
 	wizards, err := config.ListWizards(configDir)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
