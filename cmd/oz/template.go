@@ -12,6 +12,7 @@ command: ""
 
 # Version detection and multi-version support
 # version_control:
+#   label: "Tool Version"
 #   command: mytool --version
 #   pattern: 'v?(\d+\.\d+\.\d+)'
 #   custom_version_command: "npx mytool@{{version}}"
