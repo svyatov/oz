@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -56,8 +57,9 @@ type spinnerDelayMsg struct{}
 type VersionLoaderModel struct {
 	wizardName string
 	vc         *config.VersionControl
-	pin        string
-	cached     *VersionResult
+	pin          string
+	verifyingPin bool
+	cached       *VersionResult
 
 	phase         versionPhase
 	spinner       spinner.Model
@@ -207,6 +209,21 @@ func (m *VersionLoaderModel) handleAbortKey(msg tea.KeyPressMsg) (tea.Model, tea
 }
 
 func (m *VersionLoaderModel) handleVerified(msg versionVerifiedMsg) (tea.Model, tea.Cmd) {
+	if m.verifyingPin {
+		m.verifyingPin = false
+		if msg.err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: pinned version %q invalid, ignoring: %v\n", m.pin, msg.err)
+			m.pin = ""
+			return m.fallThroughToUI()
+		}
+		m.result = VersionResult{
+			Detected: m.detected,
+			Selected: msg.version,
+			Versions: m.versions,
+		}
+		return m, m.finish()
+	}
+
 	if msg.err != nil {
 		m.phase = phaseInput
 		m.verifyErr = msg.err.Error()
@@ -233,17 +250,30 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 				Selected: m.detected,
 				Versions: m.versions,
 			}
-		} else {
-			m.result = VersionResult{
-				Detected: m.detected,
-				Selected: m.pin,
-				Versions: m.versions,
-			}
+			return m, m.finish()
+		}
+		if m.vc.CustomVersionVerify != "" {
+			m.verifyingPin = true
+			m.phase = phaseVerifying
+			verifyCmd := m.vc.CustomVersionVerify
+			pin := m.pin
+			return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
+				err := compat.VerifyVersion(verifyCmd, pin)
+				return versionVerifiedMsg{version: pin, err: err}
+			})
+		}
+		m.result = VersionResult{
+			Detected: m.detected,
+			Selected: m.pin,
+			Versions: m.versions,
 		}
 		return m, m.finish()
 	}
 
-	// No custom version support → return detected
+	return m.fallThroughToUI()
+}
+
+func (m *VersionLoaderModel) fallThroughToUI() (tea.Model, tea.Cmd) {
 	if m.vc.CustomVersionCmd == "" {
 		m.result = VersionResult{
 			Detected: m.detected,
@@ -253,7 +283,6 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 		return m, m.finish()
 	}
 
-	// Build version list or go to input
 	if len(m.versions) > 0 {
 		m.buildItems()
 		m.phase = phaseSelect
@@ -370,6 +399,7 @@ func (m *VersionLoaderModel) submitInput() (tea.Model, tea.Cmd) {
 
 	if m.vc.CustomVersionVerify != "" {
 		m.phase = phaseVerifying
+		m.verifyingPin = false
 		m.verifyErr = ""
 		verifyCmd := m.vc.CustomVersionVerify
 		return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
@@ -466,7 +496,10 @@ func (m *VersionLoaderModel) viewInput() string {
 }
 
 func (m *VersionLoaderModel) viewVerifying() string {
-	version := strings.TrimSpace(m.ti.Value())
+	version := m.pin
+	if !m.verifyingPin {
+		version = strings.TrimSpace(m.ti.Value())
+	}
 	tag := ""
 	if m.showSpinner {
 		tag = " " + ui.VersionVerifyingTag(m.spinner.View())

@@ -252,6 +252,7 @@ func runPins(name string) error {
 	result, err := wizard.RunPins(
 		w.Options, pins, state.LastUsed,
 		hints, hasCustomVersion, pinnedVer,
+		versionVerifyCmd(w),
 	)
 	if err != nil {
 		return fmt.Errorf("managing pins: %w", err)
@@ -276,6 +277,13 @@ func runPins(name string) error {
 	}
 	fmt.Printf("  %d %s pinned.\n", count, word)
 	return nil
+}
+
+func versionVerifyCmd(w *config.Wizard) string {
+	if w.Version != nil {
+		return w.Version.CustomVersionVerify
+	}
+	return ""
 }
 
 func versionLabel(w *config.Wizard) string {

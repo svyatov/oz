@@ -6,8 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
+	"github.com/svyatov/oz/internal/compat"
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
@@ -17,6 +20,7 @@ type pinsMode int
 const (
 	pinsListMode pinsMode = iota
 	pinsEditMode
+	pinsVerifyingMode
 )
 
 // PinsResult is returned by RunPins.
@@ -32,13 +36,16 @@ type PinsModel struct {
 	lastUsed map[string]any
 	hints    map[string]string
 
-	hasCustomVersion bool
-	versionPin       string
+	hasCustomVersion    bool
+	versionPin          string
+	customVersionVerify string
 
 	mode      pinsMode
 	cursor    int
 	editIdx   int
 	editField Field
+	spinner   spinner.Model
+	verifyErr string
 
 	done bool
 }
@@ -47,6 +54,7 @@ func newPinsModel(
 	options []config.Option, pins, lastUsed map[string]any,
 	hints map[string]string,
 	hasCustomVersion bool, versionPin string,
+	customVersionVerify string,
 ) *PinsModel {
 	if pins == nil {
 		pins = make(map[string]any)
@@ -54,13 +62,20 @@ func newPinsModel(
 	if lastUsed == nil {
 		lastUsed = make(map[string]any)
 	}
+
+	s := spinner.New()
+	s.Spinner = spinner.MiniDot
+	s.Style = lipgloss.NewStyle().Foreground(ui.Accent)
+
 	return &PinsModel{
-		options:          options,
-		pins:             pins,
-		lastUsed:         lastUsed,
-		hints:            hints,
-		hasCustomVersion: hasCustomVersion,
-		versionPin:       versionPin,
+		options:             options,
+		pins:                pins,
+		lastUsed:            lastUsed,
+		hints:               hints,
+		hasCustomVersion:    hasCustomVersion,
+		versionPin:          versionPin,
+		customVersionVerify: customVersionVerify,
+		spinner:             s,
 	}
 }
 
@@ -89,11 +104,28 @@ func (m *PinsModel) isVersionIdx(idx int) bool {
 func (m *PinsModel) Init() tea.Cmd { return nil }
 
 func (m *PinsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if msg, ok := msg.(tea.KeyPressMsg); ok {
-		if m.mode == pinsEditMode {
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		switch m.mode {
+		case pinsListMode:
+			return m.updateList(msg)
+		case pinsEditMode:
 			return m.updateEdit(msg)
+		case pinsVerifyingMode:
+			if msg.String() == "esc" || msg.String() == "ctrl+c" {
+				m.mode = pinsEditMode
+				return m, m.editField.Init()
+			}
+			return m, nil
 		}
-		return m.updateList(msg)
+	case versionVerifiedMsg:
+		return m.handleVersionVerified(msg)
+	case spinner.TickMsg:
+		if m.mode == pinsVerifyingMode {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -129,25 +161,23 @@ func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == "esc" || msg.String() == "ctrl+c" {
 		m.mode = pinsListMode
 		m.editField = nil
+		m.verifyErr = ""
 		return m, nil
 	}
 
 	submitted, cmd := m.editField.Update(msg)
 	if submitted {
 		if m.isVersionIdx(m.editIdx) {
-			if v := fmt.Sprintf("%v", m.editField.Value()); v == "" {
-				m.versionPin = "current"
-			} else {
-				m.versionPin = v
-			}
-		} else {
-			optIdx := m.editIdx - m.versionOffset()
-			opt := &m.options[optIdx]
-			m.pins[opt.Name] = m.editField.Value()
+			return m.submitVersionPin()
 		}
+		optIdx := m.editIdx - m.versionOffset()
+		opt := &m.options[optIdx]
+		m.pins[opt.Name] = m.editField.Value()
 		m.mode = pinsListMode
 		m.editField = nil
+		return m, cmd
 	}
+	m.verifyErr = ""
 	return m, cmd
 }
 
@@ -201,10 +231,15 @@ func (m *PinsModel) View() tea.View {
 	if m.done {
 		return tea.NewView("")
 	}
-	if m.mode == pinsEditMode {
+	switch m.mode {
+	case pinsListMode:
+		return tea.NewView(m.viewList())
+	case pinsEditMode:
 		return tea.NewView(m.viewEdit())
+	case pinsVerifyingMode:
+		return tea.NewView(m.viewVerifying())
 	}
-	return tea.NewView(m.viewList())
+	return tea.NewView("")
 }
 
 func (m *PinsModel) viewList() string {
@@ -292,9 +327,56 @@ func (m *PinsModel) viewEdit() string {
 
 	b.WriteString("\n")
 	b.WriteString(fieldView)
+	if m.verifyErr != "" {
+		b.WriteString("\n  " + ui.WarningText(m.verifyErr))
+	}
 	b.WriteString("\n" + ui.PinsEditNavHint() + "\n")
 
 	return b.String()
+}
+
+func (m *PinsModel) viewVerifying() string {
+	v := fmt.Sprintf("%v", m.editField.Value())
+	return fmt.Sprintf("\n  %s Verifying version %s...\n", m.spinner.View(), v)
+}
+
+func (m *PinsModel) submitVersionPin() (tea.Model, tea.Cmd) {
+	v := fmt.Sprintf("%v", m.editField.Value())
+	if v == "" {
+		m.versionPin = "current"
+		m.mode = pinsListMode
+		m.editField = nil
+		m.verifyErr = ""
+		return m, nil
+	}
+
+	if m.customVersionVerify != "" {
+		m.mode = pinsVerifyingMode
+		m.verifyErr = ""
+		verifyCmd := m.customVersionVerify
+		return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
+			err := compat.VerifyVersion(verifyCmd, v)
+			return versionVerifiedMsg{version: v, err: err}
+		})
+	}
+
+	m.versionPin = v
+	m.mode = pinsListMode
+	m.editField = nil
+	return m, nil
+}
+
+func (m *PinsModel) handleVersionVerified(msg versionVerifiedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.mode = pinsEditMode
+		m.verifyErr = msg.err.Error()
+		return m, m.editField.Init()
+	}
+	m.versionPin = msg.version
+	m.mode = pinsListMode
+	m.editField = nil
+	m.verifyErr = ""
+	return m, nil
 }
 
 func buildPinsField(opt *config.Option) Field {
@@ -340,11 +422,12 @@ func RunPins(
 	options []config.Option, currentPins, lastUsed map[string]any,
 	hints map[string]string,
 	hasCustomVersion bool, currentVersionPin string,
+	customVersionVerify string,
 ) (*PinsResult, error) {
 	pins := make(map[string]any, len(currentPins))
 	maps.Copy(pins, currentPins)
 
-	model := newPinsModel(options, pins, lastUsed, hints, hasCustomVersion, currentVersionPin)
+	model := newPinsModel(options, pins, lastUsed, hints, hasCustomVersion, currentVersionPin, customVersionVerify)
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {

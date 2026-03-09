@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"errors"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -42,7 +43,7 @@ func testOptions() []config.Option {
 }
 
 func TestPinViaEditSelect(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -62,7 +63,7 @@ func TestPinViaEditSelect(t *testing.T) {
 }
 
 func TestPinViaEditConfirm(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
 	m.Init()
 
 	m.Update(specialKey(tea.KeyDown))
@@ -80,7 +81,7 @@ func TestPinViaEditConfirm(t *testing.T) {
 }
 
 func TestTogglePinSpace(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, nil, false, "")
+	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, nil, false, "", "")
 	m.Init()
 
 	m.Update(specialKey(tea.KeySpace))
@@ -98,7 +99,7 @@ func TestTogglePinSpace(t *testing.T) {
 }
 
 func TestCancelEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -118,7 +119,7 @@ func TestCancelEdit(t *testing.T) {
 }
 
 func TestCursorWrapping(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
 	m.Init()
 
 	if m.cursor != 0 {
@@ -137,7 +138,7 @@ func TestCursorWrapping(t *testing.T) {
 }
 
 func TestNumberKeyEntersEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
 	m.Init()
 
 	model, _ := m.Update(key('2'))
@@ -152,7 +153,7 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 
 func TestEditUpdatesExistingPin(t *testing.T) {
 	pins := map[string]any{"db": "pg"}
-	m := newPinsModel(testOptions(), pins, nil, nil, false, "")
+	m := newPinsModel(testOptions(), pins, nil, nil, false, "", "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -162,6 +163,137 @@ func TestEditUpdatesExistingPin(t *testing.T) {
 	m = model.(*PinsModel)
 	if m.pins["db"] != "mysql" {
 		t.Errorf("expected db updated to mysql, got %v", m.pins["db"])
+	}
+}
+
+func TestVersionPinWithoutVerify(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m.Init()
+
+	// Enter edit for version (index 0)
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode, got %d", m.mode)
+	}
+
+	// Type "7.2"
+	for _, c := range "7.2" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+
+	// Submit
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode, got %d", m.mode)
+	}
+	if m.versionPin != "7.2" {
+		t.Errorf("expected version pin 7.2, got %q", m.versionPin)
+	}
+}
+
+func TestVersionPinWithVerifyEntersVerifying(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter edit for version (index 0)
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Type "7.2"
+	for _, c := range "7.2" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+
+	// Submit → should enter verifying mode
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsVerifyingMode {
+		t.Fatalf("expected verifying mode, got %d", m.mode)
+	}
+}
+
+func TestHandleVersionVerifiedError(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter edit for version
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Type version and submit to enter verifying mode
+	for _, c := range "bad" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Simulate verification failure
+	model, _ = m.Update(versionVerifiedMsg{version: "bad", err: errors.New("not found")})
+	m = model.(*PinsModel)
+
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode after verify error, got %d", m.mode)
+	}
+	if m.verifyErr == "" {
+		t.Error("expected verifyErr to be set")
+	}
+	if m.versionPin != "" {
+		t.Errorf("expected version pin unchanged (empty), got %q", m.versionPin)
+	}
+}
+
+func TestHandleVersionVerifiedSuccess(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter edit for version
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Type version and submit to enter verifying mode
+	for _, c := range "7.2" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Simulate verification success
+	model, _ = m.Update(versionVerifiedMsg{version: "7.2", err: nil})
+	m = model.(*PinsModel)
+
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode after verify success, got %d", m.mode)
+	}
+	if m.versionPin != "7.2" {
+		t.Errorf("expected version pin 7.2, got %q", m.versionPin)
+	}
+	if m.verifyErr != "" {
+		t.Errorf("expected verifyErr cleared, got %q", m.verifyErr)
+	}
+}
+
+func TestEmptyVersionPinMapsToCurrent(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter edit for version
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Submit empty → maps to "current", no verification
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode, got %d", m.mode)
+	}
+	if m.versionPin != "current" {
+		t.Errorf("expected version pin 'current', got %q", m.versionPin)
 	}
 }
 
