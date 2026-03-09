@@ -198,6 +198,19 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	opt := &m.options[optIdx]
 	m.editField = buildPinsField(opt)
 
+	switch f := m.editField.(type) {
+	case *SelectField:
+		if opt.Default != nil {
+			f.SetDefault(opt.Default)
+		}
+	case *ConfirmField:
+		defVal := opt.Default
+		if defVal == nil {
+			defVal = false
+		}
+		f.SetDefault(defVal)
+	}
+
 	val := resolveDefault(opt, m.pins, m.lastUsed)
 	if val != nil {
 		m.editField.SetValue(val)
@@ -342,14 +355,27 @@ func (m *PinsModel) viewEdit() string {
 
 	fieldView := m.editField.View()
 	placeholder := ui.StepCounter(0, 0)
-	fieldView = strings.Replace(fieldView, placeholder, ui.PinEditIndicator(), 1)
+	replacement := ui.PinEditIndicator()
+	fieldView = strings.Replace(fieldView, placeholder, replacement, 1)
+
+	oldIndent := "\n" + strings.Repeat(" ", 2+lipgloss.Width(placeholder)+2)
+	newIndent := "\n" + strings.Repeat(" ", 2+lipgloss.Width(replacement)+2)
+	fieldView = strings.Replace(fieldView, oldIndent, newIndent, 1)
 
 	b.WriteString("\n")
 	b.WriteString(fieldView)
 	if m.verifyErr != "" {
 		b.WriteString("\n  " + ui.WarningText(m.verifyErr))
 	}
-	b.WriteString("\n" + ui.PinsEditNavHint() + "\n")
+
+	hint := ui.PinsEditNavHint()
+	switch m.editField.(type) {
+	case *SelectField, *ConfirmField:
+		hint = ui.PinsSelectEditNavHint()
+	case *MultiSelectField:
+		hint = ui.PinsMultiSelectEditNavHint()
+	}
+	b.WriteString("\n" + hint + "\n")
 
 	return b.String()
 }

@@ -407,8 +407,17 @@ func (e *Engine) setFieldDefault(opt *config.Option) {
 		}
 	}
 
-	if sf, ok := e.currentField.(*SelectField); ok && opt.Default != nil {
-		sf.SetDefault(opt.Default)
+	switch f := e.currentField.(type) {
+	case *SelectField:
+		if opt.Default != nil {
+			f.SetDefault(opt.Default)
+		}
+	case *ConfirmField:
+		defVal := opt.Default
+		if defVal == nil {
+			defVal = false
+		}
+		f.SetDefault(defVal)
 	}
 
 	if val != nil {

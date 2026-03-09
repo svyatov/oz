@@ -180,6 +180,25 @@ func PinsEditNavHint() string {
 		hintKey("esc", "cancel")
 }
 
+// PinsSelectEditNavHint renders the nav hint for pin edit mode on select fields.
+func PinsSelectEditNavHint() string {
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("enter", "confirm") + hintSep() +
+		hintKey("esc", "cancel")
+}
+
+// PinsMultiSelectEditNavHint renders the nav hint for pin edit mode on multi-select fields.
+func PinsMultiSelectEditNavHint() string {
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("space", "toggle") + hintSep() +
+		hintKey("enter", "confirm") + hintSep() +
+		hintKey("esc", "cancel")
+}
+
 // WarningText renders a warning message in the warning color.
 func WarningText(msg string) string {
 	return lipgloss.NewStyle().Foreground(Warning).Render(msg)

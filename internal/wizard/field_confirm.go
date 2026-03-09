@@ -11,10 +11,11 @@ import (
 
 // ConfirmField is a Yes/No toggle with y/n shortcuts.
 type ConfirmField struct {
-	label       string
-	description string
-	cursor      int // 0=Yes, 1=No
-	value       bool
+	label        string
+	description  string
+	cursor       int // 0=Yes, 1=No
+	value        bool
+	defaultValue *bool
 }
 
 func NewConfirmField(label, description string) *ConfirmField {
@@ -72,13 +73,29 @@ func (f *ConfirmField) View() string {
 		}
 
 		styledLabel := ui.ChoiceLabel(item, active)
-		fmt.Fprintf(&b, "   %s%s  %s\n", cursor, num, styledLabel)
+		tag := ""
+		if f.defaultValue != nil && (i == 0) == *f.defaultValue {
+			tag = " " + ui.DefaultTag()
+		}
+		fmt.Fprintf(&b, "   %s%s  %s%s\n", cursor, num, styledLabel, tag)
 	}
 
 	return b.String()
 }
 
 func (f *ConfirmField) Value() any { return f.value }
+
+// SetDefault records which value is the default so View can show a "(default)" tag.
+func (f *ConfirmField) SetDefault(v any) {
+	var b bool
+	switch val := v.(type) {
+	case bool:
+		b = val
+	default:
+		b = fmt.Sprintf("%v", v) == "true"
+	}
+	f.defaultValue = &b
+}
 
 func (f *ConfirmField) SetValue(v any) {
 	switch val := v.(type) {
