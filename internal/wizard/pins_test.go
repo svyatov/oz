@@ -84,7 +84,8 @@ func TestTogglePinSpace(t *testing.T) {
 	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, nil, false, "", "")
 	m.Init()
 
-	m.Update(specialKey(tea.KeySpace))
+	model, _ := m.Update(specialKey(tea.KeySpace))
+	m = model.(*PinsModel)
 	if _, ok := m.pins["db"]; !ok {
 		t.Fatal("expected db to be pinned after space")
 	}
@@ -92,7 +93,8 @@ func TestTogglePinSpace(t *testing.T) {
 		t.Errorf("expected pinned value pg, got %v", m.pins["db"])
 	}
 
-	m.Update(specialKey(tea.KeySpace))
+	model, _ = m.Update(specialKey(tea.KeySpace))
+	m = model.(*PinsModel)
 	if _, ok := m.pins["db"]; ok {
 		t.Fatal("expected db to be unpinned after second space")
 	}
@@ -294,6 +296,131 @@ func TestEmptyVersionPinMapsToCurrent(t *testing.T) {
 	}
 	if m.versionPin != "current" {
 		t.Errorf("expected version pin 'current', got %q", m.versionPin)
+	}
+}
+
+func validatedInputOptions() []config.Option {
+	return []config.Option{
+		{
+			Name:     "port",
+			Type:     "input",
+			Label:    "Port",
+			Required: true,
+			Validate: &config.InputRule{Pattern: `^\d+$`, Message: "must be a number"},
+		},
+	}
+}
+
+func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Space on required input with no stored value → enters edit mode
+	model, _ := m.Update(specialKey(tea.KeySpace))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode, got %d", m.mode)
+	}
+	if _, ok := m.pins["port"]; ok {
+		t.Error("expected no pin saved")
+	}
+}
+
+func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, map[string]any{"port": "3000"}, nil, false, "", "")
+	m.Init()
+
+	// Space on input with valid last-used → quick-pins
+	model, _ := m.Update(specialKey(tea.KeySpace))
+	m = model.(*PinsModel)
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode, got %d", m.mode)
+	}
+	if v, ok := m.pins["port"]; !ok || v != "3000" {
+		t.Errorf("expected port pinned to 3000, got %v", m.pins["port"])
+	}
+}
+
+func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, map[string]any{"port": "abc"}, nil, false, "", "")
+	m.Init()
+
+	// Space on input with invalid last-used → enters edit mode
+	model, _ := m.Update(specialKey(tea.KeySpace))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode, got %d", m.mode)
+	}
+	if _, ok := m.pins["port"]; ok {
+		t.Error("expected no pin saved for invalid last-used value")
+	}
+}
+
+func TestPinInputRejectsInvalidValue(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Enter edit mode
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode, got %d", m.mode)
+	}
+
+	// Type invalid value (non-numeric)
+	for _, c := range "abc" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+
+	// Submit — should stay in edit mode
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode after invalid input, got %d", m.mode)
+	}
+	if _, ok := m.pins["port"]; ok {
+		t.Error("expected no pin saved for invalid input")
+	}
+}
+
+func TestPinInputRejectsBlankRequired(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	// Submit empty — should stay in edit mode (required field)
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode after blank required input, got %d", m.mode)
+	}
+	if _, ok := m.pins["port"]; ok {
+		t.Error("expected no pin saved for blank required input")
+	}
+}
+
+func TestPinInputAcceptsValidValue(t *testing.T) {
+	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+
+	for _, c := range "8080" {
+		model, _ = m.Update(key(c))
+		m = model.(*PinsModel)
+	}
+
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = model.(*PinsModel)
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode after valid input, got %d", m.mode)
+	}
+	if v, ok := m.pins["port"]; !ok || v != "8080" {
+		t.Errorf("expected port pinned to 8080, got %v", m.pins["port"])
 	}
 }
 

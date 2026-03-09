@@ -141,7 +141,7 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return m.enterEdit(m.cursor)
 	case "space":
-		m.togglePin(m.cursor)
+		return m.togglePin(m.cursor)
 	case "esc", "ctrl+c":
 		m.done = true
 		return m, tea.Quit
@@ -207,24 +207,43 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	return m, m.editField.Init()
 }
 
-func (m *PinsModel) togglePin(idx int) {
+func (m *PinsModel) togglePin(idx int) (tea.Model, tea.Cmd) {
 	if m.isVersionIdx(idx) {
 		if m.versionPin != "" {
 			m.versionPin = ""
 		} else {
 			m.versionPin = "current"
 		}
-		return
+		return m, nil
 	}
 
 	optIdx := idx - m.versionOffset()
 	name := m.options[optIdx].Name
 	if _, pinned := m.pins[name]; pinned {
 		delete(m.pins, name)
-	} else {
-		opt := &m.options[optIdx]
-		m.pins[name] = resolveDefault(opt, m.pins, m.lastUsed)
+		return m, nil
 	}
+
+	opt := &m.options[optIdx]
+	val := resolveDefault(opt, m.pins, m.lastUsed)
+	if opt.Type == "input" && !m.isValidInputValue(opt, val) {
+		return m.enterEdit(idx)
+	}
+	m.pins[name] = val
+	return m, nil
+}
+
+func (m *PinsModel) isValidInputValue(opt *config.Option, val any) bool {
+	s, _ := val.(string)
+	if opt.Required && s == "" {
+		return false
+	}
+	if opt.Validate == nil || s == "" {
+		return true
+	}
+	f := NewInputField("", "", opt.Validate, opt.Required)
+	f.SetValue(val)
+	return f.validate() == ""
 }
 
 func (m *PinsModel) View() tea.View {
@@ -386,11 +405,11 @@ func buildPinsField(opt *config.Option) Field {
 	case "confirm":
 		return NewConfirmField(opt.Label, opt.Description)
 	case "input":
-		return NewInputField(opt.Label, opt.Description, nil, false)
+		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
 	case "multi_select":
 		return NewMultiSelectField(*opt)
 	default:
-		return NewInputField(opt.Label, opt.Description, nil, false)
+		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
 	}
 }
 
