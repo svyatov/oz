@@ -34,8 +34,9 @@ func New(configDir string) *Store {
 
 // VersionedState is used when version_control is configured.
 type VersionedState struct {
-	Versions   map[string]*StateEntry `yaml:"versions"`
-	VersionPin string                 `yaml:"version_pin,omitempty"`
+	PinnedVersion string                 `yaml:"pinned_version,omitempty"`
+	Pins          map[string]any         `yaml:"pins,omitempty"`
+	Versions      map[string]*StateEntry `yaml:"versions,omitempty"`
 }
 
 // StateEntry holds last-used values and pins for a single version (or global).
@@ -129,8 +130,38 @@ func (s *Store) saveVersionedState(path, version string, entry *StateEntry) erro
 	})
 }
 
-// LoadVersionPin reads the version pin for a wizard.
-func (s *Store) LoadVersionPin(wizard string) (string, error) {
+// LoadPins reads the version-independent pins for a versioned wizard.
+func (s *Store) LoadPins(wizard string) (map[string]any, error) {
+	data, err := os.ReadFile(s.statePath(wizard))
+	if os.IsNotExist(err) {
+		return make(map[string]any), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading state: %w", err)
+	}
+	var vs VersionedState
+	if err := yaml.Unmarshal(data, &vs); err != nil {
+		return nil, fmt.Errorf("parsing state: %w", err)
+	}
+	if vs.Pins == nil {
+		return make(map[string]any), nil
+	}
+	return vs.Pins, nil
+}
+
+// SavePins writes the version-independent pins, preserving other state.
+func (s *Store) SavePins(wizard string, pins map[string]any) error {
+	path := s.statePath(wizard)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("creating state directory: %w", err)
+	}
+	return modifyVersionedState(path, func(vs *VersionedState) {
+		vs.Pins = pins
+	})
+}
+
+// LoadPinnedVersion reads the pinned version for a versioned wizard.
+func (s *Store) LoadPinnedVersion(wizard string) (string, error) {
 	data, err := os.ReadFile(s.statePath(wizard))
 	if os.IsNotExist(err) {
 		return "", nil
@@ -142,17 +173,17 @@ func (s *Store) LoadVersionPin(wizard string) (string, error) {
 	if err := yaml.Unmarshal(data, &vs); err != nil {
 		return "", fmt.Errorf("parsing state: %w", err)
 	}
-	return vs.VersionPin, nil
+	return vs.PinnedVersion, nil
 }
 
-// SaveVersionPin writes the version pin, preserving existing state.
-func (s *Store) SaveVersionPin(wizard, pin string) error {
+// SavePinnedVersion writes the pinned version, preserving other state.
+func (s *Store) SavePinnedVersion(wizard, version string) error {
 	path := s.statePath(wizard)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
 	return modifyVersionedState(path, func(vs *VersionedState) {
-		vs.VersionPin = pin
+		vs.PinnedVersion = version
 	})
 }
 

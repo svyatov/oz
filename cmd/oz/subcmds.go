@@ -206,18 +206,19 @@ func pinsShowCmd(wizardName string) *cobra.Command {
 			}
 
 			st := store.New(configDir)
-			detectedVersion, _ := compat.DetectVersion(w.Version)
-			majorVersion := majorVer(detectedVersion)
-
-			state, err := st.LoadState(w.Name, majorVersion)
+			pins, err := st.LoadPins(w.Name)
 			if err != nil {
-				return fmt.Errorf("loading state: %w", err)
+				return fmt.Errorf("loading pins: %w", err)
 			}
-			if len(state.Pins) == 0 {
+			pinnedVer, _ := st.LoadPinnedVersion(w.Name)
+			if pinnedVer == "" && len(pins) == 0 {
 				fmt.Println("  No pins set.")
 				return nil
 			}
-			for k, v := range state.Pins {
+			if pinnedVer != "" {
+				fmt.Printf("  version: %s\n", pinnedVer)
+			}
+			for k, v := range pins {
 				fmt.Printf("  %s: %v\n", k, v)
 			}
 			return nil
@@ -236,17 +237,11 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 			}
 
 			st := store.New(configDir)
-			detectedVersion, _ := compat.DetectVersion(w.Version)
-			majorVersion := majorVer(detectedVersion)
-
-			state, err := st.LoadState(w.Name, majorVersion)
-			if err != nil {
-				return fmt.Errorf("loading state: %w", err)
+			if err := st.SavePins(w.Name, nil); err != nil {
+				return fmt.Errorf("saving pins: %w", err)
 			}
-
-			state.Pins = nil
-			if err := st.SaveState(w.Name, majorVersion, state); err != nil {
-				return fmt.Errorf("saving state: %w", err)
+			if err := st.SavePinnedVersion(w.Name, ""); err != nil {
+				return fmt.Errorf("saving pinned version: %w", err)
 			}
 			fmt.Println("  Pins cleared.")
 			return nil

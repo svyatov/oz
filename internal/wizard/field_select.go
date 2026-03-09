@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,9 +71,10 @@ func (f *SelectField) View() string {
 	maxDisplay := f.maxDisplayWidth()
 
 	n := f.itemCount()
+	gutterWidth := len(strconv.Itoa(n))
 	for i := range n {
 		active := i == f.cursor
-		num := ui.NumberGutter(i+1, active)
+		num := ui.NumberGutter(i+1, gutterWidth, active)
 
 		cursor := "   "
 		if active {

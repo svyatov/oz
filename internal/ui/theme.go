@@ -4,7 +4,6 @@ package ui
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/term"
@@ -66,9 +65,10 @@ func ChoiceDesc(desc string) string {
 	return MutedStyle.Render(desc)
 }
 
-// NumberGutter renders a choice number — green when active, dimmed when not.
-func NumberGutter(n int, active bool) string {
-	s := strconv.Itoa(n)
+// NumberGutter renders a right-aligned choice number — green when active, dimmed when not.
+// Width sets the minimum field width (e.g. 2 for items 10+).
+func NumberGutter(n, width int, active bool) string {
+	s := fmt.Sprintf("%*d", width, n)
 	if active {
 		return lipgloss.NewStyle().Foreground(Green).Bold(true).Render(s)
 	}

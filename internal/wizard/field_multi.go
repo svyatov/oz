@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -79,9 +80,10 @@ func (f *MultiSelectField) View() string {
 		}
 	}
 
+	gutterWidth := len(strconv.Itoa(len(f.choices)))
 	for i, c := range f.choices {
 		active := i == f.cursor
-		num := ui.NumberGutter(i+1, active)
+		num := ui.NumberGutter(i+1, gutterWidth, active)
 
 		var cursor string
 		if active {

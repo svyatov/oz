@@ -169,6 +169,49 @@ func TestFetchAvailableVersions(t *testing.T) {
 	}
 }
 
+func TestOptionHints(t *testing.T) {
+	tests := []struct {
+		name    string
+		entries []config.CompatEntry
+		want    map[string]string
+	}{
+		{
+			"no_compat",
+			nil,
+			nil,
+		},
+		{
+			"single_entry",
+			[]config.CompatEntry{
+				{Versions: ">= 8.0", Options: []string{"a", "b"}},
+			},
+			map[string]string{"a": "v8.0+", "b": "v8.0+"},
+		},
+		{
+			"multiple_entries",
+			[]config.CompatEntry{
+				{Versions: ">= 7.0, < 8.0", Options: []string{"a", "c"}},
+				{Versions: ">= 8.0", Options: []string{"a", "b"}},
+			},
+			// "a" in both → no hint, "b" only in >=8, "c" only in >=7,<8
+			map[string]string{"b": "v8.0+", "c": "v7.0+"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := OptionHints(tt.entries)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+			for k, v := range tt.want {
+				if got[k] != v {
+					t.Errorf("hints[%q] = %q, want %q", k, got[k], v)
+				}
+			}
+		})
+	}
+}
+
 func TestFilterOptions(t *testing.T) {
 	opts := []config.Option{
 		{Name: "a", Type: "input", Label: "A"},

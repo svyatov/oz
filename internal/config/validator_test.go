@@ -126,6 +126,12 @@ func versionControlCases() []validationCase {
 }
 
 func newFeatureCases() []validationCase {
+	cases := choicesCases()
+	cases = append(cases, constraintCases()...)
+	return cases
+}
+
+func choicesCases() []validationCase {
 	return []validationCase{
 		{"choices_from_valid", func(w *Wizard) {
 			w.Options[0].Type = "select"
@@ -155,6 +161,11 @@ func newFeatureCases() []validationCase {
 		{"validate_valid", func(w *Wizard) {
 			w.Options[0].Validate = &InputRule{Pattern: `^\d+$`, Message: "must be number"}
 		}, ""},
+	}
+}
+
+func constraintCases() []validationCase {
+	return []validationCase{
 		{"positional_conflicts_with_flag", func(w *Wizard) {
 			w.Options[0].Positional = true
 			w.Options[0].Flag = "--name"

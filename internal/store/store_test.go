@@ -67,30 +67,54 @@ func TestLoadStateMissingFile(t *testing.T) {
 	}
 }
 
-func TestVersionPinRoundTrip(t *testing.T) {
+func TestPinsRoundTrip(t *testing.T) {
 	s := New(t.TempDir())
 
-	pin, err := s.LoadVersionPin("wiz")
+	pins, err := s.LoadPins("wiz")
 	if err != nil {
-		t.Fatalf("LoadVersionPin (missing): %v", err)
+		t.Fatalf("LoadPins (missing): %v", err)
 	}
-	if pin != "" {
-		t.Errorf("expected empty pin, got %q", pin)
+	if len(pins) != 0 {
+		t.Errorf("expected empty pins, got %v", pins)
 	}
 
-	if err := s.SaveVersionPin("wiz", "7.1.0"); err != nil {
-		t.Fatalf("SaveVersionPin: %v", err)
+	if err := s.SavePins("wiz", map[string]any{"db": "postgres"}); err != nil {
+		t.Fatalf("SavePins: %v", err)
 	}
-	pin, err = s.LoadVersionPin("wiz")
+
+	pins, err = s.LoadPins("wiz")
 	if err != nil {
-		t.Fatalf("LoadVersionPin: %v", err)
+		t.Fatalf("LoadPins: %v", err)
 	}
-	if pin != "7.1.0" {
-		t.Errorf("got %q, want 7.1.0", pin)
+	if pins["db"] != "postgres" {
+		t.Errorf("pins[db] = %v, want postgres", pins["db"])
 	}
 }
 
-func TestVersionPinPreservesState(t *testing.T) {
+func TestPinnedVersionRoundTrip(t *testing.T) {
+	s := New(t.TempDir())
+
+	ver, err := s.LoadPinnedVersion("wiz")
+	if err != nil {
+		t.Fatalf("LoadPinnedVersion (missing): %v", err)
+	}
+	if ver != "" {
+		t.Errorf("expected empty, got %q", ver)
+	}
+
+	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
+		t.Fatalf("SavePinnedVersion: %v", err)
+	}
+	ver, err = s.LoadPinnedVersion("wiz")
+	if err != nil {
+		t.Fatalf("LoadPinnedVersion: %v", err)
+	}
+	if ver != "7.1.0" {
+		t.Errorf("got %q, want 7.1.0", ver)
+	}
+}
+
+func TestPinsPreservesState(t *testing.T) {
 	s := New(t.TempDir())
 
 	entry := &StateEntry{LastUsed: map[string]any{"a": "1"}}
@@ -98,16 +122,52 @@ func TestVersionPinPreservesState(t *testing.T) {
 		t.Fatalf("SaveState: %v", err)
 	}
 
-	if err := s.SaveVersionPin("wiz", "7.1.0"); err != nil {
-		t.Fatalf("SaveVersionPin: %v", err)
+	if err := s.SavePins("wiz", map[string]any{"db": "mysql"}); err != nil {
+		t.Fatalf("SavePins: %v", err)
+	}
+	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
+		t.Fatalf("SavePinnedVersion: %v", err)
 	}
 
 	got, err := s.LoadState("wiz", "7.0")
 	if err != nil {
-		t.Fatalf("LoadState after pin: %v", err)
+		t.Fatalf("LoadState after pins: %v", err)
 	}
 	if got.LastUsed["a"] != "1" {
 		t.Errorf("state was not preserved: %v", got.LastUsed)
+	}
+}
+
+func TestPinsClear(t *testing.T) {
+	s := New(t.TempDir())
+
+	if err := s.SavePins("wiz", map[string]any{"db": "mysql"}); err != nil {
+		t.Fatalf("SavePins: %v", err)
+	}
+	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
+		t.Fatalf("SavePinnedVersion: %v", err)
+	}
+
+	if err := s.SavePins("wiz", nil); err != nil {
+		t.Fatalf("SavePins (clear): %v", err)
+	}
+	if err := s.SavePinnedVersion("wiz", ""); err != nil {
+		t.Fatalf("SavePinnedVersion (clear): %v", err)
+	}
+
+	pins, err := s.LoadPins("wiz")
+	if err != nil {
+		t.Fatalf("LoadPins: %v", err)
+	}
+	if len(pins) != 0 {
+		t.Errorf("expected empty pins after clear, got %v", pins)
+	}
+	ver, err := s.LoadPinnedVersion("wiz")
+	if err != nil {
+		t.Fatalf("LoadPinnedVersion: %v", err)
+	}
+	if ver != "" {
+		t.Errorf("expected empty version after clear, got %q", ver)
 	}
 }
 

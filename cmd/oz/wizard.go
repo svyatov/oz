@@ -55,8 +55,8 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 }
 
 func resolveVersion(w *config.Wizard, st *store.Store, cached *wizard.VersionResult) (*wizard.VersionResult, bool) {
-	versionPin, _ := st.LoadVersionPin(w.Name)
-	vr, err := wizard.RunVersionLoader(w.Name, w.Version, versionPin, cached)
+	pinnedVer, _ := st.LoadPinnedVersion(w.Name)
+	vr, err := wizard.RunVersionLoader(w.Name, w.Version, pinnedVer, cached)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
 		vr = &wizard.VersionResult{}
@@ -94,9 +94,22 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 			return nil, runWithPreset(w, st, presetName, dryRun)
 		}
 
-		filteredOptions, pinnedCount := wizard.FilterPinned(options, state.Pins)
+		// Load version-independent pins, keep only those matching filtered options.
+		allPins, _ := st.LoadPins(w.Name)
+		optionSet := make(map[string]bool, len(options))
+		for _, o := range options {
+			optionSet[o.Name] = true
+		}
+		activePins := make(map[string]any, len(allPins))
+		for k, v := range allPins {
+			if optionSet[k] {
+				activePins[k] = v
+			}
+		}
+
+		filteredOptions, pinnedCount := wizard.FilterPinned(options, activePins)
 		pinnedAnswers := make(map[string]any)
-		maps.Copy(pinnedAnswers, state.Pins)
+		maps.Copy(pinnedAnswers, activePins)
 
 		result, err := wizard.Run(
 			w.Name, vr.Selected, versionLabel(w), overridden, filteredOptions,
@@ -212,40 +225,56 @@ func runPins(name string) error {
 
 	st := store.New(configDir)
 
+	allPins, _ := st.LoadPins(w.Name)
+	optionSet := make(map[string]bool, len(w.Options))
+	for _, o := range w.Options {
+		optionSet[o.Name] = true
+	}
+	pins := make(map[string]any, len(allPins))
+	for k, v := range allPins {
+		if optionSet[k] {
+			pins[k] = v
+		}
+	}
+
+	// Collect last-used for defaults.
 	detectedVersion, _ := compat.DetectVersion(w.Version)
 	majorVersion := majorVer(detectedVersion)
-	options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
-
 	state, err := st.LoadState(w.Name, majorVersion)
 	if err != nil {
 		state = &store.StateEntry{}
 	}
-	if state.Pins == nil {
-		state.Pins = make(map[string]any)
-	}
 
 	hasCustomVersion := w.Version != nil && w.Version.CustomVersionCmd != ""
-	versionPin, _ := st.LoadVersionPin(w.Name)
-	result, err := wizard.RunPins(options, state.Pins, state.LastUsed, hasCustomVersion, versionPin)
+	hints := compat.OptionHints(w.Compat)
+	pinnedVer, _ := st.LoadPinnedVersion(w.Name)
+
+	result, err := wizard.RunPins(
+		w.Options, pins, state.LastUsed,
+		hints, hasCustomVersion, pinnedVer,
+	)
 	if err != nil {
 		return fmt.Errorf("managing pins: %w", err)
 	}
 
-	state.Pins = result.Pins
-	if err := st.SaveState(w.Name, majorVersion, state); err != nil {
+	if err := st.SavePins(w.Name, result.Pins); err != nil {
 		return fmt.Errorf("saving pins: %w", err)
 	}
 	if hasCustomVersion {
-		if err := st.SaveVersionPin(w.Name, result.VersionPin); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save version pin: %v\n", err)
+		if err := st.SavePinnedVersion(w.Name, result.VersionPin); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to save pinned version: %v\n", err)
 		}
 	}
 
+	count := len(result.Pins)
+	if result.VersionPin != "" {
+		count++
+	}
 	word := "options"
-	if len(state.Pins) == 1 {
+	if count == 1 {
 		word = "option"
 	}
-	fmt.Printf("  %d %s pinned.\n", len(state.Pins), word)
+	fmt.Printf("  %d %s pinned.\n", count, word)
 	return nil
 }
 

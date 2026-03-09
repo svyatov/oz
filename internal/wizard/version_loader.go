@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -226,7 +227,7 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 
 	// Handle pin
 	if m.pin != "" {
-		if m.pin == "default" {
+		if m.pin == "current" {
 			m.result = VersionResult{
 				Detected: m.detected,
 				Selected: m.detected,
@@ -414,9 +415,10 @@ func (m *VersionLoaderModel) viewSelect() string {
 
 	b.WriteString("\n  " + ui.Header(m.wizardName, m.detected, m.vc.Label) + "\n\n")
 
+	gutterWidth := len(strconv.Itoa(len(m.items)))
 	for i, item := range m.items {
 		active := i == m.cursor
-		num := ui.NumberGutter(i+1, active)
+		num := ui.NumberGutter(i+1, gutterWidth, active)
 
 		cursor := "   "
 		if active {

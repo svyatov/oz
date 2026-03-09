@@ -42,7 +42,7 @@ func testOptions() []config.Option {
 }
 
 func TestPinViaEditSelect(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -62,7 +62,7 @@ func TestPinViaEditSelect(t *testing.T) {
 }
 
 func TestPinViaEditConfirm(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
 	m.Init()
 
 	m.Update(specialKey(tea.KeyDown))
@@ -80,7 +80,7 @@ func TestPinViaEditConfirm(t *testing.T) {
 }
 
 func TestTogglePinSpace(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, false, "")
+	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, nil, false, "")
 	m.Init()
 
 	m.Update(specialKey(tea.KeySpace))
@@ -98,7 +98,7 @@ func TestTogglePinSpace(t *testing.T) {
 }
 
 func TestCancelEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -118,7 +118,7 @@ func TestCancelEdit(t *testing.T) {
 }
 
 func TestCursorWrapping(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
 	m.Init()
 
 	if m.cursor != 0 {
@@ -137,7 +137,7 @@ func TestCursorWrapping(t *testing.T) {
 }
 
 func TestNumberKeyEntersEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, false, "")
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "")
 	m.Init()
 
 	model, _ := m.Update(key('2'))
@@ -152,7 +152,7 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 
 func TestEditUpdatesExistingPin(t *testing.T) {
 	pins := map[string]any{"db": "pg"}
-	m := newPinsModel(testOptions(), pins, nil, false, "")
+	m := newPinsModel(testOptions(), pins, nil, nil, false, "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))

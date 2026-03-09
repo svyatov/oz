@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"maps"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -29,6 +30,7 @@ type PinsModel struct {
 	options  []config.Option
 	pins     map[string]any
 	lastUsed map[string]any
+	hints    map[string]string
 
 	hasCustomVersion bool
 	versionPin       string
@@ -43,6 +45,7 @@ type PinsModel struct {
 
 func newPinsModel(
 	options []config.Option, pins, lastUsed map[string]any,
+	hints map[string]string,
 	hasCustomVersion bool, versionPin string,
 ) *PinsModel {
 	if pins == nil {
@@ -55,6 +58,7 @@ func newPinsModel(
 		options:          options,
 		pins:             pins,
 		lastUsed:         lastUsed,
+		hints:            hints,
 		hasCustomVersion: hasCustomVersion,
 		versionPin:       versionPin,
 	}
@@ -131,7 +135,11 @@ func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	submitted, cmd := m.editField.Update(msg)
 	if submitted {
 		if m.isVersionIdx(m.editIdx) {
-			m.versionPin = fmt.Sprintf("%v", m.editField.Value())
+			if v := fmt.Sprintf("%v", m.editField.Value()); v == "" {
+				m.versionPin = "current"
+			} else {
+				m.versionPin = v
+			}
 		} else {
 			optIdx := m.editIdx - m.versionOffset()
 			opt := &m.options[optIdx]
@@ -148,8 +156,8 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	m.editIdx = idx
 
 	if m.isVersionIdx(idx) {
-		m.editField = NewInputField("Version", "Enter \"default\" or a version string", nil, false)
-		if m.versionPin != "" {
+		m.editField = NewInputField("Version", "Leave blank for current version", nil, false)
+		if m.versionPin != "" && m.versionPin != "current" {
 			m.editField.SetValue(m.versionPin)
 		}
 		m.mode = pinsEditMode
@@ -174,7 +182,7 @@ func (m *PinsModel) togglePin(idx int) {
 		if m.versionPin != "" {
 			m.versionPin = ""
 		} else {
-			m.versionPin = "default"
+			m.versionPin = "current"
 		}
 		return
 	}
@@ -216,12 +224,13 @@ func (m *PinsModel) viewList() string {
 	}
 
 	n := m.itemCount()
+	gutterWidth := len(strconv.Itoa(n))
 	for i := range n {
 		active := i == m.cursor
 		if m.isVersionIdx(i) {
-			b.WriteString(m.viewVersionRow(i, active, maxLabel, versionLabel))
+			b.WriteString(m.viewVersionRow(i, active, maxLabel, gutterWidth, versionLabel))
 		} else {
-			b.WriteString(m.viewOptionRow(i, active, maxLabel))
+			b.WriteString(m.viewOptionRow(i, active, maxLabel, gutterWidth))
 		}
 	}
 
@@ -229,8 +238,8 @@ func (m *PinsModel) viewList() string {
 	return b.String()
 }
 
-func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel int, label string) string {
-	num := ui.NumberGutter(i+1, active)
+func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel, gutterWidth int, label string) string {
+	num := ui.NumberGutter(i+1, gutterWidth, active)
 	cursor := "   "
 	if active {
 		cursor = " " + ui.Cursor() + " "
@@ -249,8 +258,8 @@ func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel int, label strin
 	return fmt.Sprintf("   %s%s  %s%s%s  %s\n", cursor, num, pin, styledLabel, pad, value)
 }
 
-func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel int) string {
-	num := ui.NumberGutter(i+1, active)
+func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel, gutterWidth int) string {
+	num := ui.NumberGutter(i+1, gutterWidth, active)
 	cursor := "   "
 	if active {
 		cursor = " " + ui.Cursor() + " "
@@ -267,7 +276,11 @@ func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel int) string {
 	if pinned {
 		value = ui.CompletedStepAnswer(FormatAnswer(&o, m.pins[o.Name]))
 	}
-	return fmt.Sprintf("   %s%s  %s%s%s  %s\n", cursor, num, pin, label, pad, value)
+	hint := ""
+	if h := m.hints[o.Name]; h != "" {
+		hint = " " + ui.NavHintText(h)
+	}
+	return fmt.Sprintf("   %s%s  %s%s%s  %s%s\n", cursor, num, pin, label, pad, value, hint)
 }
 
 func (m *PinsModel) viewEdit() string {
@@ -325,12 +338,13 @@ func resolveDefault(opt *config.Option, pins, lastUsed map[string]any) any {
 // RunPins shows the interactive pin management UI and returns updated pins.
 func RunPins(
 	options []config.Option, currentPins, lastUsed map[string]any,
+	hints map[string]string,
 	hasCustomVersion bool, currentVersionPin string,
 ) (*PinsResult, error) {
 	pins := make(map[string]any, len(currentPins))
 	maps.Copy(pins, currentPins)
 
-	model := newPinsModel(options, pins, lastUsed, hasCustomVersion, currentVersionPin)
+	model := newPinsModel(options, pins, lastUsed, hints, hasCustomVersion, currentVersionPin)
 	p := tea.NewProgram(model)
 	finalModel, err := p.Run()
 	if err != nil {

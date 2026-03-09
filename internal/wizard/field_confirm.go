@@ -62,7 +62,7 @@ func (f *ConfirmField) View() string {
 	items := []string{"Yes", "No"}
 	for i, item := range items {
 		active := i == f.cursor
-		num := ui.NumberGutter(i+1, active)
+		num := ui.NumberGutter(i+1, 1, active)
 
 		var cursor string
 		if active {

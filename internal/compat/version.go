@@ -168,6 +168,55 @@ func ParseAvailableVersions(raw string) []string {
 	return versions
 }
 
+// OptionHints returns a map of option name → human-readable version hint.
+// Options available in ALL compat entries (or with no compat) get "".
+func OptionHints(entries []config.CompatEntry) map[string]string {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	hints := make(map[string]string)
+	for _, e := range entries {
+		label := formatHint(e.Versions)
+		for _, name := range e.Options {
+			if _, exists := hints[name]; !exists {
+				hints[name] = label
+			} else {
+				// Present in multiple entries → no hint needed.
+				hints[name] = ""
+			}
+		}
+	}
+
+	// Remove empty entries (options in all entries).
+	for k, v := range hints {
+		if v == "" {
+			delete(hints, k)
+		}
+	}
+	return hints
+}
+
+// formatHint converts a constraint like ">= 8.0" or ">= 7.0, < 8.0" into "v8.0+" or "v7.0+".
+// For comma-separated ranges, uses the first part (lower bound).
+func formatHint(constraint string) string {
+	// Use only the first part of comma-separated constraints.
+	c, _, _ := strings.Cut(constraint, ",")
+	c = strings.TrimSpace(c)
+
+	// ">= X.Y" → "vX.Y+"
+	if after, ok := strings.CutPrefix(c, ">="); ok {
+		return "v" + strings.TrimSpace(after) + "+"
+	}
+
+	// "< X.Y" → "< vX.Y"
+	if after, ok := strings.CutPrefix(c, "<"); ok {
+		return "< v" + strings.TrimSpace(after)
+	}
+
+	return c
+}
+
 // compareVersions compares two dotted version strings numerically.
 // Non-numeric segments (e.g. pre-release suffixes like "-rc1") are ignored;
 // only the leading digits of each part are compared.
