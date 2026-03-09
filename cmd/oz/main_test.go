@@ -89,10 +89,38 @@ func TestValidateCmdMissing(t *testing.T) {
 	}
 }
 
-func TestDeleteCmdMissing(t *testing.T) {
+func TestRemoveCmdMissing(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "delete", "nonexistent"); err == nil {
+	if err := execCmd(t, "--config-dir", dir, "remove", "nonexistent"); err == nil {
 		t.Fatal("expected error for nonexistent wizard")
+	}
+}
+
+func TestAliases(t *testing.T) {
+	dir := setupTestConfig(t)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"run alias r", []string{"--config-dir", dir, "r", "testwiz", "doctor"}},
+		{"list alias l", []string{"--config-dir", dir, "l"}},
+		{"list alias ls", []string{"--config-dir", dir, "ls"}},
+		{"remove alias rm", []string{"--config-dir", dir, "rm", "nonexistent"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := execCmd(t, tt.args...)
+			// rm with nonexistent is expected to fail; others should succeed
+			if tt.name == "remove alias rm" {
+				if err == nil {
+					t.Fatal("expected error for nonexistent wizard")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("alias %s failed: %v", tt.name, err)
+			}
+		})
 	}
 }
 

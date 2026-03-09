@@ -41,7 +41,7 @@ func newRootCmd(args []string) *cobra.Command {
 	root.AddCommand(listCmd())
 	root.AddCommand(validateCmd())
 	root.AddCommand(editCmd())
-	root.AddCommand(deleteCmd())
+	root.AddCommand(removeCmd())
 	root.AddCommand(createCmd())
 
 	if name := detectWizardName(args); name != "" {
@@ -54,6 +54,7 @@ func newRootCmd(args []string) *cobra.Command {
 func runCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:               "run",
+		Aliases:           []string{"r"},
 		Short:             "Run a wizard",
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: completeWizardNames,
@@ -75,7 +76,7 @@ func detectWizardName(args []string) string {
 			continue
 		}
 		if !foundRun {
-			if a == "run" {
+			if a == "run" || a == "r" {
 				foundRun = true
 			}
 			continue
@@ -103,8 +104,9 @@ func completeWizardNames(_ *cobra.Command, _ []string, _ string) ([]string, cobr
 
 func editCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "edit <wizard>",
-		Short: "Open wizard config in editor",
+		Use:     "edit <wizard>",
+		Aliases: []string{"e"},
+		Short:   "Open wizard config in editor",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
@@ -137,8 +139,9 @@ func findEditor() (string, error) {
 
 func listCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List available wizards",
+		Use:     "list",
+		Aliases: []string{"l", "ls"},
+		Short:   "List available wizards",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			wizards, err := config.ListWizards(configDir)
 			if err != nil {
@@ -170,23 +173,24 @@ func listCmd() *cobra.Command {
 	}
 }
 
-func deleteCmd() *cobra.Command {
+func removeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <wizard>",
-		Short: "Delete a wizard config",
-		Args:  cobra.ExactArgs(1),
+		Use:     "remove <wizard>",
+		Aliases: []string{"rm"},
+		Short:   "Remove a wizard config",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
-			if !confirmPrompt(fmt.Sprintf("Delete %s?", path)) {
+			if !confirmPrompt(fmt.Sprintf("Remove %s?", path)) {
 				return nil
 			}
 			if err := os.Remove(path); err != nil {
-				return fmt.Errorf("deleting wizard: %w", err)
+				return fmt.Errorf("removing wizard: %w", err)
 			}
-			fmt.Printf("  Deleted %s\n", args[0])
+			fmt.Printf("  Removed %s\n", args[0])
 			return nil
 		},
 		ValidArgsFunction: completeWizardNames,
@@ -195,8 +199,9 @@ func deleteCmd() *cobra.Command {
 
 func createCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "create <wizard>",
-		Short: "Create a new wizard config from template",
+		Use:     "create <wizard>",
+		Aliases: []string{"c", "new"},
+		Short:   "Create a new wizard config from template",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])

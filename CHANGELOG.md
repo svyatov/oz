@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Rename `delete` subcommand to `remove` (with `rm` alias)
 - Rename `preset` subcommand to `presets` (plural, consistent with collection semantics)
 - Rename `--preset` flag to `--with-preset` (`-p`) to avoid shadowing the subcommand name
 - Add `-n` shorthand for `--dry-run`
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Short aliases for subcommands (`r`, `c`/`new`, `e`, `rm`, `l`/`ls`)
 - Interactive Bubbletea wizard UI with rich color palette
 - CLI entrypoint with `list` and `validate` subcommands
 - YAML-driven wizard config with select, confirm, input, and multi_select field types

@@ -66,8 +66,10 @@ options:
 | `oz list` | List available wizards |
 | `oz create <name>` | Create a new wizard from template |
 | `oz edit <wizard>` | Open wizard config in `$EDITOR` |
-| `oz delete <wizard>` | Delete a wizard config |
+| `oz remove <wizard>` | Remove a wizard config |
 | `oz validate <path>` | Validate a wizard YAML file |
+
+**Aliases:** `r` (run), `c`/`new` (create), `e` (edit), `rm` (remove), `l`/`ls` (list).
 
 ### Per-Wizard Subcommands
 
