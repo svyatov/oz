@@ -178,10 +178,10 @@ func TestDoctorCmd(t *testing.T) {
 	}
 }
 
-func TestInspectCmd(t *testing.T) {
+func TestShowCmd(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "inspect"); err != nil {
-		t.Fatalf("inspect: %v", err)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "show"); err != nil {
+		t.Fatalf("show: %v", err)
 	}
 }
 
@@ -195,10 +195,10 @@ func TestDoctorCmdMissingWizard(t *testing.T) {
 	}
 }
 
-func TestPresetsBareList(t *testing.T) {
+func TestPresetsBareHelp(t *testing.T) {
 	dir := setupTestConfig(t)
 	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets"); err != nil {
-		t.Fatalf("presets bare list: %v", err)
+		t.Fatalf("presets bare help: %v", err)
 	}
 }
 

@@ -37,6 +37,7 @@ func doctorCmd(wizardName string) *cobra.Command {
 		Short: "Check tool installation and detected version",
 		Long: `Run diagnostics for the wizard's underlying tool: verify it is installed,
 detect its version, show the active compat range, and report any issues.`,
+		Example: fmt.Sprintf("  oz run %s doctor", wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -89,13 +90,15 @@ detect its version, show the active compat range, and report any issues.`,
 	}
 }
 
-func inspectCmd(wizardName string) *cobra.Command {
+func showCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "inspect",
-		Short: "Show all options with descriptions",
+		Use:     "show",
+		Aliases: []string{"s"},
+		Short:   "Show all options with descriptions",
 		Long: `Display every wizard option with its type, flags, default value,
 choices, and visibility conditions. Useful for reviewing a wizard
 config without running it.`,
+		Example: fmt.Sprintf("  oz run %s show", wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -208,6 +211,7 @@ func pinsCmd(wizardName string) *cobra.Command {
 		Long: `Open an interactive TUI to pin option values. Pinned options are
 skipped during the wizard and use their pinned value automatically.
 Use "pins list" to view or "pins clear" to remove all pins.`,
+		Example: fmt.Sprintf("  oz run %s pins\n  oz run %s pins list", wizardName, wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPins(wizardName)
 		},
@@ -221,8 +225,11 @@ Use "pins list" to view or "pins clear" to remove all pins.`,
 
 func pinsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List current pins",
+		Use:     "list",
+		Aliases: []string{"l", "ls"},
+		Short:   "List current pins",
+		Long:    "Display all currently pinned option values for this wizard.",
+		Example: fmt.Sprintf("  oz run %s pins list", wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -254,8 +261,10 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "clear",
-		Short: "Remove all pins",
+		Use:     "clear",
+		Short:   "Remove all pins",
+		Long:    "Remove all pinned option values and the pinned version for this wizard.",
+		Example: fmt.Sprintf("  oz run %s pins clear\n  oz run %s pins clear --force", wizardName, wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -287,14 +296,18 @@ func presetsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "presets",
 		Short: "Manage presets",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return listPresets(wizardName)
+		Long: `Manage named presets for this wizard. Presets store a complete set of
+option values that can be replayed with "oz run <wizard> -p <name>".`,
+		Example: fmt.Sprintf(`  oz run %s presets list
+  oz run %s presets show mypreset
+  oz run %s presets save mypreset`, wizardName, wizardName, wizardName),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
 		},
 	}
 
 	cmd.AddCommand(presetsListCmd(wizardName))
 	cmd.AddCommand(presetsShowCmd(wizardName))
-	cmd.AddCommand(presetsInspectCmd(wizardName))
 	cmd.AddCommand(presetsSaveCmd(wizardName))
 	cmd.AddCommand(presetsRemoveCmd(wizardName))
 
@@ -319,8 +332,11 @@ func listPresets(wizardName string) error {
 
 func presetsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List presets",
+		Use:     "list",
+		Aliases: []string{"l", "ls"},
+		Short:   "List presets",
+		Long:    "List all saved presets for this wizard.",
+		Example: fmt.Sprintf("  oz run %s presets list", wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return listPresets(wizardName)
 		},
@@ -328,9 +344,16 @@ func presetsListCmd(wizardName string) *cobra.Command {
 }
 
 func presetsShowCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
+	var verbose bool
+
+	cmd := &cobra.Command{
 		Use:               "show <name>",
+		Aliases:           []string{"s"},
 		Short:             "Show preset values and generated command",
+		Long: `Display stored values for a preset and the command it produces.
+Use --verbose to include labels, descriptions, and choice annotations.`,
+		Example: fmt.Sprintf("  oz run %s presets show mypreset\n  oz run %s presets show mypreset -v",
+			wizardName, wizardName),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -349,60 +372,11 @@ func presetsShowCmd(wizardName string) *cobra.Command {
 			w.Command = w.EffectiveCommand(detectedVersion)
 
 			fmt.Printf("\n  Preset: %s\n\n", args[0])
-			for k, v := range values {
-				fmt.Printf("  %s: %s\n", k, v.Display())
-			}
 
-			parts := command.Build(w, values)
-			command.PrintCommand(parts)
-			return nil
-		},
-	}
-}
-
-func presetsInspectCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
-		Use:               "inspect <name>",
-		Short:             "Annotated view with labels and descriptions",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completePresetNames(wizardName),
-		RunE: func(_ *cobra.Command, args []string) error {
-			w, err := loadWizardConfig(wizardName)
-			if err != nil {
-				return err
-			}
-
-			st := store.New(configDir)
-			values, err := st.LoadPreset(wizardName, args[0])
-			if err != nil {
-				return fmt.Errorf("loading preset %q: %w", args[0], err)
-			}
-
-			detectedVersion, _ := compat.DetectVersion(w.Version)
-			w.Command = w.EffectiveCommand(detectedVersion)
-
-			// Build option lookup
-			optMap := make(map[string]config.Option)
-			for _, o := range w.Options {
-				optMap[o.Name] = o
-			}
-
-			fmt.Printf("\n  Preset: %s\n\n", args[0])
-			for k, v := range values {
-				opt, known := optMap[k]
-				if known {
-					fmt.Printf("  %s: %s\n", ui.TitleStyle.Render(opt.Label), v.Display())
-					if opt.Description != "" {
-						fmt.Printf("    %s\n", ui.MutedStyle.Render(opt.Description))
-					}
-					// Find matching choice description
-					for _, c := range opt.Choices {
-						if v.Scalar() == c.Value && c.Description != "" {
-							fmt.Printf("    %s\n", ui.MutedStyle.Render(c.Description))
-							break
-						}
-					}
-				} else {
+			if verbose {
+				printPresetVerbose(values, w.Options)
+			} else {
+				for k, v := range values {
 					fmt.Printf("  %s: %s\n", k, v.Display())
 				}
 			}
@@ -412,12 +386,42 @@ func presetsInspectCmd(wizardName string) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "include labels, descriptions, and choice annotations")
+
+	return cmd
+}
+
+func printPresetVerbose(values config.Values, options []config.Option) {
+	optMap := make(map[string]config.Option, len(options))
+	for _, o := range options {
+		optMap[o.Name] = o
+	}
+	for k, v := range values {
+		opt, known := optMap[k]
+		if !known {
+			fmt.Printf("  %s: %s\n", k, v.Display())
+			continue
+		}
+		fmt.Printf("  %s: %s\n", ui.TitleStyle.Render(opt.Label), v.Display())
+		if opt.Description != "" {
+			fmt.Printf("    %s\n", ui.MutedStyle.Render(opt.Description))
+		}
+		for _, c := range opt.Choices {
+			if v.Scalar() == c.Value && c.Description != "" {
+				fmt.Printf("    %s\n", ui.MutedStyle.Render(c.Description))
+				break
+			}
+		}
+	}
 }
 
 func presetsSaveCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:               "save <name>",
 		Short:             "Save last-used values as named preset",
+		Long:              "Save the most recent wizard answers as a named preset for later replay.",
+		Example:           fmt.Sprintf("  oz run %s presets save fast", wizardName),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
@@ -455,6 +459,9 @@ func presetsRemoveCmd(wizardName string) *cobra.Command {
 		Use:               "remove <name>",
 		Aliases:           []string{"rm"},
 		Short:             "Remove a preset",
+		Long:              "Delete a saved preset by name. Requires confirmation unless --force is set.",
+		Example: fmt.Sprintf("  oz run %s presets remove old\n  oz run %s presets rm old -f",
+			wizardName, wizardName),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {

@@ -136,7 +136,9 @@ func editCmd() *cobra.Command {
 		Use:     "edit <wizard>",
 		Aliases: []string{"e"},
 		Short:   "Open wizard config in editor",
-		Args:  cobra.ExactArgs(1),
+		Long:    "Open the wizard YAML config in $VISUAL, $EDITOR, or vi.",
+		Example: "  oz edit myapp",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
 			if _, err := os.Stat(path); err != nil {
@@ -171,6 +173,8 @@ func listCmd() *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
 		Short:   "List available wizards",
+		Long:    "List all wizard configs found in the config directory.",
+		Example: "  oz list",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			wizards, err := config.ListWizards(configDir)
 			if err != nil {
@@ -209,6 +213,8 @@ func removeCmd() *cobra.Command {
 		Use:     "remove <wizard>",
 		Aliases: []string{"rm"},
 		Short:   "Remove a wizard config",
+		Long:    "Delete a wizard YAML config file. Requires confirmation unless --force is set.",
+		Example: "  oz remove myapp\n  oz rm myapp -f",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
@@ -273,10 +279,11 @@ in your editor ($VISUAL, $EDITOR, or vi). Use --no-edit to skip the editor.`,
 
 func validateCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "validate <wizard|path>",
-		Aliases:           []string{"v"},
-		Short:             "Validate a wizard config file",
-		Example:           "  oz validate myapp\n  oz validate path/to/config.yml",
+		Use:     "validate <wizard|path>",
+		Aliases: []string{"v"},
+		Short:   "Validate a wizard config file",
+		Long:    "Check a wizard config for errors. Accepts a wizard name or a file path.",
+		Example: "  oz validate myapp\n  oz validate path/to/config.yml",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeWizardNames,
 		RunE: func(_ *cobra.Command, args []string) error {

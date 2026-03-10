@@ -29,7 +29,8 @@ func wizardCmd(name string) *cobra.Command {
   oz run %s --dry-run
   oz run %s -p fast
   oz run %s doctor
-  oz run %s presets list`, name, name, name, name, name),
+  oz run %s show
+  oz run %s presets list`, name, name, name, name, name, name),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runWizard(name, presetName, dryRun)
 		},
@@ -39,7 +40,7 @@ func wizardCmd(name string) *cobra.Command {
 	cmd.Flags().StringVarP(&presetName, "with-preset", "p", "", "run with saved preset (non-interactive)")
 
 	cmd.AddCommand(doctorCmd(name))
-	cmd.AddCommand(inspectCmd(name))
+	cmd.AddCommand(showCmd(name))
 	cmd.AddCommand(pinsCmd(name))
 	cmd.AddCommand(presetsCmd(name))
 

@@ -48,16 +48,15 @@ oz run <wizard>
 ├── -n, --dry-run
 ├── -p, --with-preset <name>
 ├── doctor
-├── explain
+├── show (s)                show all options with descriptions
 ├── pins                    interactive TUI manager
-│   ├── show                display current pins
+│   ├── list (l, ls)        display current pins
 │   └── clear               remove all pins
-└── presets
-    ├── list
-    ├── show <name>
-    ├── explain <name>
+└── presets                 show help
+    ├── list (l, ls)
+    ├── show <name> (s)     preset values and command (-v for verbose)
     ├── save <name>
-    └── delete <name>
+    └── remove <name> (rm)
 ```
 
 **Key abstractions:**

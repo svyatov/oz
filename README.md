@@ -76,15 +76,15 @@ options:
 | Command | Description |
 |---------|-------------|
 | `oz run <wizard> doctor` | Check tool installation and version |
-| `oz run <wizard> explain` | Show all options with descriptions |
+| `oz run <wizard> show` | Show all options with descriptions |
 | `oz run <wizard> pins` | Interactive pin manager |
-| `oz run <wizard> pins show` | Display current pins |
+| `oz run <wizard> pins list` | Display current pins |
 | `oz run <wizard> pins clear` | Remove all pins |
 | `oz run <wizard> presets list` | List saved presets |
 | `oz run <wizard> presets show <name>` | Show preset values and command |
-| `oz run <wizard> presets explain <name>` | Annotated preset view |
+| `oz run <wizard> presets show <name> -v` | Annotated view with labels and descriptions |
 | `oz run <wizard> presets save <name>` | Save last-used values as preset |
-| `oz run <wizard> presets delete <name>` | Delete a preset |
+| `oz run <wizard> presets remove <name>` | Remove a preset |
 
 ## Option Types
 
