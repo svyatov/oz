@@ -192,7 +192,7 @@ func validateDefaultInChoices(o Option, prefix string, add func(string, ...any))
 	if len(o.Choices) == 0 || o.Default == nil {
 		return
 	}
-	if o.AllowNone && fmt.Sprintf("%v", o.Default) == "" {
+	if o.AllowNone && o.Default.Scalar() == "" {
 		return
 	}
 	choiceSet := make(map[string]bool, len(o.Choices))
@@ -200,37 +200,21 @@ func validateDefaultInChoices(o Option, prefix string, add func(string, ...any))
 		choiceSet[c.Value] = true
 	}
 	if o.Type == OptionMultiSelect {
-		defaults, ok := toAnySlice(o.Default)
-		if !ok {
+		if !o.Default.IsStrings() {
 			add("%s: default for multi_select must be a list", prefix)
 			return
 		}
-		for _, d := range defaults {
-			s := fmt.Sprintf("%v", d)
+		for _, s := range o.Default.Strings() {
 			if !choiceSet[s] {
 				add("%s: default value %q is not among the defined choices", prefix, s)
 			}
 		}
 		return
 	}
-	s := fmt.Sprintf("%v", o.Default)
+	s := o.Default.Scalar()
 	if !choiceSet[s] {
 		add("%s: default value %q is not among the defined choices", prefix, s)
 	}
-}
-
-func toAnySlice(v any) ([]any, bool) {
-	switch vv := v.(type) {
-	case []any:
-		return vv, true
-	case []string:
-		out := make([]any, len(vv))
-		for i, s := range vv {
-			out[i] = s
-		}
-		return out, true
-	}
-	return nil, false
 }
 
 func validateDuplicateChoices(o Option, prefix string, add func(string, ...any)) {

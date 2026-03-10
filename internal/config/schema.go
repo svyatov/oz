@@ -85,11 +85,11 @@ type Option struct {
 	FlagFalse   string         `yaml:"flag_false"`
 	FlagNone    string         `yaml:"flag_none"`
 	FlagStyle   FlagStyle      `yaml:"flag_style"` // per-option override
-	Default     any            `yaml:"default"`
-	AllowNone   bool           `yaml:"allow_none"`
-	Required    bool           `yaml:"required"`
-	ShowWhen    map[string]any `yaml:"show_when"`
-	HideWhen    map[string]any `yaml:"hide_when"`
+	Default     *FieldValue `yaml:"default,omitempty"`
+	AllowNone   bool        `yaml:"allow_none"`
+	Required    bool        `yaml:"required"`
+	ShowWhen    Values      `yaml:"show_when,omitempty"`
+	HideWhen    Values      `yaml:"hide_when,omitempty"`
 	Choices     FlexChoices    `yaml:"choices"`
 	ChoicesFrom string         `yaml:"choices_from"`
 	Separator   string         `yaml:"separator"`

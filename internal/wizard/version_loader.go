@@ -92,7 +92,10 @@ type versionItem struct {
 	isDetected bool
 }
 
-const customSentinel = "Custom..."
+const (
+	customSentinel   = "Custom..."
+	spinnerShowDelay = 150 * time.Millisecond
+)
 
 func newVersionLoaderModel(
 	wizardName string, vc *config.VersionControl, pin string,
@@ -129,7 +132,7 @@ func (m *VersionLoaderModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.detectVersion,
 		m.fetchVersions,
-		tea.Tick(150*time.Millisecond, func(time.Time) tea.Msg { //nolint:mnd
+		tea.Tick(spinnerShowDelay, func(time.Time) tea.Msg {
 			return spinnerDelayMsg{}
 		}),
 	)

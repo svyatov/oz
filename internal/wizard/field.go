@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
 
@@ -14,8 +15,24 @@ type Field interface {
 	Init() tea.Cmd
 	Update(tea.KeyPressMsg) (submitted bool, cmd tea.Cmd)
 	View() string
-	Value() any
-	SetValue(any)
+	Value() config.FieldValue
+	SetValue(config.FieldValue)
+}
+
+// buildField creates the appropriate Field for an option type.
+func buildField(opt *config.Option) Field {
+	switch opt.Type {
+	case config.OptionSelect:
+		return NewSelectField(*opt)
+	case config.OptionConfirm:
+		return NewConfirmField(*opt)
+	case config.OptionInput:
+		return NewInputField(*opt)
+	case config.OptionMultiSelect:
+		return NewMultiSelectField(*opt)
+	default:
+		return NewInputField(*opt)
+	}
 }
 
 // fieldHeader renders the common title + description block for all field types.

@@ -2,12 +2,15 @@ package wizard
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/svyatov/oz/internal/config"
 )
+
+func fvptr(v config.FieldValue) *config.FieldValue { return &v }
 
 func key(code rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: code, Text: string(code)}
@@ -37,7 +40,7 @@ func testOptions() []config.Option {
 			Name:    "name",
 			Type:    config.OptionInput,
 			Label:   "App name",
-			Default: "myapp",
+			Default: fvptr(config.StringVal("myapp")),
 		},
 	}
 }
@@ -57,7 +60,7 @@ func TestPinViaEditSelect(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after submit, got %d", m.mode)
 	}
-	if v, ok := m.pins["db"]; !ok || v != "mysql" {
+	if v, ok := m.pins["db"]; !ok || v.String() != "mysql" {
 		t.Errorf("expected db pinned to mysql, got %v", m.pins["db"])
 	}
 }
@@ -75,13 +78,13 @@ func TestPinViaEditConfirm(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
-	if v, ok := m.pins["api"]; !ok || v != true {
+	if v, ok := m.pins["api"]; !ok || v.Bool() != true {
 		t.Errorf("expected api pinned to true, got %v", m.pins["api"])
 	}
 }
 
 func TestTogglePinSpace(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, map[string]any{"db": "pg"}, nil, false, "", "")
+	m := newPinsModel(testOptions(), nil, config.Values{"db": config.StringVal("pg")}, nil, false, "", "")
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeySpace))
@@ -89,7 +92,7 @@ func TestTogglePinSpace(t *testing.T) {
 	if _, ok := m.pins["db"]; !ok {
 		t.Fatal("expected db to be pinned after space")
 	}
-	if m.pins["db"] != "pg" {
+	if m.pins["db"].String() != "pg" {
 		t.Errorf("expected pinned value pg, got %v", m.pins["db"])
 	}
 
@@ -154,7 +157,7 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 }
 
 func TestEditUpdatesExistingPin(t *testing.T) {
-	pins := map[string]any{"db": "pg"}
+	pins := config.Values{"db": config.StringVal("pg")}
 	m := newPinsModel(testOptions(), pins, nil, nil, false, "", "")
 	m.Init()
 
@@ -163,7 +166,7 @@ func TestEditUpdatesExistingPin(t *testing.T) {
 
 	model, _ = m.Update(key('2'))
 	m = model.(*PinsModel)
-	if m.pins["db"] != "mysql" {
+	if m.pins["db"].String() != "mysql" {
 		t.Errorf("expected db updated to mysql, got %v", m.pins["db"])
 	}
 }
@@ -327,7 +330,7 @@ func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
 }
 
 func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, map[string]any{"port": "3000"}, nil, false, "", "")
+	m := newPinsModel(validatedInputOptions(), nil, config.Values{"port": config.StringVal("3000")}, nil, false, "", "")
 	m.Init()
 
 	// Space on input with valid last-used → quick-pins
@@ -336,13 +339,13 @@ func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
-	if v, ok := m.pins["port"]; !ok || v != "3000" {
+	if v, ok := m.pins["port"]; !ok || v.String() != "3000" {
 		t.Errorf("expected port pinned to 3000, got %v", m.pins["port"])
 	}
 }
 
 func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, map[string]any{"port": "abc"}, nil, false, "", "")
+	m := newPinsModel(validatedInputOptions(), nil, config.Values{"port": config.StringVal("abc")}, nil, false, "", "")
 	m.Init()
 
 	// Space on input with invalid last-used → enters edit mode
@@ -419,7 +422,7 @@ func TestPinInputAcceptsValidValue(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after valid input, got %d", m.mode)
 	}
-	if v, ok := m.pins["port"]; !ok || v != "8080" {
+	if v, ok := m.pins["port"]; !ok || v.String() != "8080" {
 		t.Errorf("expected port pinned to 8080, got %v", m.pins["port"])
 	}
 }
@@ -428,37 +431,37 @@ func TestResolveDefault(t *testing.T) {
 	tests := []struct {
 		name     string
 		opt      config.Option
-		pins     map[string]any
-		lastUsed map[string]any
-		want     any
+		pins     config.Values
+		lastUsed config.Values
+		want     *config.FieldValue
 	}{
 		{
 			"from_pins",
 			config.Option{Name: "db", Type: config.OptionSelect},
-			map[string]any{"db": "pg"},
+			config.Values{"db": config.StringVal("pg")},
 			nil,
-			"pg",
+			fvptr(config.StringVal("pg")),
 		},
 		{
 			"from_last_used",
 			config.Option{Name: "db", Type: config.OptionSelect},
-			map[string]any{},
-			map[string]any{"db": "mysql"},
-			"mysql",
+			config.Values{},
+			config.Values{"db": config.StringVal("mysql")},
+			fvptr(config.StringVal("mysql")),
 		},
 		{
 			"from_default",
-			config.Option{Name: "name", Type: config.OptionInput, Default: "myapp"},
-			map[string]any{},
-			map[string]any{},
-			"myapp",
+			config.Option{Name: "name", Type: config.OptionInput, Default: fvptr(config.StringVal("myapp"))},
+			config.Values{},
+			config.Values{},
+			fvptr(config.StringVal("myapp")),
 		},
 		{
 			"confirm_fallback",
 			config.Option{Name: "api", Type: config.OptionConfirm},
-			map[string]any{},
-			map[string]any{},
-			false,
+			config.Values{},
+			config.Values{},
+			fvptr(config.BoolVal(false)),
 		},
 		{
 			"select_first_choice",
@@ -466,15 +469,15 @@ func TestResolveDefault(t *testing.T) {
 				Name: "db", Type: config.OptionSelect,
 				Choices: []config.Choice{{Value: "pg"}},
 			},
-			map[string]any{},
-			map[string]any{},
-			"pg",
+			config.Values{},
+			config.Values{},
+			fvptr(config.StringVal("pg")),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resolveDefault(&tt.opt, tt.pins, tt.lastUsed)
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("resolveDefault() = %v, want %v", got, tt.want)
 			}
 		})

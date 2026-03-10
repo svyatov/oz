@@ -20,6 +20,7 @@ type MultiSelectField struct {
 	selected    map[int]bool
 }
 
+// NewMultiSelectField creates a MultiSelectField from a config option.
 func NewMultiSelectField(opt config.Option) *MultiSelectField {
 	return &MultiSelectField{
 		label:       opt.Label,
@@ -110,27 +111,19 @@ func (f *MultiSelectField) View() string {
 	return b.String()
 }
 
-func (f *MultiSelectField) Value() any {
+func (f *MultiSelectField) Value() config.FieldValue {
 	var vals []string
 	for i, c := range f.choices {
 		if f.selected[i] {
 			vals = append(vals, c.Value)
 		}
 	}
-	return vals
+	return config.StringsVal(vals...)
 }
 
-func (f *MultiSelectField) SetValue(v any) {
+func (f *MultiSelectField) SetValue(v config.FieldValue) {
 	f.selected = make(map[int]bool)
-	var vals []string
-	switch vv := v.(type) {
-	case []string:
-		vals = vv
-	case []any:
-		for _, item := range vv {
-			vals = append(vals, fmt.Sprintf("%v", item))
-		}
-	}
+	vals := v.Strings()
 	set := make(map[string]bool, len(vals))
 	for _, s := range vals {
 		set[s] = true

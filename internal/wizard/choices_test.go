@@ -71,7 +71,7 @@ func TestParseChoicesOutput_Tabs(t *testing.T) {
 }
 
 func TestInterpolateCommand(t *testing.T) {
-	answers := Answers{"profile": "default", "region": "us-east-1"}
+	answers := config.Values{"profile": config.StringVal("default"), "region": config.StringVal("us-east-1")}
 
 	tests := []struct {
 		name string
@@ -132,7 +132,7 @@ func TestResolveChoices(t *testing.T) {
 	})
 
 	t.Run("with_interpolation", func(t *testing.T) {
-		answers := Answers{"name": "world"}
+		answers := config.Values{"name": config.StringVal("world")}
 		choices, err := ResolveChoices("echo {{name}}", answers)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

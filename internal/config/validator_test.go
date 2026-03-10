@@ -8,6 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func fvptr(v FieldValue) *FieldValue { return &v }
+
 func TestValidate(t *testing.T) {
 	minimal := func() *Wizard {
 		return &Wizard{
@@ -83,7 +85,7 @@ func baseCases() []validationCase {
 			w.Options[0].Choices = FlexChoices{{Value: "", Label: "x"}}
 		}, "value is required"},
 		{"show_when_unknown_option", func(w *Wizard) {
-			w.Options[0].ShowWhen = map[string]any{"nonexistent": true}
+			w.Options[0].ShowWhen = Values{"nonexistent": BoolVal(true)}
 		}, "references unknown option"},
 		{"compat_unknown_option", func(w *Wizard) {
 			w.Version = &VersionControl{Command: "cmd", Pattern: `(\d+)`}
@@ -180,12 +182,12 @@ func constraintCases() []validationCase {
 			w.Options[0].Positional = true
 		}, ""},
 		{"hide_when_unknown_option", func(w *Wizard) {
-			w.Options[0].HideWhen = map[string]any{"nonexistent": true}
+			w.Options[0].HideWhen = Values{"nonexistent": BoolVal(true)}
 		}, "hide_when references unknown option"},
 		{"hide_when_valid", func(w *Wizard) {
 			w.Options = append(w.Options, Option{
 				Name: "opt2", Type: OptionInput, Label: "Opt 2",
-				HideWhen: map[string]any{"opt1": "x"},
+				HideWhen: Values{"opt1": StringVal("x")},
 			})
 		}, ""},
 		{"choices_from_unknown_interpolation", func(w *Wizard) {
@@ -211,38 +213,38 @@ func semanticDefaultCases() []validationCase {
 		{"default_not_in_choices", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = "c"
+			w.Options[0].Default = fvptr(StringVal("c"))
 		}, "not among the defined choices"},
 		{"default_in_choices_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = "a"
+			w.Options[0].Default = fvptr(StringVal("a"))
 		}, ""},
 		{"default_multi_select_not_in_choices", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = []any{"a", "z"}
+			w.Options[0].Default = fvptr(StringsVal("a", "z"))
 		}, "not among the defined choices"},
 		{"default_multi_select_all_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = []any{"a", "b"}
+			w.Options[0].Default = fvptr(StringsVal("a", "b"))
 		}, ""},
 		{"default_multi_select_scalar_rejected", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
-			w.Options[0].Default = "a"
+			w.Options[0].Default = fvptr(StringVal("a"))
 		}, "must be a list"},
 		{"default_with_choices_from_skipped", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "echo a b c"
-			w.Options[0].Default = "anything"
+			w.Options[0].Default = fvptr(StringVal("anything"))
 		}, ""},
 		{"default_empty_with_allow_none_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].AllowNone = true
-			w.Options[0].Default = ""
+			w.Options[0].Default = fvptr(StringVal(""))
 		}, ""},
 		{"duplicate_choice_values", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect

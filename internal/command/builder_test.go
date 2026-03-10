@@ -31,24 +31,24 @@ func TestBuildConfirmFlags(t *testing.T) {
 	tests := []struct {
 		name string
 		opt  config.Option
-		val  any
+		val  config.FieldValue
 		want []string
 	}{
 		{"true_with_flag_true",
 			config.Option{FlagTrue: "--yes", FlagFalse: "--no"},
-			true, []string{"--yes"}},
+			config.BoolVal(true), []string{"--yes"}},
 		{"false_with_flag_false",
 			config.Option{FlagTrue: "--yes", FlagFalse: "--no"},
-			false, []string{"--no"}},
+			config.BoolVal(false), []string{"--no"}},
 		{"non_bool",
-			config.Option{FlagTrue: "--yes"}, "string", nil},
+			config.Option{FlagTrue: "--yes"}, config.StringVal("string"), nil},
 		{"flag_shorthand_true",
-			config.Option{Flag: "--verbose"}, true, []string{"--verbose"}},
+			config.Option{Flag: "--verbose"}, config.BoolVal(true), []string{"--verbose"}},
 		{"flag_shorthand_false",
-			config.Option{Flag: "--verbose"}, false, nil},
+			config.Option{Flag: "--verbose"}, config.BoolVal(false), nil},
 		{"flag_true_precedence",
 			config.Option{Flag: "--verbose", FlagTrue: "--yes"},
-			true, []string{"--yes"}},
+			config.BoolVal(true), []string{"--yes"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,13 +63,13 @@ func TestBuildSelectFlags(t *testing.T) {
 
 	tests := []struct {
 		name string
-		val  any
+		val  config.FieldValue
 		want []string
 	}{
-		{"normal_value", "go", []string{"--lang=go"}},
-		{"none_with_flag_none", config.NoneValue, []string{"--no-lang"}},
-		{"empty_with_flag_none", "", []string{"--no-lang"}},
-		{"no_flag", "go", nil},
+		{"normal_value", config.StringVal("go"), []string{"--lang=go"}},
+		{"none_with_flag_none", config.StringVal(config.NoneValue), []string{"--no-lang"}},
+		{"empty_with_flag_none", config.StringVal(""), []string{"--no-lang"}},
+		{"no_flag", config.StringVal("go"), nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,12 +87,12 @@ func TestBuildInputFlags(t *testing.T) {
 	tests := []struct {
 		name string
 		opt  config.Option
-		val  any
+		val  config.FieldValue
 		want []string
 	}{
-		{"normal", config.Option{Flag: "--name"}, "foo", []string{"--name=foo"}},
-		{"empty_value", config.Option{Flag: "--name"}, "", nil},
-		{"no_flag", config.Option{}, "foo", nil},
+		{"normal", config.Option{Flag: "--name"}, config.StringVal("foo"), []string{"--name=foo"}},
+		{"empty_value", config.Option{Flag: "--name"}, config.StringVal(""), nil},
+		{"no_flag", config.Option{}, config.StringVal("foo"), nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -106,19 +106,19 @@ func TestBuildMultiSelectFlags(t *testing.T) {
 	tests := []struct {
 		name string
 		opt  config.Option
-		val  any
+		val  config.FieldValue
 		want []string
 	}{
 		{"repeated",
 			config.Option{Flag: "--feature"},
-			[]string{"a", "b"}, []string{"--feature=a", "--feature=b"}},
+			config.StringsVal("a", "b"), []string{"--feature=a", "--feature=b"}},
 		{"empty_slice",
-			config.Option{Flag: "--feature"}, []string{}, nil},
+			config.Option{Flag: "--feature"}, config.StringsVal(), nil},
 		{"non_slice",
-			config.Option{Flag: "--feature"}, "bad", nil},
+			config.Option{Flag: "--feature"}, config.StringVal("bad"), nil},
 		{"separator_comma",
 			config.Option{Flag: "--features", Separator: ","},
-			[]string{"auth", "api"}, []string{"--features=auth,api"}},
+			config.StringsVal("auth", "api"), []string{"--features=auth,api"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestBuild(t *testing.T) {
 				{Name: "port", Type: config.OptionInput, Flag: "-p", Label: "Port"},
 			},
 		}
-		answers := map[string]any{"verbose": true, "port": "8080"}
+		answers := config.Values{"verbose": config.BoolVal(true), "port": config.StringVal("8080")}
 		parts := Build(w, answers)
 		if got := FormatCommand(parts); got != "docker run -v -p=8080" {
 			t.Errorf("FormatCommand = %q", got)
@@ -153,7 +153,7 @@ func TestBuild(t *testing.T) {
 				Choices:    config.FlexChoices{{Value: "build", Label: "build"}},
 			}},
 		}
-		answers := map[string]any{"task_name": "build"}
+		answers := config.Values{"task_name": config.StringVal("build")}
 		assertStringSlice(t, PlainParts(Build(w, answers)), []string{"task", "build"})
 	})
 
@@ -169,7 +169,7 @@ func TestBuild(t *testing.T) {
 				{Name: "detach", Type: config.OptionConfirm, Flag: "-d"},
 			},
 		}
-		answers := map[string]any{"image": "nginx", "detach": true}
+		answers := config.Values{"image": config.StringVal("nginx"), "detach": config.BoolVal(true)}
 		want := []string{"docker", "run", "nginx", "-d"}
 		assertStringSlice(t, PlainParts(Build(w, answers)), want)
 	})

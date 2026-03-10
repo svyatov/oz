@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -34,18 +35,18 @@ func stripANSI(s string) string {
 func TestSelectFieldDefaultTag(t *testing.T) {
 	tests := []struct {
 		name         string
-		defaultValue string
+		defaultValue config.FieldValue
 		wantDefault  bool
 	}{
-		{"shows_default_for_matching_choice", "python3", true},
-		{"no_default_when_unset", "", false},
-		{"no_default_for_nonexistent_value", "ruby", false},
+		{"shows_default_for_matching_choice", config.StringVal("python3"), true},
+		{"no_default_when_unset", config.FieldValue{}, false},
+		{"no_default_for_nonexistent_value", config.StringVal("ruby"), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newTestSelectField(testChoices())
-			if tt.defaultValue != "" {
+			if !reflect.DeepEqual(tt.defaultValue, config.FieldValue{}) {
 				f.SetDefault(tt.defaultValue)
 			}
 
@@ -60,7 +61,7 @@ func TestSelectFieldDefaultTag(t *testing.T) {
 
 func TestSelectFieldDefaultTagAlignment(t *testing.T) {
 	f := newTestSelectField(testChoices())
-	f.SetDefault("python3")
+	f.SetDefault(config.StringVal("python3"))
 
 	view := stripANSI(f.View())
 	lines := strings.Split(view, "\n")

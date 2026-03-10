@@ -125,15 +125,15 @@ func (f *SelectField) maxDisplayWidth() int {
 	return w
 }
 
-func (f *SelectField) Value() any { return f.value }
+func (f *SelectField) Value() config.FieldValue { return config.StringVal(f.value) }
 
 // SetDefault records which value is the default so View can show a "(default)" tag.
-func (f *SelectField) SetDefault(v any) {
-	f.defaultValue = fmt.Sprintf("%v", v)
+func (f *SelectField) SetDefault(v config.FieldValue) {
+	f.defaultValue = v.Scalar()
 }
 
-func (f *SelectField) SetValue(v any) {
-	s := fmt.Sprintf("%v", v)
+func (f *SelectField) SetValue(v config.FieldValue) {
+	s := v.Scalar()
 	f.value = s
 	for i := range f.itemCount() {
 		if f.valueAt(i) == s {

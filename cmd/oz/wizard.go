@@ -73,7 +73,7 @@ type wizardSession struct {
 	vr            *wizard.VersionResult
 	result        *wizard.Result
 	state         *store.StateEntry
-	pinnedAnswers wizard.Answers
+	pinnedValues  config.Values
 }
 
 func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun bool) (*wizardSession, error) {
@@ -103,19 +103,19 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 		activePins := filterActivePins(allPins, options)
 
 		filteredOptions, pinnedCount := wizard.FilterPinned(options, activePins)
-		pinnedAnswers := make(wizard.Answers)
-		maps.Copy(pinnedAnswers, activePins)
+		pinnedValues := make(config.Values)
+		maps.Copy(pinnedValues, activePins)
 
 		result, err := wizard.Run(wizard.RunParams{
-			WizardName:    w.Name,
-			Version:       vr.Selected,
-			VersionLabel:  versionLabel(w),
-			Overridden:    overridden,
-			Options:       filteredOptions,
-			PinnedCount:   pinnedCount,
-			Defaults:      state.LastUsed,
-			PinnedAnswers: pinnedAnswers,
-			CanGoBack:     vr.Interactive,
+			WizardName:   w.Name,
+			Version:      vr.Selected,
+			VersionLabel: versionLabel(w),
+			Overridden:   overridden,
+			Options:      filteredOptions,
+			PinnedCount:  pinnedCount,
+			Defaults:     state.LastUsed,
+			PinnedValues: pinnedValues,
+			CanGoBack:    vr.Interactive,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("running wizard: %w", err)
@@ -124,7 +124,7 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 			prevResult = vr
 			continue
 		}
-		return &wizardSession{vr: vr, result: result, state: state, pinnedAnswers: pinnedAnswers}, nil
+		return &wizardSession{vr: vr, result: result, state: state, pinnedValues: pinnedValues}, nil
 	}
 }
 
@@ -145,12 +145,12 @@ func runWizard(name string, presetName string, dryRun bool) error {
 
 	majorVersion := majorVer(s.vr.Selected)
 
-	allAnswers := make(wizard.Answers)
-	maps.Copy(allAnswers, s.pinnedAnswers)
-	maps.Copy(allAnswers, s.result.Answers)
+	allAnswers := make(config.Values)
+	maps.Copy(allAnswers, s.pinnedValues)
+	maps.Copy(allAnswers, s.result.Values)
 
 	parts := command.Build(w, allAnswers)
-	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Answers)
+	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Values)
 	if dryRun {
 		command.PrintCommand(parts)
 		return nil
@@ -161,7 +161,7 @@ func runWizard(name string, presetName string, dryRun bool) error {
 
 func confirmAndExecute(
 	st *store.Store, wizardName string,
-	parts []command.Part, allAnswers map[string]any,
+	parts []command.Part, allAnswers config.Values,
 ) error {
 	if !confirmPrompt("  Execute?") {
 		return nil
@@ -176,10 +176,10 @@ func confirmAndExecute(
 
 func saveLastUsed(
 	st *store.Store, wizardName, majorVersion string,
-	state *store.StateEntry, answers wizard.Answers,
+	state *store.StateEntry, answers config.Values,
 ) {
 	if state.LastUsed == nil {
-		state.LastUsed = make(map[string]any)
+		state.LastUsed = make(config.Values)
 	}
 	maps.Copy(state.LastUsed, answers)
 	if err := st.SaveState(wizardName, majorVersion, state); err != nil {
@@ -187,7 +187,7 @@ func saveLastUsed(
 	}
 }
 
-func promptAndSavePreset(st *store.Store, wizardName string, allAnswers map[string]any) {
+func promptAndSavePreset(st *store.Store, wizardName string, allAnswers config.Values) {
 	presetSaveName := promptPresetSave()
 	if presetSaveName != "" {
 		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
@@ -272,12 +272,12 @@ func runPins(name string) error {
 	return nil
 }
 
-func filterActivePins(allPins map[string]any, options []config.Option) map[string]any {
+func filterActivePins(allPins config.Values, options []config.Option) config.Values {
 	optionSet := make(map[string]bool, len(options))
 	for _, o := range options {
 		optionSet[o.Name] = true
 	}
-	active := make(map[string]any, len(allPins))
+	active := make(config.Values, len(allPins))
 	for k, v := range allPins {
 		if optionSet[k] {
 			active[k] = v
@@ -310,4 +310,3 @@ func majorVer(version string) string {
 	}
 	return parts[0]
 }
-

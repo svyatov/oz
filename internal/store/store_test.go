@@ -2,13 +2,15 @@ package store
 
 import (
 	"testing"
+
+	"github.com/svyatov/oz/internal/config"
 )
 
 func TestStateRoundTrip(t *testing.T) {
 	s := New(t.TempDir())
 	entry := &StateEntry{
-		LastUsed: map[string]any{"lang": "go", "verbose": true},
-		Pins:     map[string]any{"lang": "go"},
+		LastUsed: config.Values{"lang": config.StringVal("go"), "verbose": config.BoolVal(true)},
+		Pins:     config.Values{"lang": config.StringVal("go")},
 	}
 
 	if err := s.SaveState("wiz", "", entry); err != nil {
@@ -18,10 +20,10 @@ func TestStateRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadState: %v", err)
 	}
-	if got.LastUsed["lang"] != "go" {
+	if got.LastUsed["lang"].String() != "go" {
 		t.Errorf("LastUsed[lang] = %v, want go", got.LastUsed["lang"])
 	}
-	if got.Pins["lang"] != "go" {
+	if got.Pins["lang"].String() != "go" {
 		t.Errorf("Pins[lang] = %v, want go", got.Pins["lang"])
 	}
 }
@@ -29,8 +31,8 @@ func TestStateRoundTrip(t *testing.T) {
 func TestStateVersionedRoundTrip(t *testing.T) {
 	s := New(t.TempDir())
 
-	e1 := &StateEntry{LastUsed: map[string]any{"a": "1"}}
-	e2 := &StateEntry{LastUsed: map[string]any{"a": "2"}}
+	e1 := &StateEntry{LastUsed: config.Values{"a": config.StringVal("1")}}
+	e2 := &StateEntry{LastUsed: config.Values{"a": config.StringVal("2")}}
 
 	if err := s.SaveState("wiz", "1.0", e1); err != nil {
 		t.Fatalf("SaveState v1: %v", err)
@@ -43,7 +45,7 @@ func TestStateVersionedRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadState: %v", err)
 	}
-	if got.LastUsed["a"] != "1" {
+	if got.LastUsed["a"].String() != "1" {
 		t.Errorf("v1.0 LastUsed[a] = %v, want 1", got.LastUsed["a"])
 	}
 
@@ -51,7 +53,7 @@ func TestStateVersionedRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadState: %v", err)
 	}
-	if got.LastUsed["a"] != "2" {
+	if got.LastUsed["a"].String() != "2" {
 		t.Errorf("v2.0 LastUsed[a] = %v, want 2", got.LastUsed["a"])
 	}
 }
@@ -78,7 +80,7 @@ func TestPinsRoundTrip(t *testing.T) {
 		t.Errorf("expected empty pins, got %v", pins)
 	}
 
-	if err := s.SavePins("wiz", map[string]any{"db": "postgres"}); err != nil {
+	if err := s.SavePins("wiz", config.Values{"db": config.StringVal("postgres")}); err != nil {
 		t.Fatalf("SavePins: %v", err)
 	}
 
@@ -86,7 +88,7 @@ func TestPinsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPins: %v", err)
 	}
-	if pins["db"] != "postgres" {
+	if pins["db"].String() != "postgres" {
 		t.Errorf("pins[db] = %v, want postgres", pins["db"])
 	}
 }
@@ -117,12 +119,12 @@ func TestPinnedVersionRoundTrip(t *testing.T) {
 func TestPinsPreservesState(t *testing.T) {
 	s := New(t.TempDir())
 
-	entry := &StateEntry{LastUsed: map[string]any{"a": "1"}}
+	entry := &StateEntry{LastUsed: config.Values{"a": config.StringVal("1")}}
 	if err := s.SaveState("wiz", "7.0", entry); err != nil {
 		t.Fatalf("SaveState: %v", err)
 	}
 
-	if err := s.SavePins("wiz", map[string]any{"db": "mysql"}); err != nil {
+	if err := s.SavePins("wiz", config.Values{"db": config.StringVal("mysql")}); err != nil {
 		t.Fatalf("SavePins: %v", err)
 	}
 	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
@@ -133,7 +135,7 @@ func TestPinsPreservesState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadState after pins: %v", err)
 	}
-	if got.LastUsed["a"] != "1" {
+	if got.LastUsed["a"].String() != "1" {
 		t.Errorf("state was not preserved: %v", got.LastUsed)
 	}
 }
@@ -141,7 +143,7 @@ func TestPinsPreservesState(t *testing.T) {
 func TestPinsClear(t *testing.T) {
 	s := New(t.TempDir())
 
-	if err := s.SavePins("wiz", map[string]any{"db": "mysql"}); err != nil {
+	if err := s.SavePins("wiz", config.Values{"db": config.StringVal("mysql")}); err != nil {
 		t.Fatalf("SavePins: %v", err)
 	}
 	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
@@ -173,7 +175,7 @@ func TestPinsClear(t *testing.T) {
 
 func TestPresetRoundTrip(t *testing.T) {
 	s := New(t.TempDir())
-	vals := map[string]any{"lang": "go", "verbose": true}
+	vals := config.Values{"lang": config.StringVal("go"), "verbose": config.BoolVal(true)}
 
 	if err := s.SavePreset("wiz", "my-preset", vals); err != nil {
 		t.Fatalf("SavePreset: %v", err)
@@ -183,7 +185,7 @@ func TestPresetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadPreset: %v", err)
 	}
-	if got["lang"] != "go" {
+	if got["lang"].String() != "go" {
 		t.Errorf("lang = %v, want go", got["lang"])
 	}
 
@@ -224,7 +226,7 @@ func TestPathTraversalRejected(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := s.SavePreset("wiz", tt.preset, map[string]any{"k": "v"})
+			err := s.SavePreset("wiz", tt.preset, config.Values{"k": config.StringVal("v")})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SavePreset(%q) error = %v, wantErr %v", tt.preset, err, tt.wantErr)
 			}

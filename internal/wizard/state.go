@@ -1,18 +1,14 @@
 package wizard
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/svyatov/oz/internal/config"
 )
 
-// Answers tracks the current values for each option.
-type Answers map[string]any
-
 // EvalShowWhen checks whether an option's show_when conditions are met.
-func EvalShowWhen(showWhen map[string]any, answers Answers) bool {
+func EvalShowWhen(showWhen config.Values, answers config.Values) bool {
 	if len(showWhen) == 0 {
 		return true
 	}
@@ -29,7 +25,7 @@ func EvalShowWhen(showWhen map[string]any, answers Answers) bool {
 }
 
 // EvalHideWhen checks whether an option's hide_when conditions are met.
-func EvalHideWhen(hideWhen map[string]any, answers Answers) bool {
+func EvalHideWhen(hideWhen config.Values, answers config.Values) bool {
 	if len(hideWhen) == 0 {
 		return false
 	}
@@ -46,54 +42,38 @@ func EvalHideWhen(hideWhen map[string]any, answers Answers) bool {
 }
 
 // IsVisible returns true if the option should be shown given current answers.
-func IsVisible(opt config.Option, answers Answers) bool {
+func IsVisible(opt config.Option, answers config.Values) bool {
 	return EvalShowWhen(opt.ShowWhen, answers) && !EvalHideWhen(opt.HideWhen, answers)
 }
 
-func valuesMatch(actual, expected any) bool {
+func valuesMatch(actual, expected config.FieldValue) bool {
 	// Expected is a list: OR semantics — match if actual equals any element
-	if expectedList, ok := toStringSlice(expected); ok {
+	if expected.IsStrings() {
 		// Actual is also a list (multi_select): match if any expected is IN actual
-		if actualList, ok := toStringSlice(actual); ok {
-			for _, e := range expectedList {
-				if slices.Contains(actualList, e) {
+		if actual.IsStrings() {
+			for _, e := range expected.Strings() {
+				if slices.Contains(actual.Strings(), e) {
 					return true
 				}
 			}
 			return false
 		}
 		// Actual is scalar: match if actual equals any expected
-		actualStr := fmt.Sprintf("%v", actual)
-		return slices.Contains(expectedList, actualStr)
+		return slices.Contains(expected.Strings(), actual.Scalar())
 	}
 
 	// Expected is scalar, actual is a list (multi_select membership)
-	if actualList, ok := toStringSlice(actual); ok {
-		return slices.Contains(actualList, fmt.Sprintf("%v", expected))
+	if actual.IsStrings() {
+		return slices.Contains(actual.Strings(), expected.Scalar())
 	}
 
 	// Both scalar: string equality
-	return fmt.Sprintf("%v", actual) == fmt.Sprintf("%v", expected)
-}
-
-// toStringSlice converts []any or []string to []string, returns false if not a slice.
-func toStringSlice(v any) ([]string, bool) {
-	switch vv := v.(type) {
-	case []string:
-		return vv, true
-	case []any:
-		out := make([]string, len(vv))
-		for i, item := range vv {
-			out[i] = fmt.Sprintf("%v", item)
-		}
-		return out, true
-	}
-	return nil, false
+	return actual.Scalar() == expected.Scalar()
 }
 
 // FilterPinned removes options that are pinned, returning the filtered list
 // and the count of pinned options.
-func FilterPinned(options []config.Option, pins map[string]any) (filtered []config.Option, pinCount int) {
+func FilterPinned(options []config.Option, pins config.Values) (filtered []config.Option, pinCount int) {
 	for _, o := range options {
 		if _, pinned := pins[o.Name]; pinned {
 			pinCount++
@@ -105,7 +85,7 @@ func FilterPinned(options []config.Option, pins map[string]any) (filtered []conf
 }
 
 // VisibleSteps returns the indices of options that pass show_when and hide_when evaluation.
-func VisibleSteps(options []config.Option, answers Answers) []int {
+func VisibleSteps(options []config.Option, answers config.Values) []int {
 	var indices []int
 	for i, o := range options {
 		if IsVisible(o, answers) {
@@ -116,17 +96,15 @@ func VisibleSteps(options []config.Option, answers Answers) []int {
 }
 
 // FormatAnswer renders a field value as a human-readable string for completed-step display.
-func FormatAnswer(opt *config.Option, val any) string {
+func FormatAnswer(opt *config.Option, val config.FieldValue) string {
 	switch opt.Type {
 	case config.OptionConfirm:
-		if b, ok := val.(bool); ok {
-			if b {
-				return "Yes"
-			}
-			return "No"
+		if val.Bool() {
+			return "Yes"
 		}
+		return "No"
 	case config.OptionSelect:
-		s := fmt.Sprintf("%v", val)
+		s := val.Scalar()
 		for _, c := range opt.Choices {
 			if c.Value == s {
 				return c.Label
@@ -137,23 +115,50 @@ func FormatAnswer(opt *config.Option, val any) string {
 		}
 		return s
 	case config.OptionMultiSelect:
-		if vals, ok := val.([]string); ok {
-			labels := make([]string, 0, len(vals))
-			choiceMap := make(map[string]string, len(opt.Choices))
-			for _, c := range opt.Choices {
-				choiceMap[c.Value] = c.Label
-			}
-			for _, v := range vals {
-				if label, ok := choiceMap[v]; ok {
-					labels = append(labels, label)
-				} else {
-					labels = append(labels, v)
-				}
-			}
-			return strings.Join(labels, ", ")
+		vals := val.Strings()
+		labels := make([]string, 0, len(vals))
+		choiceMap := make(map[string]string, len(opt.Choices))
+		for _, c := range opt.Choices {
+			choiceMap[c.Value] = c.Label
 		}
+		for _, v := range vals {
+			if label, ok := choiceMap[v]; ok {
+				labels = append(labels, label)
+			} else {
+				labels = append(labels, v)
+			}
+		}
+		return strings.Join(labels, ", ")
 	case config.OptionInput:
 		// fall through to default
 	}
-	return fmt.Sprintf("%v", val)
+	return val.Scalar()
+}
+
+// resolveDefault finds the best default for an option from the given sources (in priority order).
+func resolveDefault(opt *config.Option, sources ...config.Values) *config.FieldValue {
+	for _, src := range sources {
+		if v, ok := src[opt.Name]; ok {
+			return &v
+		}
+	}
+	if opt.Default != nil {
+		return opt.Default
+	}
+	switch opt.Type {
+	case config.OptionSelect:
+		if len(opt.Choices) > 0 {
+			v := config.StringVal(opt.Choices[0].Value)
+			return &v
+		}
+	case config.OptionConfirm:
+		v := config.BoolVal(false)
+		return &v
+	case config.OptionInput:
+		v := config.StringVal("")
+		return &v
+	case config.OptionMultiSelect:
+		// no default for multi_select
+	}
+	return nil
 }

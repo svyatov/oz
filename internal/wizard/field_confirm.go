@@ -85,27 +85,16 @@ func (f *ConfirmField) View() string {
 	return b.String()
 }
 
-func (f *ConfirmField) Value() any { return f.value }
+func (f *ConfirmField) Value() config.FieldValue { return config.BoolVal(f.value) }
 
 // SetDefault records which value is the default so View can show a "(default)" tag.
-func (f *ConfirmField) SetDefault(v any) {
-	var b bool
-	switch val := v.(type) {
-	case bool:
-		b = val
-	default:
-		b = fmt.Sprintf("%v", v) == "true"
-	}
+func (f *ConfirmField) SetDefault(v config.FieldValue) {
+	b := v.Bool()
 	f.defaultValue = &b
 }
 
-func (f *ConfirmField) SetValue(v any) {
-	switch val := v.(type) {
-	case bool:
-		f.value = val
-	default:
-		f.value = fmt.Sprintf("%v", v) == "true"
-	}
+func (f *ConfirmField) SetValue(v config.FieldValue) {
+	f.value = v.Bool()
 	if f.value {
 		f.cursor = 0
 	} else {

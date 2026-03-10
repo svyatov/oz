@@ -22,7 +22,7 @@ type CompletedStep struct {
 
 // Result is what the wizard returns after completion.
 type Result struct {
-	Answers Answers
+	Values  config.Values
 	Aborted bool
 	GoBack  bool
 }
@@ -40,9 +40,9 @@ type Engine struct {
 	versionLabel  string
 	overridden    bool
 	options    []config.Option
-	pinnedCnt  int
-	answers  Answers
-	defaults Answers // from last-used state
+	pinnedCount  int
+	answers  config.Values
+	defaults config.Values // from last-used state
 
 	// Navigation
 	stepIndex int   // index into visibleSteps
@@ -70,10 +70,10 @@ type Engine struct {
 // NewEngine creates a new wizard engine.
 func NewEngine(
 	wizardName, version, versionLabel string, overridden bool,
-	options []config.Option, pinnedCount int, defaults Answers,
+	options []config.Option, pinnedCount int, defaults config.Values,
 ) *Engine {
 	if defaults == nil {
-		defaults = make(Answers)
+		defaults = make(config.Values)
 	}
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return &Engine{
@@ -82,129 +82,129 @@ func NewEngine(
 		versionLabel: versionLabel,
 		overridden:   overridden,
 		options:    options,
-		pinnedCnt:  pinnedCount,
-		answers:    make(Answers),
+		pinnedCount:  pinnedCount,
+		answers:    make(config.Values),
 		defaults:   defaults,
 		spinner:    s,
 		width:      80,
 	}
 }
 
-func (e *Engine) headerLine() string {
-	h := ui.Header(e.wizardName, e.version, e.versionLabel)
-	if e.overridden {
+func (m *Engine) headerLine() string {
+	h := ui.Header(m.wizardName, m.version, m.versionLabel)
+	if m.overridden {
 		h += " " + ui.VersionOverrideTag()
 	}
 	return h
 }
 
-// SetPinnedAnswers sets the answers for pinned options (needed for show_when).
-func (e *Engine) SetPinnedAnswers(pins Answers) {
-	maps.Copy(e.answers, pins)
+// SetPinnedValues sets the answers for pinned options (needed for show_when).
+func (m *Engine) SetPinnedValues(pins config.Values) {
+	maps.Copy(m.answers, pins)
 }
 
-func (e *Engine) Init() tea.Cmd {
-	e.advanceToNextVisible()
-	return e.initCurrentField()
+func (m *Engine) Init() tea.Cmd {
+	m.advanceToNextVisible()
+	return m.initCurrentField()
 }
 
-func (e *Engine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Engine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		e.width = msg.Width
-		return e, nil
+		m.width = msg.Width
+		return m, nil
 
 	case spinner.TickMsg:
-		if e.loading {
+		if m.loading {
 			var cmd tea.Cmd
-			e.spinner, cmd = e.spinner.Update(msg)
-			return e, cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
 		}
-		return e, nil
+		return m, nil
 
 	case choicesLoadedMsg:
-		return e.handleChoicesLoaded(msg)
+		return m.handleChoicesLoaded(msg)
 
 	case tea.KeyPressMsg:
-		return e.handleKeyPress(msg)
+		return m.handleKeyPress(msg)
 	}
 
-	return e, nil
+	return m, nil
 }
 
-func (e *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "esc":
-		e.aborted = true
-		e.done = true
-		return e, tea.Quit
+		m.aborted = true
+		m.done = true
+		return m, tea.Quit
 	case "shift+tab":
-		if e.loading {
-			return e, nil
+		if m.loading {
+			return m, nil
 		}
-		if e.goBack() {
-			return e, e.initCurrentField()
+		if m.goBack() {
+			return m, m.initCurrentField()
 		}
-		if e.canGoBack {
-			e.wentBack = true
-			e.done = true
-			return e, tea.Quit
+		if m.canGoBack {
+			m.wentBack = true
+			m.done = true
+			return m, tea.Quit
 		}
-		return e, nil
+		return m, nil
 	}
 
 	// During loading: enter retries, other keys ignored
-	if e.loading {
-		if e.loadErr != nil && msg.String() == "enter" {
-			e.loadErr = nil
-			return e, e.initCurrentField()
+	if m.loading {
+		if m.loadErr != nil && msg.String() == "enter" {
+			m.loadErr = nil
+			return m, m.initCurrentField()
 		}
-		return e, nil
+		return m, nil
 	}
 
-	if e.currentField == nil {
-		return e, nil
+	if m.currentField == nil {
+		return m, nil
 	}
 
-	submitted, cmd := e.currentField.Update(msg)
+	submitted, cmd := m.currentField.Update(msg)
 	if !submitted {
-		return e, cmd
+		return m, cmd
 	}
 
-	e.saveCurrentAnswer()
-	e.recordCompletedStep()
-	e.stepIndex++
-	e.advanceToNextVisible()
+	m.saveCurrentAnswer()
+	m.recordCompletedStep()
+	m.stepIndex++
+	m.advanceToNextVisible()
 
-	visible := VisibleSteps(e.options, e.answers)
-	if e.stepIndex >= len(visible) {
-		e.done = true
-		return e, tea.Quit
+	visible := VisibleSteps(m.options, m.answers)
+	if m.stepIndex >= len(visible) {
+		m.done = true
+		return m, tea.Quit
 	}
 
-	e.history = append(e.history, e.stepIndex)
-	return e, e.initCurrentField()
+	m.history = append(m.history, m.stepIndex)
+	return m, m.initCurrentField()
 }
 
-func (e *Engine) View() tea.View {
-	if e.done {
-		return tea.NewView(e.finalView())
+func (m *Engine) View() tea.View {
+	if m.done {
+		return tea.NewView(m.finalView())
 	}
 
 	var b strings.Builder
 
 	// Header
-	b.WriteString("\n  " + e.headerLine() + "\n")
+	b.WriteString("\n  " + m.headerLine() + "\n")
 
 	// Pinned info
-	if e.pinnedCnt > 0 {
-		b.WriteString("  " + ui.PinnedInfo(e.pinnedCnt) + "\n")
+	if m.pinnedCount > 0 {
+		b.WriteString("  " + ui.PinnedInfo(m.pinnedCount) + "\n")
 	}
 
 	// Completed steps
-	if len(e.completedSteps) > 0 {
+	if len(m.completedSteps) > 0 {
 		b.WriteString("\n")
-		for _, cs := range e.completedSteps {
+		for _, cs := range m.completedSteps {
 			b.WriteString(ui.CompletedStepLine(cs.StepNum, cs.Label, cs.Answer) + "\n")
 		}
 	}
@@ -212,28 +212,28 @@ func (e *Engine) View() tea.View {
 	b.WriteString("\n")
 
 	// Loading state
-	if e.loading {
-		opt := e.currentOption()
+	if m.loading {
+		opt := m.currentOption()
 		if opt != nil {
-			visible := VisibleSteps(e.options, e.answers)
+			visible := VisibleSteps(m.options, m.answers)
 			total := len(visible)
-			displayPos := e.stepIndex + 1
+			displayPos := m.stepIndex + 1
 			b.WriteString("  " + ui.StepCounter(displayPos, total) + "  ")
-			if e.loadErr != nil {
-				b.WriteString(ui.WarningText("Error loading choices: "+e.loadErr.Error()) + "\n")
+			if m.loadErr != nil {
+				b.WriteString(ui.WarningText("Error loading choices: "+m.loadErr.Error()) + "\n")
 				b.WriteString("         " + ui.NavHintText("enter=retry  shift+tab=back") + "\n")
 			} else {
-				b.WriteString(e.spinner.View() + " " + ui.FieldTitle("Loading "+opt.Label+"...") + "\n")
+				b.WriteString(m.spinner.View() + " " + ui.FieldTitle("Loading "+opt.Label+"...") + "\n")
 			}
 		}
 	} else {
 		// Current field with step counter
-		visible := VisibleSteps(e.options, e.answers)
+		visible := VisibleSteps(m.options, m.answers)
 		total := len(visible)
-		displayPos := e.stepIndex + 1
+		displayPos := m.stepIndex + 1
 
-		if e.currentField != nil {
-			fieldView := e.currentField.View()
+		if m.currentField != nil {
+			fieldView := m.currentField.View()
 			// Replace placeholder step counter with real one
 			placeholder := ui.StepCounter(0, 0)
 			actual := ui.StepCounter(displayPos, total)
@@ -249,201 +249,162 @@ func (e *Engine) View() tea.View {
 }
 
 // GetResult returns the wizard result after completion.
-func (e *Engine) GetResult() Result {
+func (m *Engine) GetResult() Result {
 	return Result{
-		Answers:  e.answers,
-		Aborted:  e.aborted,
-		GoBack:   e.wentBack,
+		Values:  m.answers,
+		Aborted:  m.aborted,
+		GoBack:   m.wentBack,
 	}
 }
 
 // finalView renders the summary that persists in scrollback after the wizard ends.
-func (e *Engine) finalView() string {
-	if e.aborted || e.wentBack {
+func (m *Engine) finalView() string {
+	if m.aborted || m.wentBack {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString("\n  " + e.headerLine() + "\n\n")
-	for _, cs := range e.completedSteps {
+	b.WriteString("\n  " + m.headerLine() + "\n\n")
+	for _, cs := range m.completedSteps {
 		b.WriteString(ui.CompletedStepLine(cs.StepNum, cs.Label, cs.Answer) + "\n")
 	}
 	return b.String()
 }
 
-func (e *Engine) handleChoicesLoaded(msg choicesLoadedMsg) (tea.Model, tea.Cmd) {
+func (m *Engine) handleChoicesLoaded(msg choicesLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.err != nil {
-		e.loadErr = msg.err
-		return e, nil
+		m.loadErr = msg.err
+		return m, nil
 	}
 
-	opt := e.currentOption()
+	opt := m.currentOption()
 	if opt == nil {
-		e.done = true
-		return e, tea.Quit
+		m.done = true
+		return m, tea.Quit
 	}
 
 	if len(msg.choices) == 0 {
-		e.loadErr = errors.New("no choices available")
-		return e, nil
+		m.loadErr = errors.New("no choices available")
+		return m, nil
 	}
 
 	// Update the option's choices in-place
 	opt.Choices = config.FlexChoices(msg.choices)
-	e.loading = false
-	e.loadErr = nil
+	m.loading = false
+	m.loadErr = nil
 
-	e.currentField = e.buildField(opt)
-	e.setFieldDefault(opt)
-	return e, e.currentField.Init()
+	m.currentField = buildField(opt)
+	m.setFieldDefault(opt)
+	return m, m.currentField.Init()
 }
 
-func (e *Engine) advanceToNextVisible() {
-	visible := VisibleSteps(e.options, e.answers)
-	for e.stepIndex < len(visible) {
-		idx := visible[e.stepIndex]
-		opt := e.options[idx]
-		if IsVisible(opt, e.answers) {
+func (m *Engine) advanceToNextVisible() {
+	visible := VisibleSteps(m.options, m.answers)
+	for m.stepIndex < len(visible) {
+		idx := visible[m.stepIndex]
+		opt := m.options[idx]
+		if IsVisible(opt, m.answers) {
 			break
 		}
-		e.stepIndex++
+		m.stepIndex++
 	}
 }
 
-func (e *Engine) goBack() bool {
-	if len(e.history) <= 1 {
+func (m *Engine) goBack() bool {
+	if len(m.history) <= 1 {
 		return false
 	}
 	// Pop current
-	e.history = e.history[:len(e.history)-1]
-	e.stepIndex = e.history[len(e.history)-1]
+	m.history = m.history[:len(m.history)-1]
+	m.stepIndex = m.history[len(m.history)-1]
 
 	// Remove last completed step from display
-	if len(e.completedSteps) > 0 {
-		e.completedSteps = e.completedSteps[:len(e.completedSteps)-1]
+	if len(m.completedSteps) > 0 {
+		m.completedSteps = m.completedSteps[:len(m.completedSteps)-1]
 	}
-	// Keep answer in e.answers so setFieldDefault restores the previous selection.
+	// Keep answer in m.answers so setFieldDefault restores the previous selection.
 	// saveCurrentAnswer will overwrite it when the user submits again.
 
 	return true
 }
 
-func (e *Engine) currentOption() *config.Option {
-	visible := VisibleSteps(e.options, e.answers)
-	if e.stepIndex >= len(visible) {
+func (m *Engine) currentOption() *config.Option {
+	visible := VisibleSteps(m.options, m.answers)
+	if m.stepIndex >= len(visible) {
 		return nil
 	}
-	return &e.options[visible[e.stepIndex]]
+	return &m.options[visible[m.stepIndex]]
 }
 
-func (e *Engine) initCurrentField() tea.Cmd {
-	opt := e.currentOption()
+func (m *Engine) initCurrentField() tea.Cmd {
+	opt := m.currentOption()
 	if opt == nil {
-		e.done = true
+		m.done = true
 		return tea.Quit
 	}
 
 	// Record in history if not already the last entry
-	if len(e.history) == 0 || e.history[len(e.history)-1] != e.stepIndex {
-		e.history = append(e.history, e.stepIndex)
+	if len(m.history) == 0 || m.history[len(m.history)-1] != m.stepIndex {
+		m.history = append(m.history, m.stepIndex)
 	}
 
 	// If choices_from is set, enter loading state
 	if opt.ChoicesFrom != "" && len(opt.Choices) == 0 {
-		e.loading = true
-		e.loadErr = nil
-		e.currentField = nil
+		m.loading = true
+		m.loadErr = nil
+		m.currentField = nil
 		resolveCmd := func() tea.Msg {
-			choices, err := ResolveChoices(opt.ChoicesFrom, e.answers)
+			choices, err := ResolveChoices(opt.ChoicesFrom, m.answers)
 			return choicesLoadedMsg{choices: choices, err: err}
 		}
-		return tea.Batch(e.spinner.Tick, resolveCmd)
+		return tea.Batch(m.spinner.Tick, resolveCmd)
 	}
 
-	e.loading = false
-	e.currentField = e.buildField(opt)
-	e.setFieldDefault(opt)
+	m.loading = false
+	m.currentField = buildField(opt)
+	m.setFieldDefault(opt)
 
-	return e.currentField.Init()
+	return m.currentField.Init()
 }
 
-func (e *Engine) buildField(opt *config.Option) Field {
-	switch opt.Type {
-	case config.OptionSelect:
-		return NewSelectField(*opt)
-	case config.OptionConfirm:
-		return NewConfirmField(*opt)
-	case config.OptionInput:
-		return NewInputField(*opt)
-	case config.OptionMultiSelect:
-		return NewMultiSelectField(*opt)
-	default:
-		return NewInputField(*opt)
-	}
-}
+func (m *Engine) setFieldDefault(opt *config.Option) {
+	val := resolveDefault(opt, m.answers, m.defaults)
 
-func (e *Engine) setFieldDefault(opt *config.Option) {
-	// Priority: existing answer > last-used > config default
-	var val any
-	if existing, ok := e.answers[opt.Name]; ok {
-		val = existing
-	} else if lastUsed, ok := e.defaults[opt.Name]; ok {
-		val = lastUsed
-	} else {
-		val = opt.Default
-	}
-
-	if val == nil {
-		// Set sensible defaults
-		switch opt.Type {
-		case config.OptionSelect:
-			if len(opt.Choices) > 0 {
-				val = opt.Choices[0].Value
-			}
-		case config.OptionConfirm:
-			val = false
-		case config.OptionInput:
-			val = ""
-		case config.OptionMultiSelect:
-			// no default needed
-		}
-	}
-
-	switch f := e.currentField.(type) {
+	switch f := m.currentField.(type) {
 	case *SelectField:
 		if opt.Default != nil {
-			f.SetDefault(opt.Default)
+			f.SetDefault(*opt.Default)
 		}
 	case *ConfirmField:
-		defVal := opt.Default
-		if defVal == nil {
-			defVal = false
+		defVal := config.BoolVal(false)
+		if opt.Default != nil {
+			defVal = *opt.Default
 		}
 		f.SetDefault(defVal)
 	}
 
 	if val != nil {
-		e.currentField.SetValue(val)
+		m.currentField.SetValue(*val)
 	}
 }
 
-func (e *Engine) saveCurrentAnswer() {
-	opt := e.currentOption()
-	if opt == nil || e.currentField == nil {
+func (m *Engine) saveCurrentAnswer() {
+	opt := m.currentOption()
+	if opt == nil || m.currentField == nil {
 		return
 	}
-	e.answers[opt.Name] = e.currentField.Value()
+	m.answers[opt.Name] = m.currentField.Value()
 }
 
-func (e *Engine) recordCompletedStep() {
-	opt := e.currentOption()
-	if opt == nil || e.currentField == nil {
+func (m *Engine) recordCompletedStep() {
+	opt := m.currentOption()
+	if opt == nil || m.currentField == nil {
 		return
 	}
-	e.completedSteps = append(e.completedSteps, CompletedStep{
-		StepNum: e.stepIndex + 1,
+	m.completedSteps = append(m.completedSteps, CompletedStep{
+		StepNum: m.stepIndex + 1,
 		Label:   opt.Label,
-		Answer:  FormatAnswer(opt, e.currentField.Value()),
+		Answer:  FormatAnswer(opt, m.currentField.Value()),
 	})
 }
 
@@ -455,8 +416,8 @@ type RunParams struct {
 	Overridden    bool
 	Options       []config.Option
 	PinnedCount   int
-	Defaults      Answers
-	PinnedAnswers Answers
+	Defaults      config.Values
+	PinnedValues  config.Values
 	CanGoBack     bool
 }
 
@@ -464,7 +425,7 @@ type RunParams struct {
 func Run(p RunParams) (*Result, error) {
 	engine := NewEngine(p.WizardName, p.Version, p.VersionLabel, p.Overridden, p.Options, p.PinnedCount, p.Defaults)
 	engine.canGoBack = p.CanGoBack
-	engine.SetPinnedAnswers(p.PinnedAnswers)
+	engine.SetPinnedValues(p.PinnedValues)
 
 	prog := tea.NewProgram(engine)
 	finalModel, err := prog.Run()

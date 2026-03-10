@@ -1,6 +1,5 @@
 package config
 
-import "fmt"
 
 // validateVisibilityGraph checks show_when/hide_when/choices_from for
 // self-references, forward references, and conflicting visibility conditions.
@@ -22,7 +21,7 @@ func validateVisibilityGraph(options []Option, add func(string, ...any)) {
 }
 
 func checkVisibilityRefs(
-	cond map[string]any, kind string,
+	cond Values, kind string,
 	idx int, name, prefix string,
 	positionOf map[string]int, add func(string, ...any),
 ) {
@@ -81,7 +80,7 @@ func checkVisibilityConflict(o Option, prefix string, add func(string, ...any)) 
 }
 
 // isSubset returns true if every value in a's set is also in b's set.
-func isSubset(a, b any) bool {
+func isSubset(a, b FieldValue) bool {
 	setA := toStringSet(a)
 	setB := toStringSet(b)
 	for v := range setA {
@@ -92,21 +91,13 @@ func isSubset(a, b any) bool {
 	return true
 }
 
-func toStringSet(v any) map[string]bool {
-	switch vv := v.(type) {
-	case []any:
-		m := make(map[string]bool, len(vv))
-		for _, item := range vv {
-			m[fmt.Sprintf("%v", item)] = true
-		}
-		return m
-	case []string:
-		m := make(map[string]bool, len(vv))
-		for _, s := range vv {
+func toStringSet(v FieldValue) map[string]bool {
+	if v.IsStrings() {
+		m := make(map[string]bool, len(v.Strings()))
+		for _, s := range v.Strings() {
 			m[s] = true
 		}
 		return m
-	default:
-		return map[string]bool{fmt.Sprintf("%v", v): true}
 	}
+	return map[string]bool{v.Scalar(): true}
 }

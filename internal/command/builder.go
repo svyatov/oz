@@ -27,7 +27,7 @@ type Part struct {
 }
 
 // Build constructs the full CLI command from the wizard config and answers.
-func Build(w *config.Wizard, answers map[string]any) []Part {
+func Build(w *config.Wizard, answers config.Values) []Part {
 	var parts []Part
 	for s := range strings.FieldsSeq(w.Command) {
 		parts = append(parts, Part{s, PartCommand})
@@ -44,7 +44,7 @@ func Build(w *config.Wizard, answers map[string]any) []Part {
 		}
 
 		if opt.Positional {
-			s := fmt.Sprintf("%v", val)
+			s := val.Scalar()
 			if s != "" && s != config.NoneValue {
 				positionalParts = append(positionalParts, Part{s, PartArg})
 			}
@@ -124,7 +124,7 @@ func PlainParts(parts []Part) []string {
 	return strs
 }
 
-func buildOptionFlags(opt config.Option, val any, defaultStyle config.FlagStyle) []string {
+func buildOptionFlags(opt config.Option, val config.FieldValue, defaultStyle config.FlagStyle) []string {
 	style := opt.EffectiveFlagStyle(defaultStyle)
 
 	switch opt.Type {
@@ -140,11 +140,8 @@ func buildOptionFlags(opt config.Option, val any, defaultStyle config.FlagStyle)
 	return nil
 }
 
-func buildConfirmFlags(opt config.Option, val any) []string {
-	b, ok := val.(bool)
-	if !ok {
-		return nil
-	}
+func buildConfirmFlags(opt config.Option, val config.FieldValue) []string {
+	b := val.Bool()
 
 	flagTrue := opt.FlagTrue
 	// Shorthand: if flag is set and flag_true is empty, use flag as flag_true
@@ -161,8 +158,8 @@ func buildConfirmFlags(opt config.Option, val any) []string {
 	return nil
 }
 
-func buildSelectFlags(opt config.Option, val any, style config.FlagStyle) []string {
-	s := fmt.Sprintf("%v", val)
+func buildSelectFlags(opt config.Option, val config.FieldValue, style config.FlagStyle) []string {
+	s := val.Scalar()
 	if s == "" || s == config.NoneValue {
 		if opt.FlagNone != "" {
 			return []string{opt.FlagNone}
@@ -176,17 +173,17 @@ func buildSelectFlags(opt config.Option, val any, style config.FlagStyle) []stri
 	return []string{formatFlag(opt.Flag, s, style)}
 }
 
-func buildInputFlags(opt config.Option, val any, style config.FlagStyle) []string {
-	s := fmt.Sprintf("%v", val)
+func buildInputFlags(opt config.Option, val config.FieldValue, style config.FlagStyle) []string {
+	s := val.Scalar()
 	if s == "" || opt.Flag == "" {
 		return nil
 	}
 	return []string{formatFlag(opt.Flag, s, style)}
 }
 
-func buildMultiSelectFlags(opt config.Option, val any, style config.FlagStyle) []string {
-	vals, ok := val.([]string)
-	if !ok || len(vals) == 0 || opt.Flag == "" {
+func buildMultiSelectFlags(opt config.Option, val config.FieldValue, style config.FlagStyle) []string {
+	vals := val.Strings()
+	if len(vals) == 0 || opt.Flag == "" {
 		return nil
 	}
 

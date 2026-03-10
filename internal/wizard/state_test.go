@@ -7,17 +7,17 @@ import (
 )
 
 func TestEvalShowWhen(t *testing.T) {
-	answers := Answers{"lang": "go", "verbose": true}
+	answers := config.Values{"lang": config.StringVal("go"), "verbose": config.BoolVal(true)}
 
 	tests := []struct {
 		name     string
-		showWhen map[string]any
+		showWhen config.Values
 		want     bool
 	}{
 		{"empty_conditions", nil, true},
-		{"all_met", map[string]any{"lang": "go", "verbose": true}, true},
-		{"one_unmet", map[string]any{"lang": "rust"}, false},
-		{"missing_answer", map[string]any{"missing": "x"}, false},
+		{"all_met", config.Values{"lang": config.StringVal("go"), "verbose": config.BoolVal(true)}, true},
+		{"one_unmet", config.Values{"lang": config.StringVal("rust")}, false},
+		{"missing_answer", config.Values{"missing": config.StringVal("x")}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,17 +29,17 @@ func TestEvalShowWhen(t *testing.T) {
 }
 
 func TestEvalHideWhen(t *testing.T) {
-	answers := Answers{"lang": "go", "verbose": true}
+	answers := config.Values{"lang": config.StringVal("go"), "verbose": config.BoolVal(true)}
 
 	tests := []struct {
 		name     string
-		hideWhen map[string]any
+		hideWhen config.Values
 		want     bool
 	}{
 		{"empty_conditions", nil, false},
-		{"all_met", map[string]any{"lang": "go"}, true},
-		{"not_met", map[string]any{"lang": "rust"}, false},
-		{"missing_answer", map[string]any{"missing": "x"}, false},
+		{"all_met", config.Values{"lang": config.StringVal("go")}, true},
+		{"not_met", config.Values{"lang": config.StringVal("rust")}, false},
+		{"missing_answer", config.Values{"missing": config.StringVal("x")}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestEvalHideWhen(t *testing.T) {
 }
 
 func TestIsVisible(t *testing.T) {
-	answers := Answers{"lang": "go", "skip": true}
+	answers := config.Values{"lang": config.StringVal("go"), "skip": config.BoolVal(true)}
 
 	tests := []struct {
 		name string
@@ -59,19 +59,19 @@ func TestIsVisible(t *testing.T) {
 		want bool
 	}{
 		{"no_conditions", config.Option{Name: "a"}, true},
-		{"show_when_met", config.Option{Name: "a", ShowWhen: map[string]any{"lang": "go"}}, true},
-		{"show_when_not_met", config.Option{Name: "a", ShowWhen: map[string]any{"lang": "rust"}}, false},
-		{"hide_when_met", config.Option{Name: "a", HideWhen: map[string]any{"skip": true}}, false},
-		{"hide_when_not_met", config.Option{Name: "a", HideWhen: map[string]any{"skip": false}}, true},
+		{"show_when_met", config.Option{Name: "a", ShowWhen: config.Values{"lang": config.StringVal("go")}}, true},
+		{"show_when_not_met", config.Option{Name: "a", ShowWhen: config.Values{"lang": config.StringVal("rust")}}, false},
+		{"hide_when_met", config.Option{Name: "a", HideWhen: config.Values{"skip": config.BoolVal(true)}}, false},
+		{"hide_when_not_met", config.Option{Name: "a", HideWhen: config.Values{"skip": config.BoolVal(false)}}, true},
 		{"show_met_hide_not_met", config.Option{
 			Name:     "a",
-			ShowWhen: map[string]any{"lang": "go"},
-			HideWhen: map[string]any{"skip": false},
+			ShowWhen: config.Values{"lang": config.StringVal("go")},
+			HideWhen: config.Values{"skip": config.BoolVal(false)},
 		}, true},
 		{"show_met_hide_met", config.Option{
 			Name:     "a",
-			ShowWhen: map[string]any{"lang": "go"},
-			HideWhen: map[string]any{"skip": true},
+			ShowWhen: config.Values{"lang": config.StringVal("go")},
+			HideWhen: config.Values{"skip": config.BoolVal(true)},
 		}, false},
 	}
 	for _, tt := range tests {
@@ -86,22 +86,17 @@ func TestIsVisible(t *testing.T) {
 func TestValuesMatch(t *testing.T) {
 	tests := []struct {
 		name           string
-		actual, expect any
+		actual, expect config.FieldValue
 		want           bool
 	}{
-		{"string_string", "foo", "foo", true},
-		{"int_int", 42, 42, true},
-		{"string_int_coerce", "42", 42, true},
-		{"mismatch", "a", "b", false},
-		// OR: expected is a list
-		{"or_match", "go", []any{"go", "rust", "c"}, true},
-		{"or_no_match", "python", []any{"go", "rust", "c"}, false},
+		{"string_string", config.StringVal("foo"), config.StringVal("foo"), true},
+		{"mismatch", config.StringVal("a"), config.StringVal("b"), false},
 		// Multi-select membership: actual is a list
-		{"membership_match", []string{"auth", "api"}, "auth", true},
-		{"membership_no_match", []string{"auth", "api"}, "logging", false},
+		{"membership_match", config.StringsVal("auth", "api"), config.StringVal("auth"), true},
+		{"membership_no_match", config.StringsVal("auth", "api"), config.StringVal("logging"), false},
 		// Both lists: OR + membership
-		{"both_lists_match", []string{"auth", "api"}, []any{"api", "logging"}, true},
-		{"both_lists_no_match", []string{"auth", "api"}, []any{"logging", "cache"}, false},
+		{"both_lists_match", config.StringsVal("auth", "api"), config.StringsVal("api", "logging"), true},
+		{"both_lists_no_match", config.StringsVal("auth", "api"), config.StringsVal("logging", "cache"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,13 +114,17 @@ func TestFilterPinned(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		pins      map[string]any
+		pins      config.Values
 		wantNames []string
 		wantCount int
 	}{
-		{"no_pins", map[string]any{}, []string{"a", "b", "c"}, 0},
-		{"some_pinned", map[string]any{"b": "val"}, []string{"a", "c"}, 1},
-		{"all_pinned", map[string]any{"a": 1, "b": 2, "c": 3}, nil, 3},
+		{"no_pins", config.Values{}, []string{"a", "b", "c"}, 0},
+		{"some_pinned", config.Values{"b": config.StringVal("val")}, []string{"a", "c"}, 1},
+		{"all_pinned", config.Values{
+			"a": config.StringVal("1"),
+			"b": config.StringVal("2"),
+			"c": config.StringVal("3"),
+		}, nil, 3},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,20 +151,20 @@ func TestFilterPinned(t *testing.T) {
 func TestVisibleSteps(t *testing.T) {
 	opts := []config.Option{
 		{Name: "a"},
-		{Name: "b", ShowWhen: map[string]any{"a": "yes"}},
+		{Name: "b", ShowWhen: config.Values{"a": config.StringVal("yes")}},
 		{Name: "c"},
-		{Name: "d", HideWhen: map[string]any{"a": "yes"}},
+		{Name: "d", HideWhen: config.Values{"a": config.StringVal("yes")}},
 	}
 
 	t.Run("all_visible", func(t *testing.T) {
-		answers := Answers{"a": "yes"}
+		answers := config.Values{"a": config.StringVal("yes")}
 		got := VisibleSteps(opts, answers)
 		want := []int{0, 1, 2}
 		assertIntSlice(t, got, want)
 	})
 
 	t.Run("some_hidden", func(t *testing.T) {
-		answers := Answers{"a": "no"}
+		answers := config.Values{"a": config.StringVal("no")}
 		got := VisibleSteps(opts, answers)
 		want := []int{0, 2, 3}
 		assertIntSlice(t, got, want)
@@ -176,22 +175,22 @@ func TestFormatAnswer(t *testing.T) {
 	tests := []struct {
 		name string
 		opt  config.Option
-		val  any
+		val  config.FieldValue
 		want string
 	}{
-		{"confirm_true", config.Option{Type: config.OptionConfirm}, true, "Yes"},
-		{"confirm_false", config.Option{Type: config.OptionConfirm}, false, "No"},
+		{"confirm_true", config.Option{Type: config.OptionConfirm}, config.BoolVal(true), "Yes"},
+		{"confirm_false", config.Option{Type: config.OptionConfirm}, config.BoolVal(false), "No"},
 		{"select_label_lookup", config.Option{
 			Type:    config.OptionSelect,
 			Choices: config.FlexChoices{{Value: "go", Label: "Go"}},
-		}, "go", "Go"},
-		{"select_none", config.Option{Type: config.OptionSelect}, config.NoneValue, "None"},
-		{"select_fallback", config.Option{Type: config.OptionSelect}, "unknown", "unknown"},
+		}, config.StringVal("go"), "Go"},
+		{"select_none", config.Option{Type: config.OptionSelect}, config.StringVal(config.NoneValue), "None"},
+		{"select_fallback", config.Option{Type: config.OptionSelect}, config.StringVal("unknown"), "unknown"},
 		{"multi_select_labels", config.Option{
 			Type:    config.OptionMultiSelect,
 			Choices: config.FlexChoices{{Value: "a", Label: "Alpha"}, {Value: "b", Label: "Beta"}},
-		}, []string{"a", "b"}, "Alpha, Beta"},
-		{"input_fallback", config.Option{Type: config.OptionInput}, "hello", "hello"},
+		}, config.StringsVal("a", "b"), "Alpha, Beta"},
+		{"input_fallback", config.Option{Type: config.OptionInput}, config.StringVal("hello"), "hello"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

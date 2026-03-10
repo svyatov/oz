@@ -164,7 +164,7 @@ func printOptionFlags(o config.Option) {
 
 func printOptionDetails(o config.Option) {
 	if o.Default != nil {
-		fmt.Printf("         Default: %v\n", o.Default)
+		fmt.Printf("         Default: %s\n", o.Default.Display())
 	}
 	if o.Required {
 		fmt.Println("         Required: yes")
@@ -190,13 +190,13 @@ func printValidateInfo(v *config.InputRule) {
 	}
 }
 
-func printConditions(label string, conds map[string]any) {
+func printConditions(label string, conds config.Values) {
 	if len(conds) == 0 {
 		return
 	}
 	conditions := make([]string, 0, len(conds))
 	for k, v := range conds {
-		conditions = append(conditions, fmt.Sprintf("%s=%v", k, v))
+		conditions = append(conditions, fmt.Sprintf("%s=%s", k, v.Display()))
 	}
 	fmt.Printf("         %s: %s\n", label, strings.Join(conditions, ", "))
 }
@@ -243,7 +243,7 @@ func pinsListCmd(wizardName string) *cobra.Command {
 				fmt.Printf("  %s: %s\n", ui.AccentStyle.Render("version"), pinnedVer)
 			}
 			for k, v := range pins {
-				fmt.Printf("  %s: %v\n", ui.AccentStyle.Render(k), v)
+				fmt.Printf("  %s: %s\n", ui.AccentStyle.Render(k), v.Display())
 			}
 			return nil
 		},
@@ -350,7 +350,7 @@ func presetsShowCmd(wizardName string) *cobra.Command {
 
 			fmt.Printf("\n  Preset: %s\n\n", args[0])
 			for k, v := range values {
-				fmt.Printf("  %s: %v\n", k, v)
+				fmt.Printf("  %s: %s\n", k, v.Display())
 			}
 
 			parts := command.Build(w, values)
@@ -391,19 +391,19 @@ func presetsInspectCmd(wizardName string) *cobra.Command {
 			for k, v := range values {
 				opt, known := optMap[k]
 				if known {
-					fmt.Printf("  %s: %v\n", ui.TitleStyle.Render(opt.Label), v)
+					fmt.Printf("  %s: %s\n", ui.TitleStyle.Render(opt.Label), v.Display())
 					if opt.Description != "" {
 						fmt.Printf("    %s\n", ui.MutedStyle.Render(opt.Description))
 					}
 					// Find matching choice description
 					for _, c := range opt.Choices {
-						if fmt.Sprintf("%v", v) == c.Value && c.Description != "" {
+						if v.Scalar() == c.Value && c.Description != "" {
 							fmt.Printf("    %s\n", ui.MutedStyle.Render(c.Description))
 							break
 						}
 					}
 				} else {
-					fmt.Printf("  %s: %v\n", k, v)
+					fmt.Printf("  %s: %s\n", k, v.Display())
 				}
 			}
 

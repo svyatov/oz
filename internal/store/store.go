@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/svyatov/oz/internal/config"
 )
 
 func validateName(name string) error {
@@ -35,14 +37,14 @@ func New(configDir string) *Store {
 // VersionedState is used when version_control is configured.
 type VersionedState struct {
 	PinnedVersion string                 `yaml:"pinned_version,omitempty"`
-	Pins          map[string]any         `yaml:"pins,omitempty"`
+	Pins          config.Values          `yaml:"pins,omitempty"`
 	Versions      map[string]*StateEntry `yaml:"versions,omitempty"`
 }
 
 // StateEntry holds last-used values and pins for a single version (or global).
 type StateEntry struct {
-	LastUsed map[string]any `yaml:"last_used,omitempty"`
-	Pins     map[string]any `yaml:"pins,omitempty"`
+	LastUsed config.Values `yaml:"last_used,omitempty"`
+	Pins     config.Values `yaml:"pins,omitempty"`
 }
 
 func (s *Store) statePath(wizard string) string {
@@ -131,10 +133,10 @@ func (s *Store) saveVersionedState(path, version string, entry *StateEntry) erro
 }
 
 // LoadPins reads the version-independent pins for a versioned wizard.
-func (s *Store) LoadPins(wizard string) (map[string]any, error) {
+func (s *Store) LoadPins(wizard string) (config.Values, error) {
 	data, err := os.ReadFile(s.statePath(wizard))
 	if os.IsNotExist(err) {
-		return make(map[string]any), nil
+		return make(config.Values), nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("reading state: %w", err)
@@ -144,13 +146,13 @@ func (s *Store) LoadPins(wizard string) (map[string]any, error) {
 		return nil, fmt.Errorf("parsing state: %w", err)
 	}
 	if vs.Pins == nil {
-		return make(map[string]any), nil
+		return make(config.Values), nil
 	}
 	return vs.Pins, nil
 }
 
 // SavePins writes the version-independent pins, preserving other state.
-func (s *Store) SavePins(wizard string, pins map[string]any) error {
+func (s *Store) SavePins(wizard string, pins config.Values) error {
 	path := s.statePath(wizard)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
@@ -219,7 +221,7 @@ func (s *Store) ListPresets(wizard string) ([]string, error) {
 }
 
 // LoadPreset reads a named preset, returning a map of option name → value.
-func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
+func (s *Store) LoadPreset(wizard, name string) (config.Values, error) {
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
@@ -227,7 +229,7 @@ func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading preset %q: %w", name, err)
 	}
-	var values map[string]any
+	var values config.Values
 	if err := yaml.Unmarshal(data, &values); err != nil {
 		return nil, fmt.Errorf("parsing preset %q: %w", name, err)
 	}
@@ -235,7 +237,7 @@ func (s *Store) LoadPreset(wizard, name string) (map[string]any, error) {
 }
 
 // SavePreset writes a named preset.
-func (s *Store) SavePreset(wizard, name string, values map[string]any) error {
+func (s *Store) SavePreset(wizard, name string, values config.Values) error {
 	if err := validateName(name); err != nil {
 		return err
 	}

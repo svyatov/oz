@@ -51,19 +51,19 @@ func graphCases() []graphCase {
 func graphRefCases() []graphCase {
 	return []graphCase{
 		{"self_ref_show_when", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"second": "x"}
+			opts[1].ShowWhen = Values{"second": StringVal("x")}
 			return opts
 		}, "references itself"},
 		{"self_ref_hide_when", func(opts []Option) []Option {
-			opts[0].HideWhen = map[string]any{"first": "x"}
+			opts[0].HideWhen = Values{"first": StringVal("x")}
 			return opts
 		}, "references itself"},
 		{"forward_ref_show_when", func(opts []Option) []Option {
-			opts[0].ShowWhen = map[string]any{"second": "x"}
+			opts[0].ShowWhen = Values{"second": StringVal("x")}
 			return opts
 		}, "appears later"},
 		{"forward_ref_hide_when", func(opts []Option) []Option {
-			opts[0].HideWhen = map[string]any{"second": "x"}
+			opts[0].HideWhen = Values{"second": StringVal("x")}
 			return opts
 		}, "appears later"},
 		{"forward_ref_choices_from", func(opts []Option) []Option {
@@ -75,13 +75,13 @@ func graphRefCases() []graphCase {
 			return opts
 		}, "references itself"},
 		{"backward_ref_valid", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": "x"}
+			opts[1].ShowWhen = Values{"first": StringVal("x")}
 			return opts
 		}, ""},
 		{"chain_backward_valid", func(opts []Option) []Option {
 			opts = append(opts, Option{
 				Name: "third", Type: OptionInput, Label: "Third",
-				ShowWhen: map[string]any{"second": "val"},
+				ShowWhen: Values{"second": StringVal("val")},
 			})
 			return opts
 		}, ""},
@@ -91,46 +91,46 @@ func graphRefCases() []graphCase {
 func graphConflictCases() []graphCase {
 	return []graphCase{
 		{"conflict_scalar", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": "x"}
-			opts[1].HideWhen = map[string]any{"first": "x"}
+			opts[1].ShowWhen = Values{"first": StringVal("x")}
+			opts[1].HideWhen = Values{"first": StringVal("x")}
 			return opts
 		}, "conflict on key"},
 		{"conflict_bool", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": true}
-			opts[1].HideWhen = map[string]any{"first": true}
+			opts[1].ShowWhen = Values{"first": BoolVal(true)}
+			opts[1].HideWhen = Values{"first": BoolVal(true)}
 			return opts
 		}, "conflict on key"},
 		{"conflict_show_subset_of_hide_values", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": "x"}
-			opts[1].HideWhen = map[string]any{"first": []any{"x", "y"}}
+			opts[1].ShowWhen = Values{"first": StringVal("x")}
+			opts[1].HideWhen = Values{"first": StringsVal("x", "y")}
 			return opts
 		}, "conflict on key"},
 		{"conflict_hide_subset_of_show_keys", func(opts []Option) []Option {
 			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
-			opts[2].ShowWhen = map[string]any{"first": "x", "second": "y"}
-			opts[2].HideWhen = map[string]any{"first": "x"}
+			opts[2].ShowWhen = Values{"first": StringVal("x"), "second": StringVal("y")}
+			opts[2].HideWhen = Values{"first": StringVal("x")}
 			return opts
 		}, "conflict on key"},
 		{"no_conflict_different_values", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": "x"}
-			opts[1].HideWhen = map[string]any{"first": "y"}
+			opts[1].ShowWhen = Values{"first": StringVal("x")}
+			opts[1].HideWhen = Values{"first": StringVal("y")}
 			return opts
 		}, ""},
 		{"no_conflict_different_keys", func(opts []Option) []Option {
 			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
-			opts[2].ShowWhen = map[string]any{"first": "x"}
-			opts[2].HideWhen = map[string]any{"second": "y"}
+			opts[2].ShowWhen = Values{"first": StringVal("x")}
+			opts[2].HideWhen = Values{"second": StringVal("y")}
 			return opts
 		}, ""},
 		{"no_conflict_hide_has_extra_keys", func(opts []Option) []Option {
 			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
-			opts[2].ShowWhen = map[string]any{"first": "x"}
-			opts[2].HideWhen = map[string]any{"first": "x", "second": "y"}
+			opts[2].ShowWhen = Values{"first": StringVal("x")}
+			opts[2].HideWhen = Values{"first": StringVal("x"), "second": StringVal("y")}
 			return opts
 		}, ""},
 		{"no_conflict_partial_list_overlap", func(opts []Option) []Option {
-			opts[1].ShowWhen = map[string]any{"first": []any{"a", "b"}}
-			opts[1].HideWhen = map[string]any{"first": []any{"b", "c"}}
+			opts[1].ShowWhen = Values{"first": StringsVal("a", "b")}
+			opts[1].HideWhen = Values{"first": StringsVal("b", "c")}
 			return opts
 		}, ""},
 	}

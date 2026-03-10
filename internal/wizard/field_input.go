@@ -72,12 +72,10 @@ func (f *InputField) View() string {
 	return b.String()
 }
 
-func (f *InputField) Value() any { return f.ti.Value() }
+func (f *InputField) Value() config.FieldValue { return config.StringVal(f.ti.Value()) }
 
-func (f *InputField) SetValue(v any) {
-	if v != nil {
-		f.ti.SetValue(fmt.Sprintf("%v", v))
-	}
+func (f *InputField) SetValue(v config.FieldValue) {
+	f.ti.SetValue(v.Scalar())
 }
 
 func (f *InputField) validate() string {

@@ -14,7 +14,7 @@ const choicesFromTimeout = 10 * time.Second
 
 // ResolveChoices runs a choices_from command and parses stdout into choices.
 // Each non-empty line = one choice. Tab-separated columns: value[\tlabel[\tdescription]].
-func ResolveChoices(choicesFrom string, answers Answers) ([]config.Choice, error) {
+func ResolveChoices(choicesFrom string, answers config.Values) ([]config.Choice, error) {
 	cmd := interpolateCommand(choicesFrom, answers)
 
 	ctx, cancel := context.WithTimeout(context.Background(), choicesFromTimeout)
@@ -29,14 +29,14 @@ func ResolveChoices(choicesFrom string, answers Answers) ([]config.Choice, error
 }
 
 // interpolateCommand replaces {{name}} (no dot) with shell-escaped answer values.
-func interpolateCommand(cmd string, answers Answers) string {
+func interpolateCommand(cmd string, answers config.Values) string {
 	return config.ChoicesFromInterpolationRe.ReplaceAllStringFunc(cmd, func(match string) string {
 		name := match[2 : len(match)-2] // strip {{ and }}
 		val, ok := answers[name]
 		if !ok {
 			return match
 		}
-		return shellEscape(fmt.Sprintf("%v", val))
+		return shellEscape(val.Scalar())
 	})
 }
 
