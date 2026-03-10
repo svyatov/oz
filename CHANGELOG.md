@@ -14,7 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Rename `--preset` flag to `--with-preset` (`-p`) to avoid shadowing the subcommand name
 - Add `-n` shorthand for `--dry-run`
 - Rename `explain` to `inspect` (consistent with `presets inspect`)
-- Convert `--pins` flag to `pins` subcommand with `show` and `clear` sub-commands
+- Rename `pins show` to `pins list` (consistent with `presets list`)
+- Convert `--pins` flag to `pins` subcommand with `list` and `clear` sub-commands
 
 ### Added
 

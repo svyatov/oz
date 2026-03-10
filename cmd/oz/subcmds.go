@@ -205,16 +205,16 @@ func pinsCmd(wizardName string) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(pinsShowCmd(wizardName))
+	cmd.AddCommand(pinsListCmd(wizardName))
 	cmd.AddCommand(pinsClearCmd(wizardName))
 
 	return cmd
 }
 
-func pinsShowCmd(wizardName string) *cobra.Command {
+func pinsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "show",
-		Short: "Display current pins",
+		Use:   "list",
+		Short: "List current pins",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {

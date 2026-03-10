@@ -198,10 +198,10 @@ func TestPresetsListEmpty(t *testing.T) {
 	}
 }
 
-func TestPinsShowEmpty(t *testing.T) {
+func TestPinsListEmpty(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "show"); err != nil {
-		t.Fatalf("pins show: %v", err)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "list"); err != nil {
+		t.Fatalf("pins list: %v", err)
 	}
 }
 
