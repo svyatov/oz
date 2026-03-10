@@ -60,10 +60,13 @@ func newRootCmd(args []string) *cobra.Command {
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "run <wizard>",
-		Aliases:           []string{"r"},
-		Short:             "Run a wizard",
-		Example:           "  oz run myapp\n  oz run myapp --dry-run\n  oz run myapp -p fast",
+		Use:     "run <wizard>",
+		Aliases: []string{"r"},
+		Short:   "Run a wizard",
+		Long: `Launch an interactive wizard that walks through options step by step
+and builds a CLI command from your answers. Use --dry-run to preview
+the command without executing, or --with-preset to replay saved values.`,
+		Example: "  oz run myapp\n  oz run myapp --dry-run\n  oz run myapp -p fast",
 		ValidArgsFunction: completeWizardNames,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -236,6 +239,8 @@ func createCmd() *cobra.Command {
 		Use:     "create <wizard>",
 		Aliases: []string{"c", "new"},
 		Short:   "Create a new wizard config from template",
+		Long: `Create a new wizard YAML config from a starter template and open it
+in your editor ($VISUAL, $EDITOR, or vi). Use --no-edit to skip the editor.`,
 		Example: "  oz create myapp\n  oz create myapp --no-edit",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {

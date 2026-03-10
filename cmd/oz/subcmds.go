@@ -35,6 +35,8 @@ func doctorCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
 		Short: "Check tool installation and detected version",
+		Long: `Run diagnostics for the wizard's underlying tool: verify it is installed,
+detect its version, show the active compat range, and report any issues.`,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -91,6 +93,9 @@ func inspectCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "inspect",
 		Short: "Show all options with descriptions",
+		Long: `Display every wizard option with its type, flags, default value,
+choices, and visibility conditions. Useful for reviewing a wizard
+config without running it.`,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -200,6 +205,9 @@ func pinsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pins",
 		Short: "Manage pinned options",
+		Long: `Open an interactive TUI to pin option values. Pinned options are
+skipped during the wizard and use their pinned value automatically.
+Use "pins list" to view or "pins clear" to remove all pins.`,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runPins(wizardName)
 		},
