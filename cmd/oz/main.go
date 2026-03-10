@@ -200,7 +200,9 @@ func listCmd() *cobra.Command {
 }
 
 func removeCmd() *cobra.Command {
-	return &cobra.Command{
+	var force bool
+
+	cmd := &cobra.Command{
 		Use:     "remove <wizard>",
 		Aliases: []string{"rm"},
 		Short:   "Remove a wizard config",
@@ -210,7 +212,7 @@ func removeCmd() *cobra.Command {
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
-			if !confirmDangerousPrompt(fmt.Sprintf("Remove %s?", path)) {
+			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove %s?", path)) {
 				return nil
 			}
 			if err := os.Remove(path); err != nil {
@@ -221,6 +223,10 @@ func removeCmd() *cobra.Command {
 		},
 		ValidArgsFunction: completeWizardNames,
 	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "skip confirmation prompt")
+
+	return cmd
 }
 
 func createCmd() *cobra.Command {

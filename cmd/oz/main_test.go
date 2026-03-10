@@ -104,6 +104,17 @@ func TestValidateCmdMissing(t *testing.T) {
 	}
 }
 
+func TestRemoveCmdForce(t *testing.T) {
+	dir := setupTestConfig(t)
+	path := filepath.Join(dir, "wizards", "testwiz.yml")
+	if err := execCmd(t, "--config-dir", dir, "remove", "--force", "testwiz"); err != nil {
+		t.Fatalf("remove --force: %v", err)
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("expected wizard file to be removed")
+	}
+}
+
 func TestRemoveCmdMissing(t *testing.T) {
 	dir := setupTestConfig(t)
 	if err := execCmd(t, "--config-dir", dir, "remove", "nonexistent"); err == nil {
