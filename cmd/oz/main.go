@@ -174,7 +174,7 @@ func listCmd() *cobra.Command {
 				return fmt.Errorf("listing wizards: %w", err)
 			}
 			if len(wizards) == 0 {
-				fmt.Println("No wizards found in", config.WizardsDir(configDir))
+				fmt.Printf("No wizards found in %s.\n", config.WizardsDir(configDir))
 				return nil
 			}
 			maxLen := 0
@@ -212,13 +212,13 @@ func removeCmd() *cobra.Command {
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
-			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove %s?", path)) {
+			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove wizard %q?", args[0])) {
 				return nil
 			}
 			if err := os.Remove(path); err != nil {
 				return fmt.Errorf("removing wizard: %w", err)
 			}
-			fmt.Printf("  Removed %s\n", args[0])
+			fmt.Printf("  Wizard %q removed.\n", args[0])
 			return nil
 		},
 		ValidArgsFunction: completeWizardNames,
@@ -249,7 +249,7 @@ func createCmd() *cobra.Command {
 			if err := os.WriteFile(path, []byte(wizardTemplate(args[0])), 0o644); err != nil {
 				return fmt.Errorf("writing wizard config: %w", err)
 			}
-			fmt.Printf("  Created %s\n", path)
+			fmt.Printf("  Created %s.\n", path)
 			if noEdit {
 				return nil
 			}
@@ -284,7 +284,7 @@ func validateCmd() *cobra.Command {
 			if len(errs) > 0 {
 				return fmt.Errorf("validation errors:\n%s", config.FormatErrors(errs))
 			}
-			fmt.Println("Valid!")
+			fmt.Println("Valid.")
 			return nil
 		},
 	}

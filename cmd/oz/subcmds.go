@@ -232,10 +232,10 @@ func pinsListCmd(wizardName string) *cobra.Command {
 				return nil
 			}
 			if pinnedVer != "" {
-				fmt.Printf("  version: %s\n", pinnedVer)
+				fmt.Printf("  %s: %s\n", ui.AccentStyle.Render("version"), pinnedVer)
 			}
 			for k, v := range pins {
-				fmt.Printf("  %s: %v\n", k, v)
+				fmt.Printf("  %s: %v\n", ui.AccentStyle.Render(k), v)
 			}
 			return nil
 		},
@@ -304,7 +304,7 @@ func listPresets(wizardName string) error {
 		return nil
 	}
 	for _, n := range names {
-		fmt.Printf("  %s\n", n)
+		fmt.Printf("  %s\n", ui.AccentStyle.Render(n))
 	}
 	return nil
 }
