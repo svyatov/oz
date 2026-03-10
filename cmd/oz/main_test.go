@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +72,20 @@ func TestValidateCmd(t *testing.T) {
 	}
 }
 
+func TestValidateCmdByName(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "validate", "testwiz"); err != nil {
+		t.Fatalf("validate by name: %v", err)
+	}
+}
+
+func TestValidateCmdAlias(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "v", "testwiz"); err != nil {
+		t.Fatalf("validate alias: %v", err)
+	}
+}
+
 func TestValidateCmdInvalid(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.yml")
@@ -124,6 +139,27 @@ func TestAliases(t *testing.T) {
 	}
 }
 
+func TestRunBareError(t *testing.T) {
+	err := execCmd(t, "run")
+	if err == nil {
+		t.Fatal("expected error for bare run")
+	}
+	if !strings.Contains(err.Error(), "oz list") {
+		t.Fatalf("expected helpful error mentioning 'oz list', got: %v", err)
+	}
+}
+
+func TestCreateNoEdit(t *testing.T) {
+	dir := t.TempDir()
+	if err := execCmd(t, "--config-dir", dir, "create", "newwiz", "--no-edit"); err != nil {
+		t.Fatalf("create --no-edit: %v", err)
+	}
+	path := filepath.Join(dir, "wizards", "newwiz.yml")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected wizard file to exist: %v", err)
+	}
+}
+
 func TestDoctorCmd(t *testing.T) {
 	dir := setupTestConfig(t)
 	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "doctor"); err != nil {
@@ -148,6 +184,13 @@ func TestDoctorCmdMissingWizard(t *testing.T) {
 	}
 }
 
+func TestPresetsHelp(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets"); err != nil {
+		t.Fatalf("presets help: %v", err)
+	}
+}
+
 func TestPresetsListEmpty(t *testing.T) {
 	dir := setupTestConfig(t)
 	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "list"); err != nil {
@@ -164,7 +207,7 @@ func TestPinsShowEmpty(t *testing.T) {
 
 func TestPinsClear(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear"); err != nil {
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear", "--force"); err != nil {
 		t.Fatalf("pins clear: %v", err)
 	}
 }

@@ -26,6 +26,11 @@ func wizardCmd(name string) *cobra.Command {
 		Use:                name,
 		Short:              fmt.Sprintf("Run %s wizard", name),
 		DisableFlagParsing: false,
+		Example: fmt.Sprintf(`  oz run %s
+  oz run %s --dry-run
+  oz run %s -p fast
+  oz run %s doctor
+  oz run %s presets list`, name, name, name, name, name),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return runWizard(name, presetName, dryRun)
 		},
@@ -310,6 +315,14 @@ func confirmPrompt(msg string) bool {
 	line, _ := reader.ReadString('\n')
 	line = strings.TrimSpace(strings.ToLower(line))
 	return line == "" || line == "y" || line == "yes"
+}
+
+func confirmDangerousPrompt(msg string) bool {
+	fmt.Printf("%s [y/N] ", msg)
+	reader := bufio.NewReader(os.Stdin)
+	line, _ := reader.ReadString('\n')
+	line = strings.TrimSpace(strings.ToLower(line))
+	return line == "y" || line == "yes"
 }
 
 func promptPresetSave() string {

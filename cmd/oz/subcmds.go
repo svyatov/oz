@@ -15,6 +15,22 @@ import (
 	"github.com/svyatov/oz/internal/ui"
 )
 
+type completionFunc = func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective)
+
+func completePresetNames(wizardName string) completionFunc {
+	return func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		if len(args) >= 1 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		st := store.New(configDir)
+		names, err := st.ListPresets(wizardName)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		return names, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
 func doctorCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
@@ -227,13 +243,19 @@ func pinsShowCmd(wizardName string) *cobra.Command {
 }
 
 func pinsClearCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
+	var force bool
+
+	cmd := &cobra.Command{
 		Use:   "clear",
 		Short: "Remove all pins",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
 				return err
+			}
+
+			if !force && !confirmDangerousPrompt("Clear all pins?") {
+				return nil
 			}
 
 			st := store.New(configDir)
@@ -247,19 +269,26 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "skip confirmation prompt")
+
+	return cmd
 }
 
 func presetsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "presets",
 		Short: "Manage presets",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return cmd.Help()
+		},
 	}
 
 	cmd.AddCommand(presetsListCmd(wizardName))
 	cmd.AddCommand(presetsShowCmd(wizardName))
-	cmd.AddCommand(presetsExplainCmd(wizardName))
+	cmd.AddCommand(presetsInspectCmd(wizardName))
 	cmd.AddCommand(presetsSaveCmd(wizardName))
-	cmd.AddCommand(presetsDeleteCmd(wizardName))
+	cmd.AddCommand(presetsRemoveCmd(wizardName))
 
 	return cmd
 }
@@ -288,9 +317,10 @@ func presetsListCmd(wizardName string) *cobra.Command {
 
 func presetsShowCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "show <name>",
-		Short: "Show preset values and generated command",
-		Args:  cobra.ExactArgs(1),
+		Use:               "show <name>",
+		Short:             "Show preset values and generated command",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -318,11 +348,12 @@ func presetsShowCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetsExplainCmd(wizardName string) *cobra.Command {
+func presetsInspectCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "explain <name>",
-		Short: "Annotated view with labels and descriptions",
-		Args:  cobra.ExactArgs(1),
+		Use:               "inspect <name>",
+		Short:             "Annotated view with labels and descriptions",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -373,9 +404,10 @@ func presetsExplainCmd(wizardName string) *cobra.Command {
 
 func presetsSaveCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "save <name>",
-		Short: "Save last-used values as named preset",
-		Args:  cobra.ExactArgs(1),
+		Use:               "save <name>",
+		Short:             "Save last-used values as named preset",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
@@ -404,18 +436,29 @@ func presetsSaveCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func presetsDeleteCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "delete <name>",
-		Short: "Delete a preset",
-		Args:  cobra.ExactArgs(1),
+func presetsRemoveCmd(wizardName string) *cobra.Command {
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:               "remove <name>",
+		Aliases:           []string{"rm"},
+		Short:             "Remove a preset",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
+			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove preset %q?", args[0])) {
+				return nil
+			}
 			st := store.New(configDir)
 			if err := st.DeletePreset(wizardName, args[0]); err != nil {
-				return fmt.Errorf("deleting preset %q: %w", args[0], err)
+				return fmt.Errorf("removing preset %q: %w", args[0], err)
 			}
-			fmt.Printf("  Preset %q deleted.\n", args[0])
+			fmt.Printf("  Preset %q removed.\n", args[0])
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "skip confirmation prompt")
+
+	return cmd
 }

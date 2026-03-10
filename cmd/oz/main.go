@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -22,6 +23,12 @@ func main() {
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.ExitCode())
+		}
+
 		os.Exit(1)
 	}
 }
@@ -53,11 +60,17 @@ func newRootCmd(args []string) *cobra.Command {
 
 func runCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "run",
+		Use:               "run <wizard>",
 		Aliases:           []string{"r"},
 		Short:             "Run a wizard",
-		Args:              cobra.MinimumNArgs(1),
+		Example:           "  oz run myapp\n  oz run myapp --dry-run\n  oz run myapp -p fast",
 		ValidArgsFunction: completeWizardNames,
+		Args: func(_ *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("specify a wizard name — run \"oz list\" to see available wizards")
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
@@ -197,7 +210,7 @@ func removeCmd() *cobra.Command {
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
-			if !confirmPrompt(fmt.Sprintf("Remove %s?", path)) {
+			if !confirmDangerousPrompt(fmt.Sprintf("Remove %s?", path)) {
 				return nil
 			}
 			if err := os.Remove(path); err != nil {
@@ -211,11 +224,14 @@ func removeCmd() *cobra.Command {
 }
 
 func createCmd() *cobra.Command {
-	return &cobra.Command{
+	var noEdit bool
+
+	cmd := &cobra.Command{
 		Use:     "create <wizard>",
 		Aliases: []string{"c", "new"},
 		Short:   "Create a new wizard config from template",
-		Args:  cobra.ExactArgs(1),
+		Example: "  oz create myapp\n  oz create myapp --no-edit",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
 			if _, err := os.Stat(path); err == nil {
@@ -228,6 +244,9 @@ func createCmd() *cobra.Command {
 				return fmt.Errorf("writing wizard config: %w", err)
 			}
 			fmt.Printf("  Created %s\n", path)
+			if noEdit {
+				return nil
+			}
 			editor, err := findEditor()
 			if err != nil {
 				return fmt.Errorf("finding editor: %w", err)
@@ -235,15 +254,23 @@ func createCmd() *cobra.Command {
 			return syscall.Exec(editor, []string{editor, path}, os.Environ())
 		},
 	}
+
+	cmd.Flags().BoolVar(&noEdit, "no-edit", false, "skip opening editor after creation")
+
+	return cmd
 }
 
 func validateCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "validate <path>",
-		Short: "Validate a wizard config file",
-		Args:  cobra.ExactArgs(1),
+		Use:               "validate <wizard|path>",
+		Aliases:           []string{"v"},
+		Short:             "Validate a wizard config file",
+		Example:           "  oz validate myapp\n  oz validate path/to/config.yml",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeWizardNames,
 		RunE: func(_ *cobra.Command, args []string) error {
-			w, err := config.LoadWizard(args[0])
+			path := resolveWizardPath(args[0])
+			w, err := config.LoadWizard(path)
 			if err != nil {
 				return fmt.Errorf("loading wizard: %w", err)
 			}
@@ -255,4 +282,11 @@ func validateCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func resolveWizardPath(arg string) string {
+	if strings.Contains(arg, "/") || strings.HasSuffix(arg, ".yml") || strings.HasSuffix(arg, ".yaml") {
+		return arg
+	}
+	return config.WizardPath(configDir, arg)
 }
