@@ -87,9 +87,9 @@ func doctorCmd(wizardName string) *cobra.Command {
 	}
 }
 
-func explainCmd(wizardName string) *cobra.Command {
+func inspectCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:   "explain",
+		Use:   "inspect",
 		Short: "Show all options with descriptions",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)

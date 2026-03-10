@@ -39,7 +39,7 @@ func wizardCmd(name string) *cobra.Command {
 	cmd.Flags().StringVarP(&presetName, "with-preset", "p", "", "run with saved preset (non-interactive)")
 
 	cmd.AddCommand(doctorCmd(name))
-	cmd.AddCommand(explainCmd(name))
+	cmd.AddCommand(inspectCmd(name))
 	cmd.AddCommand(pinsCmd(name))
 	cmd.AddCommand(presetsCmd(name))
 

@@ -167,10 +167,10 @@ func TestDoctorCmd(t *testing.T) {
 	}
 }
 
-func TestExplainCmd(t *testing.T) {
+func TestInspectCmd(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "explain"); err != nil {
-		t.Fatalf("explain: %v", err)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "inspect"); err != nil {
+		t.Fatalf("inspect: %v", err)
 	}
 }
 
