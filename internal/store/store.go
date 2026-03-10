@@ -28,6 +28,7 @@ type Store struct {
 	configDir string
 }
 
+// New creates a Store rooted at the given config directory.
 func New(configDir string) *Store {
 	return &Store{configDir: configDir}
 }

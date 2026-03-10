@@ -125,6 +125,7 @@ type Choice struct {
 // FlexChoices is a []Choice that accepts both string shorthand and full object syntax in YAML.
 type FlexChoices []Choice
 
+// UnmarshalYAML parses choices from both string shorthand and full object YAML syntax.
 func (fc *FlexChoices) UnmarshalYAML(value *yaml.Node) error {
 	if value.Kind != yaml.SequenceNode {
 		return fmt.Errorf("choices must be a sequence, got %v", value.Kind)
