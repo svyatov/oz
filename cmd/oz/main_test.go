@@ -195,10 +195,10 @@ func TestDoctorCmdMissingWizard(t *testing.T) {
 	}
 }
 
-func TestPresetsHelp(t *testing.T) {
+func TestPresetsBareList(t *testing.T) {
 	dir := setupTestConfig(t)
 	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets"); err != nil {
-		t.Fatalf("presets help: %v", err)
+		t.Fatalf("presets bare list: %v", err)
 	}
 }
 

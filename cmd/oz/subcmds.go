@@ -279,8 +279,8 @@ func presetsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "presets",
 		Short: "Manage presets",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return listPresets(wizardName)
 		},
 	}
 
@@ -293,24 +293,28 @@ func presetsCmd(wizardName string) *cobra.Command {
 	return cmd
 }
 
+func listPresets(wizardName string) error {
+	st := store.New(configDir)
+	names, err := st.ListPresets(wizardName)
+	if err != nil {
+		return fmt.Errorf("listing presets: %w", err)
+	}
+	if len(names) == 0 {
+		fmt.Println("  No presets found.")
+		return nil
+	}
+	for _, n := range names {
+		fmt.Printf("  %s\n", n)
+	}
+	return nil
+}
+
 func presetsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List presets",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			st := store.New(configDir)
-			names, err := st.ListPresets(wizardName)
-			if err != nil {
-				return fmt.Errorf("listing presets: %w", err)
-			}
-			if len(names) == 0 {
-				fmt.Println("  No presets found.")
-				return nil
-			}
-			for _, n := range names {
-				fmt.Printf("  %s\n", n)
-			}
-			return nil
+			return listPresets(wizardName)
 		},
 	}
 }
