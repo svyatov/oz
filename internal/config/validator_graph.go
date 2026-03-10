@@ -3,7 +3,7 @@ package config
 
 // validateVisibilityGraph checks show_when/hide_when/choices_from for
 // self-references, forward references, and conflicting visibility conditions.
-func validateVisibilityGraph(options []Option, add func(string, ...any)) {
+func validateVisibilityGraph(options []Option, errs *errorCollector) {
 	positionOf := make(map[string]int, len(options))
 	for i, o := range options {
 		if o.Name != "" {
@@ -13,25 +13,25 @@ func validateVisibilityGraph(options []Option, add func(string, ...any)) {
 
 	for i, o := range options {
 		prefix := optionPrefix(i, o.Name)
-		checkVisibilityRefs(o.ShowWhen, "show_when", i, o.Name, prefix, positionOf, add)
-		checkVisibilityRefs(o.HideWhen, "hide_when", i, o.Name, prefix, positionOf, add)
-		checkChoicesFromForwardRefs(o, i, prefix, positionOf, add)
-		checkVisibilityConflict(o, prefix, add)
+		checkVisibilityRefs(o.ShowWhen, "show_when", i, o.Name, prefix, positionOf, errs)
+		checkVisibilityRefs(o.HideWhen, "hide_when", i, o.Name, prefix, positionOf, errs)
+		checkChoicesFromForwardRefs(o, i, prefix, positionOf, errs)
+		checkVisibilityConflict(o, prefix, errs)
 	}
 }
 
 func checkVisibilityRefs(
 	cond Values, kind string,
 	idx int, name, prefix string,
-	positionOf map[string]int, add func(string, ...any),
+	positionOf map[string]int, errs *errorCollector,
 ) {
 	for ref := range cond {
 		if ref == name {
-			add("%s: %s references itself", prefix, kind)
+			errs.addf("%s: %s references itself", prefix, kind)
 			continue
 		}
 		if pos, known := positionOf[ref]; known && pos >= idx {
-			add("%s: %s references option %q which appears later (index %d); wizard steps are sequential",
+			errs.addf("%s: %s references option %q which appears later (index %d); wizard steps are sequential",
 				prefix, kind, ref, pos)
 		}
 	}
@@ -39,7 +39,7 @@ func checkVisibilityRefs(
 
 func checkChoicesFromForwardRefs(
 	o Option, idx int, prefix string,
-	positionOf map[string]int, add func(string, ...any),
+	positionOf map[string]int, errs *errorCollector,
 ) {
 	if o.ChoicesFrom == "" {
 		return
@@ -47,11 +47,11 @@ func checkChoicesFromForwardRefs(
 	for _, match := range ChoicesFromInterpolationRe.FindAllStringSubmatch(o.ChoicesFrom, -1) {
 		ref := match[1]
 		if ref == o.Name {
-			add("%s: choices_from interpolation references itself", prefix)
+			errs.addf("%s: choices_from interpolation references itself", prefix)
 			continue
 		}
 		if pos, known := positionOf[ref]; known && pos > idx {
-			add("%s: choices_from interpolation references option %q which appears later (index %d)",
+			errs.addf("%s: choices_from interpolation references option %q which appears later (index %d)",
 				prefix, ref, pos)
 		}
 	}
@@ -62,7 +62,7 @@ func checkChoicesFromForwardRefs(
 // The option is never visible when every hide_when condition is implied by
 // show_when — i.e., every hide_when key appears in show_when and show_when's
 // accepted values are a subset of hide_when's accepted values.
-func checkVisibilityConflict(o Option, prefix string, add func(string, ...any)) {
+func checkVisibilityConflict(o Option, prefix string, errs *errorCollector) {
 	if len(o.ShowWhen) == 0 || len(o.HideWhen) == 0 {
 		return
 	}
@@ -74,7 +74,7 @@ func checkVisibilityConflict(o Option, prefix string, add func(string, ...any)) 
 	}
 	// All hide_when keys covered by show_when with matching values.
 	for key := range o.HideWhen {
-		add("%s: show_when and hide_when conflict on key %q — option can never be visible", prefix, key)
+		errs.addf("%s: show_when and hide_when conflict on key %q — option can never be visible", prefix, key)
 		return
 	}
 }

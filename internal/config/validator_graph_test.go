@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -23,12 +22,13 @@ func TestValidateVisibilityGraph(t *testing.T) {
 	for _, tt := range graphCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := tt.modify(graphMinimal())
-			var errs []string
-			add := func(msg string, args ...any) {
-				errs = append(errs, fmt.Sprintf(msg, args...))
+			var errs errorCollector
+			validateVisibilityGraph(opts, &errs)
+			var msgs []string
+			for _, e := range errs {
+				msgs = append(msgs, e.Error())
 			}
-			validateVisibilityGraph(opts, add)
-			combined := strings.Join(errs, "\n")
+			combined := strings.Join(msgs, "\n")
 			if tt.wantErr == "" {
 				if len(errs) != 0 {
 					t.Errorf("expected no errors, got:\n%s", combined)
