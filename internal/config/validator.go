@@ -31,6 +31,7 @@ func Validate(w *Wizard) []error {
 
 	optionNames := validateOptions(w.Options, add)
 	validateReferences(w.Options, w.Compat, optionNames, add)
+	validateVisibilityGraph(w.Options, add)
 
 	return errs
 }
@@ -44,6 +45,8 @@ func validateVersionControl(vc *VersionControl, add func(string, ...any)) {
 	}
 	if vc.Pattern == "" {
 		add("version_control.pattern is required")
+	} else if _, err := regexp.Compile(vc.Pattern); err != nil {
+		add("version_control.pattern is invalid regex: %v", err)
 	}
 	if vc.CustomVersionCmd != "" && !strings.Contains(vc.CustomVersionCmd, "{{version}}") {
 		add("version_control.custom_version_command must contain {{version}}")
@@ -62,14 +65,18 @@ var validOptionTypes = map[string]bool{
 	"select": true, "confirm": true, "input": true, "multi_select": true,
 }
 
+func optionPrefix(i int, name string) string {
+	if name != "" {
+		return fmt.Sprintf("options[%d] (%s)", i, name)
+	}
+	return fmt.Sprintf("options[%d]", i)
+}
+
 func validateOptions(options []Option, add func(string, ...any)) map[string]bool {
 	optionNames := make(map[string]bool)
 
 	for i, o := range options {
-		prefix := fmt.Sprintf("options[%d]", i)
-		if o.Name != "" {
-			prefix = fmt.Sprintf("options[%d] (%s)", i, o.Name)
-		}
+		prefix := optionPrefix(i, o.Name)
 
 		if o.Name == "" {
 			add("%s: name is required", prefix)
@@ -97,6 +104,7 @@ func validateOptionFields(o Option, prefix string, add func(string, ...any)) {
 
 	validateOptionChoices(o, prefix, add)
 	validateOptionTypeConstraints(o, prefix, add)
+	validateOptionSemantics(o, prefix, add)
 }
 
 func validateOptionChoices(o Option, prefix string, add func(string, ...any)) {
@@ -123,14 +131,115 @@ func validateOptionTypeConstraints(o Option, prefix string, add func(string, ...
 		if o.Type != "input" {
 			add("%s: validate is only valid for input type", prefix)
 		}
-		if o.Validate.Pattern != "" {
-			if _, err := regexp.Compile(o.Validate.Pattern); err != nil {
-				add("%s: validate.pattern is invalid: %v", prefix, err)
-			}
-		}
+		validateInputRule(o.Validate, prefix, add)
 	}
 	if o.Positional && (o.Flag != "" || o.FlagTrue != "" || o.FlagFalse != "") {
 		add("%s: positional is mutually exclusive with flag, flag_true, flag_false", prefix)
+	}
+	validateFieldTypeRestrictions(o, prefix, add)
+}
+
+func validateFieldTypeRestrictions(o Option, prefix string, add func(string, ...any)) {
+	if o.AllowNone && o.Type != "select" {
+		add("%s: allow_none is only valid for select type", prefix)
+	}
+	if o.FlagTrue != "" && o.Type != "confirm" {
+		add("%s: flag_true is only valid for confirm type", prefix)
+	}
+	if o.FlagFalse != "" && o.Type != "confirm" {
+		add("%s: flag_false is only valid for confirm type", prefix)
+	}
+	if o.FlagNone != "" && o.Type != "select" {
+		add("%s: flag_none is only valid for select type", prefix)
+	}
+	if len(o.Choices) > 0 && o.Type == "input" {
+		add("%s: input type does not use choices", prefix)
+	}
+	if len(o.Choices) > 0 && o.Type == "confirm" {
+		add("%s: confirm type does not use choices", prefix)
+	}
+}
+
+func validateInputRule(r *InputRule, prefix string, add func(string, ...any)) {
+	if r.Pattern != "" {
+		if _, err := regexp.Compile(r.Pattern); err != nil {
+			add("%s: validate.pattern is invalid: %v", prefix, err)
+		}
+	}
+	if r.MinLength < 0 {
+		add("%s: validate.min_length must not be negative", prefix)
+	}
+	if r.MaxLength < 0 {
+		add("%s: validate.max_length must be positive", prefix)
+	}
+	if r.MaxLength > 0 && r.MinLength > r.MaxLength {
+		add("%s: validate.min_length (%d) exceeds max_length (%d)", prefix, r.MinLength, r.MaxLength)
+	}
+}
+
+func validateOptionSemantics(o Option, prefix string, add func(string, ...any)) {
+	if o.Required && o.AllowNone {
+		add("%s: required and allow_none are mutually exclusive", prefix)
+	}
+	if o.Type == "confirm" && o.Flag != "" && o.FlagTrue != "" {
+		add("%s: confirm type with both flag and flag_true is ambiguous; use flag or flag_true, not both", prefix)
+	}
+	validateDefaultInChoices(o, prefix, add)
+	validateDuplicateChoices(o, prefix, add)
+}
+
+func validateDefaultInChoices(o Option, prefix string, add func(string, ...any)) {
+	if len(o.Choices) == 0 || o.Default == nil {
+		return
+	}
+	if o.AllowNone && fmt.Sprintf("%v", o.Default) == "" {
+		return
+	}
+	choiceSet := make(map[string]bool, len(o.Choices))
+	for _, c := range o.Choices {
+		choiceSet[c.Value] = true
+	}
+	if o.Type == "multi_select" {
+		defaults, ok := toAnySlice(o.Default)
+		if !ok {
+			add("%s: default for multi_select must be a list", prefix)
+			return
+		}
+		for _, d := range defaults {
+			s := fmt.Sprintf("%v", d)
+			if !choiceSet[s] {
+				add("%s: default value %q is not among the defined choices", prefix, s)
+			}
+		}
+		return
+	}
+	s := fmt.Sprintf("%v", o.Default)
+	if !choiceSet[s] {
+		add("%s: default value %q is not among the defined choices", prefix, s)
+	}
+}
+
+func toAnySlice(v any) ([]any, bool) {
+	switch vv := v.(type) {
+	case []any:
+		return vv, true
+	case []string:
+		out := make([]any, len(vv))
+		for i, s := range vv {
+			out[i] = s
+		}
+		return out, true
+	}
+	return nil, false
+}
+
+func validateDuplicateChoices(o Option, prefix string, add func(string, ...any)) {
+	seen := make(map[string]bool, len(o.Choices))
+	for _, c := range o.Choices {
+		if c.Value != "" && seen[c.Value] {
+			add("%s: duplicate choice value %q", prefix, c.Value)
+		}
+		seen[c.Value] = true
 	}
 }
 

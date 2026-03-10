@@ -48,6 +48,7 @@ func validationCases() []validationCase {
 	cases := baseCases()
 	cases = append(cases, versionControlCases()...)
 	cases = append(cases, newFeatureCases()...)
+	cases = append(cases, semanticCases()...)
 	return cases
 }
 
@@ -195,6 +196,147 @@ func constraintCases() []validationCase {
 			w.Options[0].Type = "select"
 			w.Options[0].ChoicesFrom = "docker images --format '{{.Names}}'"
 		}, ""},
+	}
+}
+
+func semanticCases() []validationCase {
+	cases := semanticDefaultCases()
+	cases = append(cases, semanticConstraintCases()...)
+	cases = append(cases, semanticTypeCases()...)
+	return cases
+}
+
+func semanticDefaultCases() []validationCase {
+	return []validationCase{
+		{"default_not_in_choices", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
+			w.Options[0].Default = "c"
+		}, "not among the defined choices"},
+		{"default_in_choices_valid", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
+			w.Options[0].Default = "a"
+		}, ""},
+		{"default_multi_select_not_in_choices", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
+			w.Options[0].Default = []any{"a", "z"}
+		}, "not among the defined choices"},
+		{"default_multi_select_all_valid", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
+			w.Options[0].Default = []any{"a", "b"}
+		}, ""},
+		{"default_multi_select_scalar_rejected", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+			w.Options[0].Default = "a"
+		}, "must be a list"},
+		{"default_with_choices_from_skipped", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].ChoicesFrom = "echo a b c"
+			w.Options[0].Default = "anything"
+		}, ""},
+		{"default_empty_with_allow_none_valid", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+			w.Options[0].AllowNone = true
+			w.Options[0].Default = ""
+		}, ""},
+		{"duplicate_choice_values", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "x", Label: "X"}, {Value: "x", Label: "X2"}}
+		}, "duplicate choice value"},
+	}
+}
+
+func semanticConstraintCases() []validationCase {
+	return []validationCase{
+		{"required_and_allow_none", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+			w.Options[0].Required = true
+			w.Options[0].AllowNone = true
+		}, "mutually exclusive"},
+		{"confirm_with_choices", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+		}, "does not use choices"},
+		{"confirm_flag_and_flag_true", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].Flag = "--verbose"
+			w.Options[0].FlagTrue = "--yes"
+		}, "ambiguous"},
+		{"confirm_flag_only_valid", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].Flag = "--verbose"
+		}, ""},
+		{"input_rule_min_gt_max", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{MinLength: 10, MaxLength: 5}
+		}, "exceeds max_length"},
+		{"input_rule_negative_max", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{MaxLength: -1}
+		}, "must be positive"},
+		{"input_rule_negative_min", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{MinLength: -1}
+		}, "must not be negative"},
+		{"input_rule_min_eq_max_valid", func(w *Wizard) {
+			w.Options[0].Validate = &InputRule{MinLength: 5, MaxLength: 5}
+		}, ""},
+		{"version_control_invalid_pattern", func(w *Wizard) {
+			w.Version = &VersionControl{Command: "cmd", Pattern: "[invalid"}
+		}, "invalid regex"},
+	}
+}
+
+func semanticTypeCases() []validationCase {
+	return []validationCase{
+		{"allow_none_on_input", func(w *Wizard) {
+			w.Options[0].AllowNone = true
+		}, "only valid for select"},
+		{"allow_none_on_confirm", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].AllowNone = true
+		}, "only valid for select"},
+		{"allow_none_on_multi_select", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].ChoicesFrom = "echo a"
+			w.Options[0].AllowNone = true
+		}, "only valid for select"},
+		{"flag_true_on_select", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+			w.Options[0].FlagTrue = "--yes"
+		}, "only valid for confirm"},
+		{"flag_false_on_input", func(w *Wizard) {
+			w.Options[0].FlagFalse = "--no"
+		}, "only valid for confirm"},
+		{"flag_false_on_select", func(w *Wizard) {
+			w.Options[0].Type = "select"
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+			w.Options[0].FlagFalse = "--no"
+		}, "only valid for confirm"},
+		{"flag_true_on_multi_select", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].ChoicesFrom = "echo a"
+			w.Options[0].FlagTrue = "--yes"
+		}, "only valid for confirm"},
+		{"flag_none_on_input", func(w *Wizard) {
+			w.Options[0].FlagNone = "--skip"
+		}, "only valid for select"},
+		{"flag_none_on_confirm", func(w *Wizard) {
+			w.Options[0].Type = "confirm"
+			w.Options[0].FlagNone = "--skip"
+		}, "only valid for select"},
+		{"flag_none_on_multi_select", func(w *Wizard) {
+			w.Options[0].Type = "multi_select"
+			w.Options[0].ChoicesFrom = "echo a"
+			w.Options[0].FlagNone = "--skip"
+		}, "only valid for select"},
+		{"choices_on_input", func(w *Wizard) {
+			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
+		}, "does not use choices"},
 	}
 }
 
