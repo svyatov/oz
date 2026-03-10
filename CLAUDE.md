@@ -33,18 +33,41 @@ All new code must pass `task lint` with zero issues.
 ## Architecture
 
 ```
-cmd/oz/main.go          CLI entrypoint (cobra)
-  → config/loader.go    Load + parse YAML wizard definitions
-  → config/validator.go  Validate config, return []error
+cmd/oz/
+  main.go              CLI entrypoint (cobra)
+  subcmds.go           Wizard subcommand definitions
+  wizard.go            Wizard runner wiring
+  prompt.go            Post-run confirmation prompts
+  template.go          Wizard YAML template for create
+  → config/
+      schema.go        Type definitions (Wizard, Option, OptionType, FlagStyle)
+      value.go         FieldValue sum type (string | bool | []string)
+      loader.go        Load + parse YAML wizard definitions
+      validator.go     Validate config, return []error
+      validator_graph.go  Dependency graph validation (show_when/hide_when cycles)
   → compat/version.go   Detect tool version, filter options by semver range
-  → wizard/engine.go    Bubbletea Model driving step-by-step prompts
-  → wizard/field*.go    Field interface implementations (select, confirm, input, multi_select)
+  → wizard/
+      engine.go        Bubbletea Model driving step-by-step prompts
+      field.go         Field interface definition
+      field_select.go  Single-choice select
+      field_confirm.go Yes/no toggle
+      field_input.go   Free-text input with validation
+      field_multi.go   Multi-select
+      version_loader.go  Async version detection + interactive picker
+      pins.go          Interactive TUI for managing pinned options
+      choices.go       Dynamic choice loading from shell commands
+      state.go         Session state (completed steps, navigation history)
   → command/builder.go  Build CLI command parts from answers
   → command/runner.go   Execute or copy the built command
-  → store/store.go      Persist last-used state + presets as YAML
+  → store/store.go      Persist last-used state, pins + presets as YAML
   → ui/theme.go         Lipgloss color palette and styles
 
-oz run <wizard>
+oz list (l, ls)              list available wizards
+oz validate (v) <wizard>     validate wizard config
+oz edit (e) <wizard>         open wizard YAML in $EDITOR
+oz create (c, new) <wizard>  scaffold new wizard from template
+oz remove (rm) <wizard>      delete wizard config (--force to skip confirm)
+oz run (r) <wizard>
 ├── -n, --dry-run
 ├── -p, --with-preset <name>
 ├── doctor
@@ -61,8 +84,9 @@ oz run <wizard>
 
 **Key abstractions:**
 - `Field` interface (`Init`, `Update`, `View`, `Value`, `SetValue`) — each option type implements this
-- `Engine` is the Bubbletea `Model` — manages step navigation, visibility (`show_when`), back/forward
-- `Validate()` returns `[]error` (batch validation pattern)
+- `FieldValue` — type-safe sum type (string | bool | []string) replacing `any` across the codebase
+- `Engine` is the Bubbletea `Model` — manages step navigation, visibility (`show_when`/`hide_when`), back/forward
+- `Validate()` returns `[]error` (batch validation pattern); includes dependency graph cycle detection
 - Config structs use `yaml` struct tags, parsed via `gopkg.in/yaml.v3`
 
 ## Go Conventions
