@@ -17,11 +17,11 @@ const defaultSuffix = " (default)"
 type SelectField struct {
 	label        string
 	description  string
-	choices      []config.Choice
-	allowNone    bool
-	cursor       int
 	value        string
 	defaultValue string
+	choices      []config.Choice
+	cursor       int
+	allowNone    bool
 }
 
 // NewSelectField creates a SelectField from a config option.
@@ -40,11 +40,11 @@ func (f *SelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	n := f.itemCount()
 
 	switch msg.String() {
-	case "up", "k":
+	case keyUp, "k":
 		f.cursor = (f.cursor - 1 + n) % n
-	case "down", "j":
+	case keyDown, "j":
 		f.cursor = (f.cursor + 1) % n
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		f.value = f.valueAt(f.cursor)
 		return true, nil
 	}
@@ -75,7 +75,7 @@ func (f *SelectField) View() string {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, gutterWidth, active)
 
-		cursor := "   "
+		cursor := cursorBlank
 		if active {
 			cursor = " " + ui.Cursor() + " "
 		}

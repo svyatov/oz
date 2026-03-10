@@ -16,6 +16,15 @@ func key(code rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: code, Text: string(code)}
 }
 
+func mustPins(t *testing.T, model tea.Model) *PinsModel {
+	t.Helper()
+	m, ok := model.(*PinsModel)
+	if !ok {
+		t.Fatalf("expected *PinsModel, got %T", model)
+	}
+	return m
+}
+
 func specialKey(code rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: code}
 }
@@ -50,13 +59,13 @@ func TestPinViaEditSelect(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
 
 	model, _ = m.Update(key('2'))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after submit, got %d", m.mode)
 	}
@@ -71,10 +80,10 @@ func TestPinViaEditConfirm(t *testing.T) {
 
 	m.Update(specialKey(tea.KeyDown))
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	model, _ = m.Update(key('1'))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
@@ -88,7 +97,7 @@ func TestTogglePinSpace(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeySpace))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if _, ok := m.pins["db"]; !ok {
 		t.Fatal("expected db to be pinned after space")
 	}
@@ -97,7 +106,7 @@ func TestTogglePinSpace(t *testing.T) {
 	}
 
 	model, _ = m.Update(specialKey(tea.KeySpace))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if _, ok := m.pins["db"]; ok {
 		t.Fatal("expected db to be unpinned after second space")
 	}
@@ -108,13 +117,13 @@ func TestCancelEdit(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode")
 	}
 
 	model, _ = m.Update(specialKey(tea.KeyEscape))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after esc")
 	}
@@ -147,7 +156,7 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(key('2'))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode")
 	}
@@ -162,10 +171,10 @@ func TestEditUpdatesExistingPin(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	model, _ = m.Update(key('2'))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.pins["db"].String() != "mysql" {
 		t.Errorf("expected db updated to mysql, got %v", m.pins["db"])
 	}
@@ -177,7 +186,7 @@ func TestVersionPinWithoutVerify(t *testing.T) {
 
 	// Enter edit for version (index 0)
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
@@ -185,12 +194,12 @@ func TestVersionPinWithoutVerify(t *testing.T) {
 	// Type "7.2"
 	for _, c := range "7.2" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 
 	// Submit
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
@@ -205,17 +214,17 @@ func TestVersionPinWithVerifyEntersVerifying(t *testing.T) {
 
 	// Enter edit for version (index 0)
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Type "7.2"
 	for _, c := range "7.2" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 
 	// Submit → should enter verifying mode
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsVerifyingMode {
 		t.Fatalf("expected verifying mode, got %d", m.mode)
 	}
@@ -227,19 +236,19 @@ func TestHandleVersionVerifiedError(t *testing.T) {
 
 	// Enter edit for version
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Type version and submit to enter verifying mode
 	for _, c := range "bad" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Simulate verification failure
 	model, _ = m.Update(versionVerifiedMsg{version: "bad", err: errors.New("not found")})
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode after verify error, got %d", m.mode)
@@ -258,19 +267,19 @@ func TestHandleVersionVerifiedSuccess(t *testing.T) {
 
 	// Enter edit for version
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Type version and submit to enter verifying mode
 	for _, c := range "7.2" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Simulate verification success
 	model, _ = m.Update(versionVerifiedMsg{version: "7.2", err: nil})
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after verify success, got %d", m.mode)
@@ -289,11 +298,11 @@ func TestEmptyVersionPinMapsToCurrent(t *testing.T) {
 
 	// Enter edit for version
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Submit empty → maps to "current", no verification
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
@@ -320,7 +329,7 @@ func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
 
 	// Space on required input with no stored value → enters edit mode
 	model, _ := m.Update(specialKey(tea.KeySpace))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
@@ -335,7 +344,7 @@ func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
 
 	// Space on input with valid last-used → quick-pins
 	model, _ := m.Update(specialKey(tea.KeySpace))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
@@ -350,7 +359,7 @@ func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
 
 	// Space on input with invalid last-used → enters edit mode
 	model, _ := m.Update(specialKey(tea.KeySpace))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
@@ -365,7 +374,7 @@ func TestPinInputRejectsInvalidValue(t *testing.T) {
 
 	// Enter edit mode
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
@@ -373,12 +382,12 @@ func TestPinInputRejectsInvalidValue(t *testing.T) {
 	// Type invalid value (non-numeric)
 	for _, c := range "abc" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 
 	// Submit — should stay in edit mode
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode after invalid input, got %d", m.mode)
 	}
@@ -392,11 +401,11 @@ func TestPinInputRejectsBlankRequired(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	// Submit empty — should stay in edit mode (required field)
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode after blank required input, got %d", m.mode)
 	}
@@ -410,15 +419,15 @@ func TestPinInputAcceptsValidValue(t *testing.T) {
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 
 	for _, c := range "8080" {
 		model, _ = m.Update(key(c))
-		m = model.(*PinsModel)
+		m = mustPins(t, model)
 	}
 
 	model, _ = m.Update(specialKey(tea.KeyEnter))
-	m = model.(*PinsModel)
+	m = mustPins(t, model)
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after valid input, got %d", m.mode)
 	}

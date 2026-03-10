@@ -10,6 +10,22 @@ import (
 	"github.com/svyatov/oz/internal/ui"
 )
 
+// Key name constants for Bubbletea key press matching.
+const (
+	keyEnter    = "enter"
+	keyTab      = "tab"
+	keyEsc      = "esc"
+	keyCtrlC    = "ctrl+c"
+	keyUp       = "up"
+	keyDown     = "down"
+	keyShiftTab = "shift+tab"
+	keySpace    = "space"
+	cursorBlank = "   " // inactive cursor padding
+)
+
+// versionPinCurrent is the sentinel value for "pin to detected version".
+const versionPinCurrent = "current"
+
 // Field is a single wizard step's input component.
 type Field interface {
 	Init() tea.Cmd

@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -37,53 +38,47 @@ const (
 
 // Messages for async operations.
 type versionDetectedMsg struct {
-	version string
 	err     error
+	version string
 }
 
 type versionsListedMsg struct {
-	versions []string
 	err      error
+	versions []string
 }
 
 type versionVerifiedMsg struct {
-	version string
 	err     error
+	version string
 }
 
 type spinnerDelayMsg struct{}
 
 // VersionLoaderModel is a Bubbletea model for version selection.
 type VersionLoaderModel struct {
-	wizardName string
-	vc         *config.VersionControl
-	pin          string
-	verifyingPin bool
-	cached       *VersionResult
-
-	phase         versionPhase
-	spinner       spinner.Model
-	showSpinner   bool
-	detected      string
-	detectErr     error
-	detectDone    bool
-	versions      []string
 	versionsErr   error
-	versionsDone  bool
+	detectErr     error
+	vc            *config.VersionControl
+	cached        *VersionResult
+	pin           string
+	wizardName    string
+	preselect     string
+	verifyErr     string
+	detected      string
+	items         []versionItem
+	versions      []string
+	ti            textinput.Model
+	spinner       spinner.Model
+	result        VersionResult
+	phase         versionPhase
+	cursor        int
+	customAt      int
 	hasVersionCmd bool
-
-	// Select phase
-	preselect string // version to pre-select (from previous go-back)
-	cursor    int
-	items     []versionItem
-	customAt  int // index of "Custom..." sentinel
-
-	// Input phase
-	ti        textinput.Model
-	verifyErr string
-
-	done   bool
-	result VersionResult
+	versionsDone  bool
+	detectDone    bool
+	showSpinner   bool
+	done          bool
+	verifyingPin  bool
 }
 
 type versionItem struct {
@@ -204,7 +199,7 @@ func (m *VersionLoaderModel) finish() tea.Cmd {
 }
 
 func (m *VersionLoaderModel) handleAbortKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == "esc" || msg.String() == "ctrl+c" {
+	if msg.String() == keyEsc || msg.String() == keyCtrlC {
 		m.result.Aborted = true
 		return m, m.finish()
 	}
@@ -247,7 +242,7 @@ func (m *VersionLoaderModel) checkLoadingDone() (tea.Model, tea.Cmd) {
 
 	// Handle pin
 	if m.pin != "" {
-		if m.pin == "current" {
+		if m.pin == versionPinCurrent {
 			m.result = VersionResult{
 				Detected: m.detected,
 				Selected: m.detected,
@@ -324,13 +319,13 @@ func (m *VersionLoaderModel) updateSelect(msg tea.KeyPressMsg) (tea.Model, tea.C
 	n := len(m.items)
 
 	switch msg.String() {
-	case "up", "k":
+	case keyUp, "k":
 		m.cursor = (m.cursor - 1 + n) % n
-	case "down", "j":
+	case keyDown, "j":
 		m.cursor = (m.cursor + 1) % n
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		return m.selectItem(m.cursor)
-	case "esc", "ctrl+c":
+	case keyEsc, keyCtrlC:
 		m.result.Aborted = true
 		return m, m.finish()
 	}
@@ -363,14 +358,14 @@ func (m *VersionLoaderModel) selectItem(idx int) (tea.Model, tea.Cmd) {
 
 func (m *VersionLoaderModel) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "shift+tab":
+	case keyShiftTab:
 		if len(m.items) > 0 {
 			m.phase = phaseSelect
 			m.verifyErr = ""
 			return m, nil
 		}
 		return m, nil
-	case "esc", "ctrl+c":
+	case keyEsc, keyCtrlC:
 		if len(m.items) > 0 {
 			m.phase = phaseSelect
 			m.verifyErr = ""
@@ -378,7 +373,7 @@ func (m *VersionLoaderModel) updateInput(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		}
 		m.result.Aborted = true
 		return m, m.finish()
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		return m.submitInput()
 	}
 
@@ -453,7 +448,7 @@ func (m *VersionLoaderModel) viewSelect() string {
 		active := i == m.cursor
 		num := ui.NumberGutter(i+1, gutterWidth, active)
 
-		cursor := "   "
+		cursor := cursorBlank
 		if active {
 			cursor = " " + ui.Cursor() + " "
 		}
@@ -542,7 +537,11 @@ func RunVersionLoader(
 		return nil, fmt.Errorf("version loader error: %w", err)
 	}
 
-	result := finalModel.(*VersionLoaderModel).result
+	vlm, ok := finalModel.(*VersionLoaderModel)
+	if !ok {
+		return nil, errors.New("unexpected model type")
+	}
+	result := vlm.result
 	result.Interactive = true
 	return &result, nil
 }

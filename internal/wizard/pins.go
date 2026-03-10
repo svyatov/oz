@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"strconv"
@@ -31,23 +32,20 @@ type PinsResult struct {
 
 // PinsModel is a Bubbletea model for interactive pin management.
 type PinsModel struct {
-	options  []config.Option
-	pins     config.Values
-	lastUsed config.Values
-	hints    map[string]string
-
-	hasCustomVersion    bool
-	versionPin          string
+	editField           Field
+	pins                config.Values
+	lastUsed            config.Values
+	hints               map[string]string
 	customVersionVerify string
-
-	mode      pinsMode
-	cursor    int
-	editIdx   int
-	editField Field
-	spinner   spinner.Model
-	verifyErr string
-
-	done bool
+	versionPin          string
+	verifyErr           string
+	options             []config.Option
+	spinner             spinner.Model
+	mode                pinsMode
+	cursor              int
+	editIdx             int
+	hasCustomVersion    bool
+	done                bool
 }
 
 func newPinsModel(
@@ -112,7 +110,7 @@ func (m *PinsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case pinsEditMode:
 			return m.updateEdit(msg)
 		case pinsVerifyingMode:
-			if msg.String() == "esc" || msg.String() == "ctrl+c" {
+			if msg.String() == keyEsc || msg.String() == keyCtrlC {
 				m.mode = pinsEditMode
 				return m, m.editField.Init()
 			}
@@ -134,15 +132,15 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	n := m.itemCount()
 
 	switch msg.String() {
-	case "up", "k":
+	case keyUp, "k":
 		m.cursor = (m.cursor - 1 + n) % n
-	case "down", "j":
+	case keyDown, "j":
 		m.cursor = (m.cursor + 1) % n
-	case "enter":
+	case keyEnter:
 		return m.enterEdit(m.cursor)
-	case "space":
+	case keySpace:
 		return m.togglePin(m.cursor)
-	case "esc", "ctrl+c":
+	case keyEsc, keyCtrlC:
 		m.done = true
 		return m, tea.Quit
 	}
@@ -158,7 +156,7 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if msg.String() == "esc" || msg.String() == "ctrl+c" {
+	if msg.String() == keyEsc || msg.String() == keyCtrlC {
 		m.mode = pinsListMode
 		m.editField = nil
 		m.verifyErr = ""
@@ -187,7 +185,7 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 
 	if m.isVersionIdx(idx) {
 		m.editField = NewInputField(config.Option{Label: "Version", Description: "Leave blank for current version"})
-		if m.versionPin != "" && m.versionPin != "current" {
+		if m.versionPin != "" && m.versionPin != versionPinCurrent {
 			m.editField.SetValue(config.StringVal(m.versionPin))
 		}
 		m.mode = pinsEditMode
@@ -225,7 +223,7 @@ func (m *PinsModel) togglePin(idx int) (tea.Model, tea.Cmd) {
 		if m.versionPin != "" {
 			m.versionPin = ""
 		} else {
-			m.versionPin = "current"
+			m.versionPin = versionPinCurrent
 		}
 		return m, nil
 	}
@@ -312,7 +310,7 @@ func (m *PinsModel) viewList() string {
 
 func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel, gutterWidth int, label string) string {
 	num := ui.NumberGutter(i+1, gutterWidth, active)
-	cursor := "   "
+	cursor := cursorBlank
 	if active {
 		cursor = " " + ui.Cursor() + " "
 	}
@@ -332,7 +330,7 @@ func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel, gutterWidth int
 
 func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel, gutterWidth int) string {
 	num := ui.NumberGutter(i+1, gutterWidth, active)
-	cursor := "   "
+	cursor := cursorBlank
 	if active {
 		cursor = " " + ui.Cursor() + " "
 	}
@@ -393,7 +391,7 @@ func (m *PinsModel) viewVerifying() string {
 func (m *PinsModel) submitVersionPin() (tea.Model, tea.Cmd) {
 	v := m.editField.Value().Scalar()
 	if v == "" {
-		m.versionPin = "current"
+		m.versionPin = versionPinCurrent
 		m.mode = pinsListMode
 		m.editField = nil
 		m.verifyErr = ""
@@ -446,6 +444,9 @@ func RunPins(
 		return nil, fmt.Errorf("pins UI error: %w", err)
 	}
 
-	final := finalModel.(*PinsModel)
+	final, ok := finalModel.(*PinsModel)
+	if !ok {
+		return nil, errors.New("unexpected model type")
+	}
 	return &PinsResult{Pins: final.pins, VersionPin: final.versionPin}, nil
 }

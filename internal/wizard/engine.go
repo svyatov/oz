@@ -15,9 +15,9 @@ import (
 
 // CompletedStep records a finished wizard step for display.
 type CompletedStep struct {
-	StepNum int
 	Label   string
 	Answer  string
+	StepNum int
 }
 
 // Result is what the wizard returns after completion.
@@ -29,42 +29,35 @@ type Result struct {
 
 // choicesLoadedMsg is sent when a choices_from command completes.
 type choicesLoadedMsg struct {
-	choices []config.Choice
 	err     error
+	choices []config.Choice
 }
 
 // Engine is a bubbletea model that runs the wizard step-by-step.
 type Engine struct {
-	wizardName    string
-	version       string
-	versionLabel  string
-	overridden    bool
-	options    []config.Option
-	pinnedCount  int
-	answers  config.Values
-	defaults config.Values // from last-used state
-
-	// Navigation
-	stepIndex int   // index into visibleSteps
-	history   []int // stack of visited step indices for back navigation
-	canGoBack bool  // allow back-navigation before the first step
-
-	// Current field
 	currentField Field
+	loadErr      error
+	answers      config.Values
+	defaults     config.Values // from last-used state
+	wizardName   string
+	version      string
+	versionLabel string
 
-	// Loading state for choices_from
-	loading  bool
-	loadErr  error
-	spinner  spinner.Model
-
-	// Completed steps for display
 	completedSteps []CompletedStep
+	options        []config.Option
+	history        []int // stack of visited step indices for back navigation
+	spinner        spinner.Model
 
-	// State
-	done     bool
-	aborted  bool
-	wentBack bool
-	width    int
+	pinnedCount int
+	stepIndex   int // index into visibleSteps
+	width       int
+
+	loading    bool
+	canGoBack  bool // allow back-navigation before the first step
+	overridden bool
+	done       bool
+	aborted    bool
+	wentBack   bool
 }
 
 // NewEngine creates a new wizard engine.
@@ -134,11 +127,11 @@ func (m *Engine) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "esc":
+	case keyCtrlC, keyEsc:
 		m.aborted = true
 		m.done = true
 		return m, tea.Quit
-	case "shift+tab":
+	case keyShiftTab:
 		if m.loading {
 			return m, nil
 		}
@@ -155,7 +148,7 @@ func (m *Engine) handleKeyPress(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	// During loading: enter retries, other keys ignored
 	if m.loading {
-		if m.loadErr != nil && msg.String() == "enter" {
+		if m.loadErr != nil && msg.String() == keyEnter {
 			m.loadErr = nil
 			return m, m.initCurrentField()
 		}
@@ -211,41 +204,43 @@ func (m *Engine) View() tea.View {
 
 	b.WriteString("\n")
 
-	// Loading state
 	if m.loading {
-		opt := m.currentOption()
-		if opt != nil {
-			visible := VisibleSteps(m.options, m.answers)
-			total := len(visible)
-			displayPos := m.stepIndex + 1
-			b.WriteString("  " + ui.StepCounter(displayPos, total) + "  ")
-			if m.loadErr != nil {
-				b.WriteString(ui.WarningText("Error loading choices: "+m.loadErr.Error()) + "\n")
-				b.WriteString("         " + ui.NavHintText("enter=retry  shift+tab=back") + "\n")
-			} else {
-				b.WriteString(m.spinner.View() + " " + ui.FieldTitle("Loading "+opt.Label+"...") + "\n")
-			}
-		}
+		b.WriteString(m.viewLoading())
 	} else {
-		// Current field with step counter
-		visible := VisibleSteps(m.options, m.answers)
-		total := len(visible)
-		displayPos := m.stepIndex + 1
-
-		if m.currentField != nil {
-			fieldView := m.currentField.View()
-			// Replace placeholder step counter with real one
-			placeholder := ui.StepCounter(0, 0)
-			actual := ui.StepCounter(displayPos, total)
-			fieldView = strings.Replace(fieldView, placeholder, actual, 1)
-			b.WriteString(fieldView)
-		}
+		b.WriteString(m.viewCurrentField())
 	}
 
 	// Nav hint
 	b.WriteString("\n" + ui.NavHint() + "\n")
 
 	return tea.NewView(b.String())
+}
+
+func (m *Engine) viewLoading() string {
+	opt := m.currentOption()
+	if opt == nil {
+		return ""
+	}
+	visible := VisibleSteps(m.options, m.answers)
+	displayPos := m.stepIndex + 1
+	header := "  " + ui.StepCounter(displayPos, len(visible)) + "  "
+	if m.loadErr != nil {
+		return header + ui.WarningText("Error loading choices: "+m.loadErr.Error()) + "\n" +
+			"         " + ui.NavHintText("enter=retry  shift+tab=back") + "\n"
+	}
+	return header + m.spinner.View() + " " + ui.FieldTitle("Loading "+opt.Label+"...") + "\n"
+}
+
+func (m *Engine) viewCurrentField() string {
+	if m.currentField == nil {
+		return ""
+	}
+	visible := VisibleSteps(m.options, m.answers)
+	displayPos := m.stepIndex + 1
+	fieldView := m.currentField.View()
+	placeholder := ui.StepCounter(0, 0)
+	actual := ui.StepCounter(displayPos, len(visible))
+	return strings.Replace(fieldView, placeholder, actual, 1)
 }
 
 // GetResult returns the wizard result after completion.
@@ -410,15 +405,15 @@ func (m *Engine) recordCompletedStep() {
 
 // RunParams groups the arguments for Run.
 type RunParams struct {
-	WizardName    string
-	Version       string
-	VersionLabel  string
-	Overridden    bool
-	Options       []config.Option
-	PinnedCount   int
-	Defaults      config.Values
-	PinnedValues  config.Values
-	CanGoBack     bool
+	Defaults     config.Values
+	PinnedValues config.Values
+	WizardName   string
+	Version      string
+	VersionLabel string
+	Options      []config.Option
+	PinnedCount  int
+	Overridden   bool
+	CanGoBack    bool
 }
 
 // Run executes the wizard and returns the result.
@@ -433,6 +428,10 @@ func Run(p RunParams) (*Result, error) {
 		return nil, fmt.Errorf("wizard error: %w", err)
 	}
 
-	result := finalModel.(*Engine).GetResult()
+	eng, ok := finalModel.(*Engine)
+	if !ok {
+		return nil, errors.New("unexpected model type")
+	}
+	result := eng.GetResult()
 	return &result, nil
 }

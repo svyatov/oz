@@ -14,13 +14,13 @@ import (
 
 // InputField wraps bubbles/textinput for free-text entry.
 type InputField struct {
-	label           string
-	description     string
-	ti              textinput.Model
 	rule            *config.InputRule
 	compiledPattern *regexp.Regexp
-	required        bool
+	label           string
+	description     string
 	errMsg          string
+	ti              textinput.Model
+	required        bool
 }
 
 // NewInputField creates an InputField from a config option.
@@ -45,7 +45,7 @@ func (f *InputField) Init() tea.Cmd {
 
 func (f *InputField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch msg.String() {
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		if err := f.validate(); err != "" {
 			f.errMsg = err
 			return false, nil

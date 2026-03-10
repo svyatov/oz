@@ -86,25 +86,25 @@ type CompatEntry struct {
 
 // Option is a single wizard step.
 type Option struct {
-	Name        string         `yaml:"name"`
-	Type        OptionType     `yaml:"type"` // select, confirm, input, multi_select
-	Label       string         `yaml:"label"`
-	Description string         `yaml:"description"`
-	Flag        string         `yaml:"flag"`
-	FlagTrue    string         `yaml:"flag_true"`
-	FlagFalse   string         `yaml:"flag_false"`
-	FlagNone    string         `yaml:"flag_none"`
-	FlagStyle   FlagStyle      `yaml:"flag_style"` // per-option override
 	Default     *FieldValue `yaml:"default,omitempty"`
-	AllowNone   bool        `yaml:"allow_none"`
-	Required    bool        `yaml:"required"`
+	Validate    *InputRule  `yaml:"validate"`
 	ShowWhen    Values      `yaml:"show_when,omitempty"`
 	HideWhen    Values      `yaml:"hide_when,omitempty"`
-	Choices     FlexChoices    `yaml:"choices"`
-	ChoicesFrom string         `yaml:"choices_from"`
-	Separator   string         `yaml:"separator"`
-	Validate    *InputRule     `yaml:"validate"`
-	Positional  bool           `yaml:"positional"`
+	FlagNone    string      `yaml:"flag_none"`
+	FlagFalse   string      `yaml:"flag_false"`
+	Type        OptionType  `yaml:"type"`
+	Label       string      `yaml:"label"`
+	Description string      `yaml:"description"`
+	Flag        string      `yaml:"flag"`
+	FlagTrue    string      `yaml:"flag_true"`
+	Name        string      `yaml:"name"`
+	Separator   string      `yaml:"separator"`
+	FlagStyle   FlagStyle   `yaml:"flag_style"`
+	ChoicesFrom string      `yaml:"choices_from"`
+	Choices     FlexChoices `yaml:"choices"`
+	AllowNone   bool        `yaml:"allow_none"`
+	Required    bool        `yaml:"required"`
+	Positional  bool        `yaml:"positional"`
 }
 
 // EffectiveFlagStyle returns the option-level flag style, falling back to the wizard default.
@@ -154,7 +154,7 @@ func (fc *FlexChoices) UnmarshalYAML(value *yaml.Node) error {
 // InputRule defines validation constraints for input fields.
 type InputRule struct {
 	Pattern   string `yaml:"pattern"`
+	Message   string `yaml:"message"`
 	MinLength int    `yaml:"min_length"`
 	MaxLength int    `yaml:"max_length"`
-	Message   string `yaml:"message"`
 }

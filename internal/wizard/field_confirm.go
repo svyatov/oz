@@ -12,11 +12,11 @@ import (
 
 // ConfirmField is a Yes/No toggle with y/n shortcuts.
 type ConfirmField struct {
+	defaultValue *bool
 	label        string
 	description  string
-	cursor       int // 0=Yes, 1=No
+	cursor       int
 	value        bool
-	defaultValue *bool
 }
 
 // NewConfirmField creates a ConfirmField from a config option.
@@ -28,11 +28,11 @@ func (f *ConfirmField) Init() tea.Cmd { return nil }
 
 func (f *ConfirmField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch msg.String() {
-	case "up", "k":
+	case keyUp, "k":
 		f.cursor = 0
-	case "down", "j":
+	case keyDown, "j":
 		f.cursor = 1
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		f.value = f.cursor == 0
 		return true, nil
 	}
@@ -71,7 +71,7 @@ func (f *ConfirmField) View() string {
 		if active {
 			cursor = " " + ui.Cursor() + " "
 		} else {
-			cursor = "   "
+			cursor = cursorBlank
 		}
 
 		styledLabel := ui.ChoiceLabel(item, active)

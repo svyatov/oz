@@ -13,11 +13,11 @@ import (
 
 // MultiSelectField is a checkbox list with number toggles and space/x toggle.
 type MultiSelectField struct {
+	selected    map[int]bool
 	label       string
 	description string
 	choices     []config.Choice
 	cursor      int
-	selected    map[int]bool
 }
 
 // NewMultiSelectField creates a MultiSelectField from a config option.
@@ -36,11 +36,11 @@ func (f *MultiSelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	n := len(f.choices)
 
 	switch msg.String() {
-	case "up", "k":
+	case keyUp, "k":
 		f.cursor = (f.cursor - 1 + n) % n
-	case "down", "j":
+	case keyDown, "j":
 		f.cursor = (f.cursor + 1) % n
-	case "space", "x":
+	case keySpace, "x":
 		f.selected[f.cursor] = !f.selected[f.cursor]
 	case "a":
 		allSelected := true
@@ -53,7 +53,7 @@ func (f *MultiSelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		for i := range f.choices {
 			f.selected[i] = !allSelected
 		}
-	case "enter", "tab":
+	case keyEnter, keyTab:
 		return true, nil
 	}
 
@@ -90,7 +90,7 @@ func (f *MultiSelectField) View() string {
 		if active {
 			cursor = " " + ui.Cursor() + " "
 		} else {
-			cursor = "   "
+			cursor = cursorBlank
 		}
 
 		check := "[ ]"

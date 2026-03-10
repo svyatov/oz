@@ -80,7 +80,8 @@ func TestPinsRoundTrip(t *testing.T) {
 		t.Errorf("expected empty pins, got %v", pins)
 	}
 
-	if err := s.SavePins("wiz", config.Values{"db": config.StringVal("postgres")}); err != nil {
+	err = s.SavePins("wiz", config.Values{"db": config.StringVal("postgres")})
+	if err != nil {
 		t.Fatalf("SavePins: %v", err)
 	}
 
@@ -104,7 +105,8 @@ func TestPinnedVersionRoundTrip(t *testing.T) {
 		t.Errorf("expected empty, got %q", ver)
 	}
 
-	if err := s.SavePinnedVersion("wiz", "7.1.0"); err != nil {
+	err = s.SavePinnedVersion("wiz", "7.1.0")
+	if err != nil {
 		t.Fatalf("SavePinnedVersion: %v", err)
 	}
 	ver, err = s.LoadPinnedVersion("wiz")
@@ -197,7 +199,8 @@ func TestPresetRoundTrip(t *testing.T) {
 		t.Errorf("ListPresets = %v, want [my-preset]", names)
 	}
 
-	if err := s.RemovePreset("wiz", "my-preset"); err != nil {
+	err = s.RemovePreset("wiz", "my-preset")
+	if err != nil {
 		t.Fatalf("RemovePreset: %v", err)
 	}
 	names, err = s.ListPresets("wiz")

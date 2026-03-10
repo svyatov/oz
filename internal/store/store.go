@@ -37,9 +37,9 @@ func New(configDir string) *Store {
 
 // VersionedState is used when version_control is configured.
 type VersionedState struct {
-	PinnedVersion string                 `yaml:"pinned_version,omitempty"`
-	Pins          config.Values          `yaml:"pins,omitempty"`
 	Versions      map[string]*StateEntry `yaml:"versions,omitempty"`
+	Pins          config.Values          `yaml:"pins,omitempty"`
+	PinnedVersion string                 `yaml:"pinned_version,omitempty"`
 }
 
 // StateEntry holds last-used values and pins for a single version (or global).
@@ -107,8 +107,8 @@ func (s *Store) SaveState(wizard, version string, entry *StateEntry) error {
 
 func modifyVersionedState(path string, fn func(*VersionedState)) error {
 	var vs VersionedState
-	existing, err := os.ReadFile(path)
-	if err == nil {
+	existing, readErr := os.ReadFile(path)
+	if readErr == nil {
 		if err := yaml.Unmarshal(existing, &vs); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
 		}
