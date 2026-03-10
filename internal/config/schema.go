@@ -18,6 +18,16 @@ const (
 	OptionMultiSelect OptionType = "multi_select"
 )
 
+// IsValid reports whether t is a recognized option type.
+func (t OptionType) IsValid() bool {
+	switch t {
+	case OptionSelect, OptionConfirm, OptionInput, OptionMultiSelect:
+		return true
+	default:
+		return false
+	}
+}
+
 // FlagStyle controls how flags are formatted (--flag=value vs --flag value).
 type FlagStyle string
 

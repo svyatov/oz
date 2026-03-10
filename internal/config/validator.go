@@ -65,10 +65,6 @@ func validateVersionControl(vc *VersionControl, errs *errorCollector) {
 	}
 }
 
-var validOptionTypes = map[OptionType]bool{
-	OptionSelect: true, OptionConfirm: true, OptionInput: true, OptionMultiSelect: true,
-}
-
 func optionPrefix(i int, name string) string {
 	if name != "" {
 		return fmt.Sprintf("options[%d] (%s)", i, name)
@@ -96,7 +92,7 @@ func validateOptions(options []Option, errs *errorCollector) map[string]bool {
 }
 
 func validateOptionFields(o Option, prefix string, errs *errorCollector) {
-	if !validOptionTypes[o.Type] {
+	if !o.Type.IsValid() {
 		errs.addf("%s: type must be one of select, confirm, input, multi_select; got %q", prefix, o.Type)
 	}
 	if o.Label == "" {
