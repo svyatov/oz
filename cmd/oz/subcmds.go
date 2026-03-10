@@ -469,7 +469,7 @@ func presetsRemoveCmd(wizardName string) *cobra.Command {
 				return nil
 			}
 			st := store.New(configDir)
-			if err := st.DeletePreset(wizardName, args[0]); err != nil {
+			if err := st.RemovePreset(wizardName, args[0]); err != nil {
 				return fmt.Errorf("removing preset %q: %w", args[0], err)
 			}
 			fmt.Printf("  Preset %q removed.\n", args[0])

@@ -197,8 +197,8 @@ func TestPresetRoundTrip(t *testing.T) {
 		t.Errorf("ListPresets = %v, want [my-preset]", names)
 	}
 
-	if err := s.DeletePreset("wiz", "my-preset"); err != nil {
-		t.Fatalf("DeletePreset: %v", err)
+	if err := s.RemovePreset("wiz", "my-preset"); err != nil {
+		t.Fatalf("RemovePreset: %v", err)
 	}
 	names, err = s.ListPresets("wiz")
 	if err != nil {
@@ -234,9 +234,9 @@ func TestPathTraversalRejected(t *testing.T) {
 			if tt.wantErr && err == nil {
 				t.Errorf("LoadPreset(%q) expected error", tt.preset)
 			}
-			err = s.DeletePreset("wiz", tt.preset)
+			err = s.RemovePreset("wiz", tt.preset)
 			if tt.wantErr && err == nil {
-				t.Errorf("DeletePreset(%q) expected error", tt.preset)
+				t.Errorf("RemovePreset(%q) expected error", tt.preset)
 			}
 		})
 	}

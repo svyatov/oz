@@ -255,14 +255,14 @@ func (s *Store) SavePreset(wizard, name string, values config.Values) error {
 	return nil
 }
 
-// DeletePreset removes a named preset.
-func (s *Store) DeletePreset(wizard, name string) error {
+// RemovePreset removes a named preset.
+func (s *Store) RemovePreset(wizard, name string) error {
 	if err := validateName(name); err != nil {
 		return err
 	}
 	path := s.presetPath(wizard, name)
 	if err := os.Remove(path); err != nil {
-		return fmt.Errorf("deleting preset %q: %w", name, err)
+		return fmt.Errorf("removing preset %q: %w", name, err)
 	}
 	return nil
 }
