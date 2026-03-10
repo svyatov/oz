@@ -10,6 +10,7 @@ import (
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
+
 const defaultSuffix = " (default)"
 
 // SelectField is a numbered-list select with ↑↓jk navigation and 1–9 instant select.
