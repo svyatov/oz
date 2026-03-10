@@ -63,13 +63,13 @@ cmd/oz/
   → ui/theme.go         Lipgloss color palette and styles
 
 oz list (l, ls)              list available wizards
-oz validate (v) <wizard>     validate wizard config
+oz validate <wizard>         validate wizard config
 oz edit (e) <wizard>         open wizard YAML in $EDITOR
 oz create (c, new) <wizard>  scaffold new wizard from template
 oz remove (rm) <wizard>      delete wizard config (--force to skip confirm)
 oz run (r) <wizard>
 ├── -n, --dry-run
-├── -p, --with-preset <name>
+├── -p, --preset <name>
 ├── doctor
 ├── show (s)                show all options with descriptions
 ├── pins                    interactive TUI manager

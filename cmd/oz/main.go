@@ -59,13 +59,18 @@ func newRootCmd(args []string) *cobra.Command {
 }
 
 func runCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "run <wizard>",
 		Aliases: []string{"r"},
 		Short:   "Run a wizard",
 		Long: `Launch an interactive wizard that walks through options step by step
-and builds a CLI command from your answers. Use --dry-run to preview
-the command without executing, or --with-preset to replay saved values.`,
+and builds a CLI command from your answers.
+
+Wizard subcommands (use after wizard name):
+  doctor     Check tool installation and detected version
+  show       Show all options with descriptions
+  pins       Manage pinned options
+  presets    Manage presets`,
 		Example: "  oz run myapp\n  oz run myapp --dry-run\n  oz run myapp -p fast",
 		ValidArgsFunction: completeWizardNames,
 		Args: func(_ *cobra.Command, args []string) error {
@@ -78,6 +83,11 @@ the command without executing, or --with-preset to replay saved values.`,
 			return cmd.Help()
 		},
 	}
+
+	cmd.PersistentFlags().BoolP("dry-run", "n", false, "print command without executing")
+	cmd.PersistentFlags().StringP("preset", "p", "", "run with saved preset (non-interactive)")
+
+	return cmd
 }
 
 // detectWizardName finds the wizard name argument after "run" in os.Args.
@@ -279,9 +289,8 @@ in your editor ($VISUAL, $EDITOR, or vi). Use --no-edit to skip the editor.`,
 
 func validateCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "validate <wizard|path>",
-		Aliases: []string{"v"},
-		Short:   "Validate a wizard config file",
+		Use:   "validate <wizard|path>",
+		Short: "Validate a wizard config file",
 		Long:    "Check a wizard config for errors. Accepts a wizard name or a file path.",
 		Example: "  oz validate myapp\n  oz validate path/to/config.yml",
 		Args:              cobra.ExactArgs(1),

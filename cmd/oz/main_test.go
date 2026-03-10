@@ -79,13 +79,6 @@ func TestValidateCmdByName(t *testing.T) {
 	}
 }
 
-func TestValidateCmdAlias(t *testing.T) {
-	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "v", "testwiz"); err != nil {
-		t.Fatalf("validate alias: %v", err)
-	}
-}
-
 func TestValidateCmdInvalid(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.yml")

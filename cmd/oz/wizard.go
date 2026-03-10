@@ -16,11 +16,6 @@ import (
 )
 
 func wizardCmd(name string) *cobra.Command {
-	var (
-		dryRun     bool
-		presetName string
-	)
-
 	cmd := &cobra.Command{
 		Use:                name,
 		Short:              fmt.Sprintf("Run %s wizard", name),
@@ -31,13 +26,12 @@ func wizardCmd(name string) *cobra.Command {
   oz run %s doctor
   oz run %s show
   oz run %s presets list`, name, name, name, name, name, name),
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			presetName, _ := cmd.Flags().GetString("preset")
 			return runWizard(name, presetName, dryRun)
 		},
 	}
-
-	cmd.Flags().BoolVarP(&dryRun, "dry-run", "n", false, "print command without executing")
-	cmd.Flags().StringVarP(&presetName, "with-preset", "p", "", "run with saved preset (non-interactive)")
 
 	cmd.AddCommand(doctorCmd(name))
 	cmd.AddCommand(showCmd(name))
