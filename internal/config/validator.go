@@ -19,7 +19,7 @@ func Validate(w *Wizard) []error {
 	if w.Command == "" {
 		add("command is required")
 	}
-	if w.FlagStyle != "" && w.FlagStyle != "equals" && w.FlagStyle != "space" {
+	if w.FlagStyle != "" && w.FlagStyle != FlagStyleEquals && w.FlagStyle != FlagStyleSpace {
 		add("flag_style must be 'equals' or 'space', got %q", w.FlagStyle)
 	}
 
@@ -61,8 +61,8 @@ func validateVersionControl(vc *VersionControl, add func(string, ...any)) {
 	}
 }
 
-var validOptionTypes = map[string]bool{
-	"select": true, "confirm": true, "input": true, "multi_select": true,
+var validOptionTypes = map[OptionType]bool{
+	OptionSelect: true, OptionConfirm: true, OptionInput: true, OptionMultiSelect: true,
 }
 
 func optionPrefix(i int, name string) string {
@@ -98,7 +98,7 @@ func validateOptionFields(o Option, prefix string, add func(string, ...any)) {
 	if o.Label == "" {
 		add("%s: label is required", prefix)
 	}
-	if o.FlagStyle != "" && o.FlagStyle != "equals" && o.FlagStyle != "space" {
+	if o.FlagStyle != "" && o.FlagStyle != FlagStyleEquals && o.FlagStyle != FlagStyleSpace {
 		add("%s: flag_style must be 'equals' or 'space', got %q", prefix, o.FlagStyle)
 	}
 
@@ -113,7 +113,7 @@ func validateOptionChoices(o Option, prefix string, add func(string, ...any)) {
 	if hasChoices && hasChoicesFrom {
 		add("%s: choices and choices_from are mutually exclusive", prefix)
 	}
-	if (o.Type == "select" || o.Type == "multi_select") && !hasChoices && !hasChoicesFrom {
+	if (o.Type == OptionSelect || o.Type == OptionMultiSelect) && !hasChoices && !hasChoicesFrom {
 		add("%s: choices or choices_from required for type %q", prefix, o.Type)
 	}
 	for j, c := range o.Choices {
@@ -124,11 +124,11 @@ func validateOptionChoices(o Option, prefix string, add func(string, ...any)) {
 }
 
 func validateOptionTypeConstraints(o Option, prefix string, add func(string, ...any)) {
-	if o.Separator != "" && o.Type != "multi_select" {
+	if o.Separator != "" && o.Type != OptionMultiSelect {
 		add("%s: separator is only valid for multi_select type", prefix)
 	}
 	if o.Validate != nil {
-		if o.Type != "input" {
+		if o.Type != OptionInput {
 			add("%s: validate is only valid for input type", prefix)
 		}
 		validateInputRule(o.Validate, prefix, add)
@@ -140,22 +140,22 @@ func validateOptionTypeConstraints(o Option, prefix string, add func(string, ...
 }
 
 func validateFieldTypeRestrictions(o Option, prefix string, add func(string, ...any)) {
-	if o.AllowNone && o.Type != "select" {
+	if o.AllowNone && o.Type != OptionSelect {
 		add("%s: allow_none is only valid for select type", prefix)
 	}
-	if o.FlagTrue != "" && o.Type != "confirm" {
+	if o.FlagTrue != "" && o.Type != OptionConfirm {
 		add("%s: flag_true is only valid for confirm type", prefix)
 	}
-	if o.FlagFalse != "" && o.Type != "confirm" {
+	if o.FlagFalse != "" && o.Type != OptionConfirm {
 		add("%s: flag_false is only valid for confirm type", prefix)
 	}
-	if o.FlagNone != "" && o.Type != "select" {
+	if o.FlagNone != "" && o.Type != OptionSelect {
 		add("%s: flag_none is only valid for select type", prefix)
 	}
-	if len(o.Choices) > 0 && o.Type == "input" {
+	if len(o.Choices) > 0 && o.Type == OptionInput {
 		add("%s: input type does not use choices", prefix)
 	}
-	if len(o.Choices) > 0 && o.Type == "confirm" {
+	if len(o.Choices) > 0 && o.Type == OptionConfirm {
 		add("%s: confirm type does not use choices", prefix)
 	}
 }
@@ -181,7 +181,7 @@ func validateOptionSemantics(o Option, prefix string, add func(string, ...any)) 
 	if o.Required && o.AllowNone {
 		add("%s: required and allow_none are mutually exclusive", prefix)
 	}
-	if o.Type == "confirm" && o.Flag != "" && o.FlagTrue != "" {
+	if o.Type == OptionConfirm && o.Flag != "" && o.FlagTrue != "" {
 		add("%s: confirm type with both flag and flag_true is ambiguous; use flag or flag_true, not both", prefix)
 	}
 	validateDefaultInChoices(o, prefix, add)
@@ -199,7 +199,7 @@ func validateDefaultInChoices(o Option, prefix string, add func(string, ...any))
 	for _, c := range o.Choices {
 		choiceSet[c.Value] = true
 	}
-	if o.Type == "multi_select" {
+	if o.Type == OptionMultiSelect {
 		defaults, ok := toAnySlice(o.Default)
 		if !ok {
 			add("%s: default for multi_select must be a list", prefix)

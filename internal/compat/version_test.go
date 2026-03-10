@@ -214,9 +214,9 @@ func TestOptionHints(t *testing.T) {
 
 func TestFilterOptions(t *testing.T) {
 	opts := []config.Option{
-		{Name: "a", Type: "input", Label: "A"},
-		{Name: "b", Type: "input", Label: "B"},
-		{Name: "c", Type: "input", Label: "C"},
+		{Name: "a", Type: config.OptionInput, Label: "A"},
+		{Name: "b", Type: config.OptionInput, Label: "B"},
+		{Name: "c", Type: config.OptionInput, Label: "C"},
 	}
 	compat := []config.CompatEntry{
 		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"a", "c"}},

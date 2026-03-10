@@ -12,7 +12,7 @@ func newTestSelectField(choices []config.Choice) *SelectField {
 	return NewSelectField(config.Option{
 		Label:   "Language",
 		Choices: choices,
-		Type:    "select",
+		Type:    config.OptionSelect,
 	})
 }
 

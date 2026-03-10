@@ -10,8 +10,6 @@ import (
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
-
-const noneValue = "_none"
 const defaultSuffix = " (default)"
 
 // SelectField is a numbered-list select with ↑↓jk navigation and 1–9 instant select.
@@ -117,7 +115,7 @@ func (f *SelectField) maxDisplayWidth() int {
 	}
 	if f.allowNone {
 		n := len("None")
-		if f.defaultValue == noneValue {
+		if f.defaultValue == config.NoneValue {
 			n += len(defaultSuffix)
 		}
 		if n > w {
@@ -157,7 +155,7 @@ func (f *SelectField) valueAt(i int) string {
 	if i < len(f.choices) {
 		return f.choices[i].Value
 	}
-	return noneValue
+	return config.NoneValue
 }
 
 func (f *SelectField) itemAt(i int) (label, desc string) {

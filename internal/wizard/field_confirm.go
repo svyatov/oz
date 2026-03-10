@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
 
@@ -18,8 +19,9 @@ type ConfirmField struct {
 	defaultValue *bool
 }
 
-func NewConfirmField(label, description string) *ConfirmField {
-	return &ConfirmField{label: label, description: description}
+// NewConfirmField creates a ConfirmField from a config option.
+func NewConfirmField(opt config.Option) *ConfirmField {
+	return &ConfirmField{label: opt.Label, description: opt.Description}
 }
 
 func (f *ConfirmField) Init() tea.Cmd { return nil }

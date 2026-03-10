@@ -24,7 +24,3 @@ func Run(parts []string) error {
 	return nil
 }
 
-// DryRun prints the colored command without executing it.
-func DryRun(parts []Part) {
-	PrintCommand(parts)
-}

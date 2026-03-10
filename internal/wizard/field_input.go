@@ -23,17 +23,18 @@ type InputField struct {
 	errMsg          string
 }
 
-func NewInputField(label, description string, rule *config.InputRule, required bool) *InputField {
+// NewInputField creates an InputField from a config option.
+func NewInputField(opt config.Option) *InputField {
 	ti := textinput.New()
 	f := &InputField{
-		label:       label,
-		description: description,
+		label:       opt.Label,
+		description: opt.Description,
 		ti:          ti,
-		rule:        rule,
-		required:    required,
+		rule:        opt.Validate,
+		required:    opt.Required,
 	}
-	if rule != nil && rule.Pattern != "" {
-		f.compiledPattern, _ = regexp.Compile(rule.Pattern)
+	if opt.Validate != nil && opt.Validate.Pattern != "" {
+		f.compiledPattern, _ = regexp.Compile(opt.Validate.Pattern)
 	}
 	return f
 }

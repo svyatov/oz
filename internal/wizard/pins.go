@@ -186,7 +186,7 @@ func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
 	m.editIdx = idx
 
 	if m.isVersionIdx(idx) {
-		m.editField = NewInputField("Version", "Leave blank for current version", nil, false)
+		m.editField = NewInputField(config.Option{Label: "Version", Description: "Leave blank for current version"})
 		if m.versionPin != "" && m.versionPin != "current" {
 			m.editField.SetValue(m.versionPin)
 		}
@@ -239,7 +239,7 @@ func (m *PinsModel) togglePin(idx int) (tea.Model, tea.Cmd) {
 
 	opt := &m.options[optIdx]
 	val := resolveDefault(opt, m.pins, m.lastUsed)
-	if opt.Type == "input" && !m.isValidInputValue(opt, val) {
+	if opt.Type == config.OptionInput && !m.isValidInputValue(opt, val) {
 		return m.enterEdit(idx)
 	}
 	m.pins[name] = val
@@ -254,7 +254,7 @@ func (m *PinsModel) isValidInputValue(opt *config.Option, val any) bool {
 	if opt.Validate == nil || s == "" {
 		return true
 	}
-	f := NewInputField("", "", opt.Validate, opt.Required)
+	f := NewInputField(config.Option{Validate: opt.Validate, Required: opt.Required})
 	f.SetValue(val)
 	return f.validate() == ""
 }
@@ -426,16 +426,16 @@ func (m *PinsModel) handleVersionVerified(msg versionVerifiedMsg) (tea.Model, te
 
 func buildPinsField(opt *config.Option) Field {
 	switch opt.Type {
-	case "select":
+	case config.OptionSelect:
 		return NewSelectField(*opt)
-	case "confirm":
-		return NewConfirmField(opt.Label, opt.Description)
-	case "input":
-		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
-	case "multi_select":
+	case config.OptionConfirm:
+		return NewConfirmField(*opt)
+	case config.OptionInput:
+		return NewInputField(*opt)
+	case config.OptionMultiSelect:
 		return NewMultiSelectField(*opt)
 	default:
-		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
+		return NewInputField(*opt)
 	}
 }
 
@@ -450,14 +450,16 @@ func resolveDefault(opt *config.Option, pins, lastUsed map[string]any) any {
 		return opt.Default
 	}
 	switch opt.Type {
-	case "select":
+	case config.OptionSelect:
 		if len(opt.Choices) > 0 {
 			return opt.Choices[0].Value
 		}
-	case "confirm":
+	case config.OptionConfirm:
 		return false
-	case "input":
+	case config.OptionInput:
 		return ""
+	case config.OptionMultiSelect:
+		// no default for multi_select
 	}
 	return nil
 }

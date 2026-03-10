@@ -45,7 +45,7 @@ func Build(w *config.Wizard, answers map[string]any) []Part {
 
 		if opt.Positional {
 			s := fmt.Sprintf("%v", val)
-			if s != "" && s != "_none" {
+			if s != "" && s != config.NoneValue {
 				positionalParts = append(positionalParts, Part{s, PartArg})
 			}
 			continue
@@ -79,11 +79,7 @@ func Build(w *config.Wizard, answers map[string]any) []Part {
 
 // FormatCommand returns the command as a plain display string.
 func FormatCommand(parts []Part) string {
-	strs := make([]string, len(parts))
-	for i, p := range parts {
-		strs[i] = p.Text
-	}
-	return strings.Join(strs, " ")
+	return strings.Join(PlainParts(parts), " ")
 }
 
 // PrintCommand prints the colored command with consistent spacing (blank line above and below).
@@ -128,17 +124,17 @@ func PlainParts(parts []Part) []string {
 	return strs
 }
 
-func buildOptionFlags(opt config.Option, val any, defaultStyle string) []string {
+func buildOptionFlags(opt config.Option, val any, defaultStyle config.FlagStyle) []string {
 	style := opt.EffectiveFlagStyle(defaultStyle)
 
 	switch opt.Type {
-	case "confirm":
+	case config.OptionConfirm:
 		return buildConfirmFlags(opt, val)
-	case "select":
+	case config.OptionSelect:
 		return buildSelectFlags(opt, val, style)
-	case "input":
+	case config.OptionInput:
 		return buildInputFlags(opt, val, style)
-	case "multi_select":
+	case config.OptionMultiSelect:
 		return buildMultiSelectFlags(opt, val, style)
 	}
 	return nil
@@ -165,9 +161,9 @@ func buildConfirmFlags(opt config.Option, val any) []string {
 	return nil
 }
 
-func buildSelectFlags(opt config.Option, val any, style string) []string {
+func buildSelectFlags(opt config.Option, val any, style config.FlagStyle) []string {
 	s := fmt.Sprintf("%v", val)
-	if s == "" || s == "_none" {
+	if s == "" || s == config.NoneValue {
 		if opt.FlagNone != "" {
 			return []string{opt.FlagNone}
 		}
@@ -180,7 +176,7 @@ func buildSelectFlags(opt config.Option, val any, style string) []string {
 	return []string{formatFlag(opt.Flag, s, style)}
 }
 
-func buildInputFlags(opt config.Option, val any, style string) []string {
+func buildInputFlags(opt config.Option, val any, style config.FlagStyle) []string {
 	s := fmt.Sprintf("%v", val)
 	if s == "" || opt.Flag == "" {
 		return nil
@@ -188,7 +184,7 @@ func buildInputFlags(opt config.Option, val any, style string) []string {
 	return []string{formatFlag(opt.Flag, s, style)}
 }
 
-func buildMultiSelectFlags(opt config.Option, val any, style string) []string {
+func buildMultiSelectFlags(opt config.Option, val any, style config.FlagStyle) []string {
 	vals, ok := val.([]string)
 	if !ok || len(vals) == 0 || opt.Flag == "" {
 		return nil
@@ -207,8 +203,8 @@ func buildMultiSelectFlags(opt config.Option, val any, style string) []string {
 	return flags
 }
 
-func formatFlag(flag, value, style string) string {
-	if style == "space" {
+func formatFlag(flag, value string, style config.FlagStyle) string {
+	if style == config.FlagStyleSpace {
 		return flag + " " + value
 	}
 	return flag + "=" + value

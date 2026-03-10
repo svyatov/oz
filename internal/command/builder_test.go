@@ -8,10 +8,14 @@ import (
 
 func TestFormatFlag(t *testing.T) {
 	tests := []struct {
-		name, flag, value, style, want string
+		name  string
+		flag  string
+		value string
+		style config.FlagStyle
+		want  string
 	}{
-		{"equals", "--flag", "val", "equals", "--flag=val"},
-		{"space", "--flag", "val", "space", "--flag val"},
+		{"equals", "--flag", "val", config.FlagStyleEquals, "--flag=val"},
+		{"space", "--flag", "val", config.FlagStyleSpace, "--flag val"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -63,7 +67,7 @@ func TestBuildSelectFlags(t *testing.T) {
 		want []string
 	}{
 		{"normal_value", "go", []string{"--lang=go"}},
-		{"none_with_flag_none", "_none", []string{"--no-lang"}},
+		{"none_with_flag_none", config.NoneValue, []string{"--no-lang"}},
 		{"empty_with_flag_none", "", []string{"--no-lang"}},
 		{"no_flag", "go", nil},
 	}
@@ -129,8 +133,8 @@ func TestBuild(t *testing.T) {
 		w := &config.Wizard{
 			Command: "docker run",
 			Options: []config.Option{
-				{Name: "verbose", Type: "confirm", FlagTrue: "-v"},
-				{Name: "port", Type: "input", Flag: "-p", Label: "Port"},
+				{Name: "verbose", Type: config.OptionConfirm, FlagTrue: "-v"},
+				{Name: "port", Type: config.OptionInput, Flag: "-p", Label: "Port"},
 			},
 		}
 		answers := map[string]any{"verbose": true, "port": "8080"}
@@ -144,7 +148,7 @@ func TestBuild(t *testing.T) {
 		w := &config.Wizard{
 			Command: "task",
 			Options: []config.Option{{
-				Name: "task_name", Type: "select", Label: "Task",
+				Name: "task_name", Type: config.OptionSelect, Label: "Task",
 				Positional: true,
 				Choices:    config.FlexChoices{{Value: "build", Label: "build"}},
 			}},
@@ -158,11 +162,11 @@ func TestBuild(t *testing.T) {
 			Command: "docker run",
 			Options: []config.Option{
 				{
-					Name: "image", Type: "select", Label: "Image",
+					Name: "image", Type: config.OptionSelect, Label: "Image",
 					Positional: true,
 					Choices:    config.FlexChoices{{Value: "nginx", Label: "nginx"}},
 				},
-				{Name: "detach", Type: "confirm", Flag: "-d"},
+				{Name: "detach", Type: config.OptionConfirm, Flag: "-d"},
 			},
 		}
 		answers := map[string]any{"image": "nginx", "detach": true}

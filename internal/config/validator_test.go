@@ -14,7 +14,7 @@ func TestValidate(t *testing.T) {
 			Name:    "test",
 			Command: "cmd",
 			Options: []Option{
-				{Name: "opt1", Type: "input", Label: "Opt 1"},
+				{Name: "opt1", Type: OptionInput, Label: "Opt 1"},
 			},
 		}
 	}
@@ -62,7 +62,7 @@ func baseCases() []validationCase {
 			w.Compat = []CompatEntry{{Versions: ">= 1.0", Options: []string{"opt1"}}}
 		}, "compat requires version_control"},
 		{"duplicate_option_name", func(w *Wizard) {
-			w.Options = append(w.Options, Option{Name: "opt1", Type: "input", Label: "Dup"})
+			w.Options = append(w.Options, Option{Name: "opt1", Type: OptionInput, Label: "Dup"})
 		}, "duplicate option name"},
 		{"invalid_option_type", func(w *Wizard) {
 			w.Options[0].Type = "bad"
@@ -71,15 +71,15 @@ func baseCases() []validationCase {
 			w.Options[0].Label = ""
 		}, "label is required"},
 		{"select_without_choices", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = nil
 		}, "choices or choices_from required"},
 		{"multi_select_without_choices", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = nil
 		}, "choices or choices_from required"},
 		{"choice_empty_value", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "", Label: "x"}}
 		}, "value is required"},
 		{"show_when_unknown_option", func(w *Wizard) {
@@ -135,11 +135,11 @@ func newFeatureCases() []validationCase {
 func choicesCases() []validationCase {
 	return []validationCase{
 		{"choices_from_valid", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "ls *.txt"
 		}, ""},
 		{"choices_and_choices_from_conflict", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "a"}}
 			w.Options[0].ChoicesFrom = "ls"
 		}, "choices and choices_from are mutually exclusive"},
@@ -147,12 +147,12 @@ func choicesCases() []validationCase {
 			w.Options[0].Separator = ","
 		}, "separator is only valid for multi_select"},
 		{"separator_on_multi_select_valid", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Separator = ","
 			w.Options[0].ChoicesFrom = "echo a"
 		}, ""},
 		{"validate_on_non_input", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "a"}}
 			w.Options[0].Validate = &InputRule{Pattern: ".*"}
 		}, "validate is only valid for input"},
@@ -172,7 +172,7 @@ func constraintCases() []validationCase {
 			w.Options[0].Flag = "--name"
 		}, "positional is mutually exclusive with flag"},
 		{"positional_conflicts_with_flag_true", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].Positional = true
 			w.Options[0].FlagTrue = "--yes"
 		}, "positional is mutually exclusive with flag"},
@@ -184,16 +184,16 @@ func constraintCases() []validationCase {
 		}, "hide_when references unknown option"},
 		{"hide_when_valid", func(w *Wizard) {
 			w.Options = append(w.Options, Option{
-				Name: "opt2", Type: "input", Label: "Opt 2",
+				Name: "opt2", Type: OptionInput, Label: "Opt 2",
 				HideWhen: map[string]any{"opt1": "x"},
 			})
 		}, ""},
 		{"choices_from_unknown_interpolation", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "cmd --profile={{unknown}}"
 		}, "choices_from interpolation references unknown option"},
 		{"choices_from_dot_interpolation_ignored", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "docker images --format '{{.Names}}'"
 		}, ""},
 	}
@@ -209,43 +209,43 @@ func semanticCases() []validationCase {
 func semanticDefaultCases() []validationCase {
 	return []validationCase{
 		{"default_not_in_choices", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
 			w.Options[0].Default = "c"
 		}, "not among the defined choices"},
 		{"default_in_choices_valid", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
 			w.Options[0].Default = "a"
 		}, ""},
 		{"default_multi_select_not_in_choices", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
 			w.Options[0].Default = []any{"a", "z"}
 		}, "not among the defined choices"},
 		{"default_multi_select_all_valid", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
 			w.Options[0].Default = []any{"a", "b"}
 		}, ""},
 		{"default_multi_select_scalar_rejected", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].Default = "a"
 		}, "must be a list"},
 		{"default_with_choices_from_skipped", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "echo a b c"
 			w.Options[0].Default = "anything"
 		}, ""},
 		{"default_empty_with_allow_none_valid", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].AllowNone = true
 			w.Options[0].Default = ""
 		}, ""},
 		{"duplicate_choice_values", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "x", Label: "X"}, {Value: "x", Label: "X2"}}
 		}, "duplicate choice value"},
 	}
@@ -254,22 +254,22 @@ func semanticDefaultCases() []validationCase {
 func semanticConstraintCases() []validationCase {
 	return []validationCase{
 		{"required_and_allow_none", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].Required = true
 			w.Options[0].AllowNone = true
 		}, "mutually exclusive"},
 		{"confirm_with_choices", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 		}, "does not use choices"},
 		{"confirm_flag_and_flag_true", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].Flag = "--verbose"
 			w.Options[0].FlagTrue = "--yes"
 		}, "ambiguous"},
 		{"confirm_flag_only_valid", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].Flag = "--verbose"
 		}, ""},
 		{"input_rule_min_gt_max", func(w *Wizard) {
@@ -296,16 +296,16 @@ func semanticTypeCases() []validationCase {
 			w.Options[0].AllowNone = true
 		}, "only valid for select"},
 		{"allow_none_on_confirm", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].AllowNone = true
 		}, "only valid for select"},
 		{"allow_none_on_multi_select", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].ChoicesFrom = "echo a"
 			w.Options[0].AllowNone = true
 		}, "only valid for select"},
 		{"flag_true_on_select", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].FlagTrue = "--yes"
 		}, "only valid for confirm"},
@@ -313,12 +313,12 @@ func semanticTypeCases() []validationCase {
 			w.Options[0].FlagFalse = "--no"
 		}, "only valid for confirm"},
 		{"flag_false_on_select", func(w *Wizard) {
-			w.Options[0].Type = "select"
+			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].FlagFalse = "--no"
 		}, "only valid for confirm"},
 		{"flag_true_on_multi_select", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].ChoicesFrom = "echo a"
 			w.Options[0].FlagTrue = "--yes"
 		}, "only valid for confirm"},
@@ -326,11 +326,11 @@ func semanticTypeCases() []validationCase {
 			w.Options[0].FlagNone = "--skip"
 		}, "only valid for select"},
 		{"flag_none_on_confirm", func(w *Wizard) {
-			w.Options[0].Type = "confirm"
+			w.Options[0].Type = OptionConfirm
 			w.Options[0].FlagNone = "--skip"
 		}, "only valid for select"},
 		{"flag_none_on_multi_select", func(w *Wizard) {
-			w.Options[0].Type = "multi_select"
+			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].ChoicesFrom = "echo a"
 			w.Options[0].FlagNone = "--skip"
 		}, "only valid for select"},
@@ -407,25 +407,25 @@ func TestEffectiveCommand(t *testing.T) {
 func TestEffectiveFlagStyle(t *testing.T) {
 	t.Run("wizard_default", func(t *testing.T) {
 		w := &Wizard{}
-		if got := w.EffectiveFlagStyle(); got != "equals" {
+		if got := w.EffectiveFlagStyle(); got != FlagStyleEquals {
 			t.Errorf("got %q, want equals", got)
 		}
 	})
 	t.Run("wizard_space", func(t *testing.T) {
-		w := &Wizard{FlagStyle: "space"}
-		if got := w.EffectiveFlagStyle(); got != "space" {
+		w := &Wizard{FlagStyle: FlagStyleSpace}
+		if got := w.EffectiveFlagStyle(); got != FlagStyleSpace {
 			t.Errorf("got %q, want space", got)
 		}
 	})
 	t.Run("option_inherits", func(t *testing.T) {
 		o := &Option{}
-		if got := o.EffectiveFlagStyle("space"); got != "space" {
+		if got := o.EffectiveFlagStyle(FlagStyleSpace); got != FlagStyleSpace {
 			t.Errorf("got %q, want space", got)
 		}
 	})
 	t.Run("option_overrides", func(t *testing.T) {
-		o := &Option{FlagStyle: "equals"}
-		if got := o.EffectiveFlagStyle("space"); got != "equals" {
+		o := &Option{FlagStyle: FlagStyleEquals}
+		if got := o.EffectiveFlagStyle(FlagStyleSpace); got != FlagStyleEquals {
 			t.Errorf("got %q, want equals", got)
 		}
 	})

@@ -41,8 +41,8 @@ type Engine struct {
 	overridden    bool
 	options    []config.Option
 	pinnedCnt  int
-	answers    Answers
-	defaults   map[string]any // from last-used state
+	answers  Answers
+	defaults Answers // from last-used state
 
 	// Navigation
 	stepIndex int   // index into visibleSteps
@@ -70,10 +70,10 @@ type Engine struct {
 // NewEngine creates a new wizard engine.
 func NewEngine(
 	wizardName, version, versionLabel string, overridden bool,
-	options []config.Option, pinnedCount int, defaults map[string]any,
+	options []config.Option, pinnedCount int, defaults Answers,
 ) *Engine {
 	if defaults == nil {
-		defaults = make(map[string]any)
+		defaults = make(Answers)
 	}
 	s := spinner.New(spinner.WithSpinner(spinner.Dot))
 	return &Engine{
@@ -99,7 +99,7 @@ func (e *Engine) headerLine() string {
 }
 
 // SetPinnedAnswers sets the answers for pinned options (needed for show_when).
-func (e *Engine) SetPinnedAnswers(pins map[string]any) {
+func (e *Engine) SetPinnedAnswers(pins Answers) {
 	maps.Copy(e.answers, pins)
 }
 
@@ -369,16 +369,16 @@ func (e *Engine) initCurrentField() tea.Cmd {
 
 func (e *Engine) buildField(opt *config.Option) Field {
 	switch opt.Type {
-	case "select":
+	case config.OptionSelect:
 		return NewSelectField(*opt)
-	case "confirm":
-		return NewConfirmField(opt.Label, opt.Description)
-	case "input":
-		return NewInputField(opt.Label, opt.Description, opt.Validate, opt.Required)
-	case "multi_select":
+	case config.OptionConfirm:
+		return NewConfirmField(*opt)
+	case config.OptionInput:
+		return NewInputField(*opt)
+	case config.OptionMultiSelect:
 		return NewMultiSelectField(*opt)
 	default:
-		return NewInputField(opt.Label, opt.Description, nil, false)
+		return NewInputField(*opt)
 	}
 }
 
@@ -396,14 +396,16 @@ func (e *Engine) setFieldDefault(opt *config.Option) {
 	if val == nil {
 		// Set sensible defaults
 		switch opt.Type {
-		case "select":
+		case config.OptionSelect:
 			if len(opt.Choices) > 0 {
 				val = opt.Choices[0].Value
 			}
-		case "confirm":
+		case config.OptionConfirm:
 			val = false
-		case "input":
+		case config.OptionInput:
 			val = ""
+		case config.OptionMultiSelect:
+			// no default needed
 		}
 	}
 
@@ -445,18 +447,27 @@ func (e *Engine) recordCompletedStep() {
 	})
 }
 
-// Run executes the wizard and returns the result.
-func Run(
-	wizardName, version, versionLabel string, overridden bool, options []config.Option,
-	pinnedCount int, defaults, pinnedAnswers map[string]any,
-	canGoBack bool,
-) (*Result, error) {
-	engine := NewEngine(wizardName, version, versionLabel, overridden, options, pinnedCount, defaults)
-	engine.canGoBack = canGoBack
-	engine.SetPinnedAnswers(pinnedAnswers)
+// RunParams groups the arguments for Run.
+type RunParams struct {
+	WizardName    string
+	Version       string
+	VersionLabel  string
+	Overridden    bool
+	Options       []config.Option
+	PinnedCount   int
+	Defaults      Answers
+	PinnedAnswers Answers
+	CanGoBack     bool
+}
 
-	p := tea.NewProgram(engine)
-	finalModel, err := p.Run()
+// Run executes the wizard and returns the result.
+func Run(p RunParams) (*Result, error) {
+	engine := NewEngine(p.WizardName, p.Version, p.VersionLabel, p.Overridden, p.Options, p.PinnedCount, p.Defaults)
+	engine.canGoBack = p.CanGoBack
+	engine.SetPinnedAnswers(p.PinnedAnswers)
+
+	prog := tea.NewProgram(engine)
+	finalModel, err := prog.Run()
 	if err != nil {
 		return nil, fmt.Errorf("wizard error: %w", err)
 	}

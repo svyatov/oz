@@ -8,22 +8,44 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// OptionType identifies the kind of wizard option.
+type OptionType string
+
+const (
+	OptionSelect      OptionType = "select"
+	OptionConfirm     OptionType = "confirm"
+	OptionInput       OptionType = "input"
+	OptionMultiSelect OptionType = "multi_select"
+)
+
+// FlagStyle controls how flags are formatted (--flag=value vs --flag value).
+type FlagStyle string
+
+const (
+	FlagStyleEquals FlagStyle = "equals"
+	FlagStyleSpace  FlagStyle = "space"
+)
+
+// NoneValue is the sentinel value for "no selection" in select fields.
+const NoneValue = "_none"
+
 // Wizard is the top-level YAML config for a wizard.
 type Wizard struct {
 	Name        string          `yaml:"name"`
 	Description string          `yaml:"description"`
 	Command     string          `yaml:"command"`
-	FlagStyle   string          `yaml:"flag_style"` // "equals" (default) or "space"
+	FlagStyle   FlagStyle       `yaml:"flag_style"` // "equals" (default) or "space"
 	Version     *VersionControl `yaml:"version_control"`
 	Compat      []CompatEntry   `yaml:"compat"`
 	Options     []Option        `yaml:"options"`
 }
 
-func (w *Wizard) EffectiveFlagStyle() string {
-	if w.FlagStyle == "space" {
-		return "space"
+// EffectiveFlagStyle returns the wizard-level flag style, defaulting to equals.
+func (w *Wizard) EffectiveFlagStyle() FlagStyle {
+	if w.FlagStyle == FlagStyleSpace {
+		return FlagStyleSpace
 	}
-	return "equals"
+	return FlagStyleEquals
 }
 
 // VersionControl configures version detection and custom version support.
@@ -55,14 +77,14 @@ type CompatEntry struct {
 // Option is a single wizard step.
 type Option struct {
 	Name        string         `yaml:"name"`
-	Type        string         `yaml:"type"` // select, confirm, input, multi_select
+	Type        OptionType     `yaml:"type"` // select, confirm, input, multi_select
 	Label       string         `yaml:"label"`
 	Description string         `yaml:"description"`
 	Flag        string         `yaml:"flag"`
 	FlagTrue    string         `yaml:"flag_true"`
 	FlagFalse   string         `yaml:"flag_false"`
 	FlagNone    string         `yaml:"flag_none"`
-	FlagStyle   string         `yaml:"flag_style"` // per-option override
+	FlagStyle   FlagStyle      `yaml:"flag_style"` // per-option override
 	Default     any            `yaml:"default"`
 	AllowNone   bool           `yaml:"allow_none"`
 	Required    bool           `yaml:"required"`
@@ -75,7 +97,8 @@ type Option struct {
 	Positional  bool           `yaml:"positional"`
 }
 
-func (o *Option) EffectiveFlagStyle(wizardDefault string) string {
+// EffectiveFlagStyle returns the option-level flag style, falling back to the wizard default.
+func (o *Option) EffectiveFlagStyle(wizardDefault FlagStyle) FlagStyle {
 	if o.FlagStyle != "" {
 		return o.FlagStyle
 	}

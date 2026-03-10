@@ -118,25 +118,25 @@ func VisibleSteps(options []config.Option, answers Answers) []int {
 // FormatAnswer renders a field value as a human-readable string for completed-step display.
 func FormatAnswer(opt *config.Option, val any) string {
 	switch opt.Type {
-	case "confirm":
+	case config.OptionConfirm:
 		if b, ok := val.(bool); ok {
 			if b {
 				return "Yes"
 			}
 			return "No"
 		}
-	case "select":
+	case config.OptionSelect:
 		s := fmt.Sprintf("%v", val)
 		for _, c := range opt.Choices {
 			if c.Value == s {
 				return c.Label
 			}
 		}
-		if s == noneValue {
+		if s == config.NoneValue {
 			return "None"
 		}
 		return s
-	case "multi_select":
+	case config.OptionMultiSelect:
 		if vals, ok := val.([]string); ok {
 			labels := make([]string, 0, len(vals))
 			choiceMap := make(map[string]string, len(opt.Choices))
@@ -152,6 +152,8 @@ func FormatAnswer(opt *config.Option, val any) string {
 			}
 			return strings.Join(labels, ", ")
 		}
+	case config.OptionInput:
+		// fall through to default
 	}
 	return fmt.Sprintf("%v", val)
 }

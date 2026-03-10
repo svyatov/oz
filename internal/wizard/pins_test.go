@@ -21,7 +21,7 @@ func testOptions() []config.Option {
 	return []config.Option{
 		{
 			Name:  "db",
-			Type:  "select",
+			Type:  config.OptionSelect,
 			Label: "Database",
 			Choices: []config.Choice{
 				{Value: "pg", Label: "PostgreSQL"},
@@ -30,12 +30,12 @@ func testOptions() []config.Option {
 		},
 		{
 			Name:  "api",
-			Type:  "confirm",
+			Type:  config.OptionConfirm,
 			Label: "API mode?",
 		},
 		{
 			Name:    "name",
-			Type:    "input",
+			Type:    config.OptionInput,
 			Label:   "App name",
 			Default: "myapp",
 		},
@@ -303,7 +303,7 @@ func validatedInputOptions() []config.Option {
 	return []config.Option{
 		{
 			Name:     "port",
-			Type:     "input",
+			Type:     config.OptionInput,
 			Label:    "Port",
 			Required: true,
 			Validate: &config.InputRule{Pattern: `^\d+$`, Message: "must be a number"},
@@ -434,28 +434,28 @@ func TestResolveDefault(t *testing.T) {
 	}{
 		{
 			"from_pins",
-			config.Option{Name: "db", Type: "select"},
+			config.Option{Name: "db", Type: config.OptionSelect},
 			map[string]any{"db": "pg"},
 			nil,
 			"pg",
 		},
 		{
 			"from_last_used",
-			config.Option{Name: "db", Type: "select"},
+			config.Option{Name: "db", Type: config.OptionSelect},
 			map[string]any{},
 			map[string]any{"db": "mysql"},
 			"mysql",
 		},
 		{
 			"from_default",
-			config.Option{Name: "name", Type: "input", Default: "myapp"},
+			config.Option{Name: "name", Type: config.OptionInput, Default: "myapp"},
 			map[string]any{},
 			map[string]any{},
 			"myapp",
 		},
 		{
 			"confirm_fallback",
-			config.Option{Name: "api", Type: "confirm"},
+			config.Option{Name: "api", Type: config.OptionConfirm},
 			map[string]any{},
 			map[string]any{},
 			false,
@@ -463,7 +463,7 @@ func TestResolveDefault(t *testing.T) {
 		{
 			"select_first_choice",
 			config.Option{
-				Name: "db", Type: "select",
+				Name: "db", Type: config.OptionSelect,
 				Choices: []config.Choice{{Value: "pg"}},
 			},
 			map[string]any{},

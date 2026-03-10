@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"maps"
 	"os"
@@ -74,7 +73,7 @@ type wizardSession struct {
 	vr            *wizard.VersionResult
 	result        *wizard.Result
 	state         *store.StateEntry
-	pinnedAnswers map[string]any
+	pinnedAnswers wizard.Answers
 }
 
 func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun bool) (*wizardSession, error) {
@@ -101,25 +100,23 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 
 		// Load version-independent pins, keep only those matching filtered options.
 		allPins, _ := st.LoadPins(w.Name)
-		optionSet := make(map[string]bool, len(options))
-		for _, o := range options {
-			optionSet[o.Name] = true
-		}
-		activePins := make(map[string]any, len(allPins))
-		for k, v := range allPins {
-			if optionSet[k] {
-				activePins[k] = v
-			}
-		}
+		activePins := filterActivePins(allPins, options)
 
 		filteredOptions, pinnedCount := wizard.FilterPinned(options, activePins)
-		pinnedAnswers := make(map[string]any)
+		pinnedAnswers := make(wizard.Answers)
 		maps.Copy(pinnedAnswers, activePins)
 
-		result, err := wizard.Run(
-			w.Name, vr.Selected, versionLabel(w), overridden, filteredOptions,
-			pinnedCount, state.LastUsed, pinnedAnswers, vr.Interactive,
-		)
+		result, err := wizard.Run(wizard.RunParams{
+			WizardName:    w.Name,
+			Version:       vr.Selected,
+			VersionLabel:  versionLabel(w),
+			Overridden:    overridden,
+			Options:       filteredOptions,
+			PinnedCount:   pinnedCount,
+			Defaults:      state.LastUsed,
+			PinnedAnswers: pinnedAnswers,
+			CanGoBack:     vr.Interactive,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("running wizard: %w", err)
 		}
@@ -148,14 +145,14 @@ func runWizard(name string, presetName string, dryRun bool) error {
 
 	majorVersion := majorVer(s.vr.Selected)
 
-	allAnswers := make(map[string]any)
+	allAnswers := make(wizard.Answers)
 	maps.Copy(allAnswers, s.pinnedAnswers)
 	maps.Copy(allAnswers, s.result.Answers)
 
 	parts := command.Build(w, allAnswers)
 	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Answers)
 	if dryRun {
-		command.DryRun(parts)
+		command.PrintCommand(parts)
 		return nil
 	}
 	command.PrintCommand(parts)
@@ -212,7 +209,7 @@ func runWithPreset(
 
 	parts := command.Build(w, values)
 	if dryRun {
-		command.DryRun(parts)
+		command.PrintCommand(parts)
 		return nil
 	}
 	command.PrintCommand(parts)
@@ -231,16 +228,7 @@ func runPins(name string) error {
 	st := store.New(configDir)
 
 	allPins, _ := st.LoadPins(w.Name)
-	optionSet := make(map[string]bool, len(w.Options))
-	for _, o := range w.Options {
-		optionSet[o.Name] = true
-	}
-	pins := make(map[string]any, len(allPins))
-	for k, v := range allPins {
-		if optionSet[k] {
-			pins[k] = v
-		}
-	}
+	pins := filterActivePins(allPins, w.Options)
 
 	// Collect last-used for defaults.
 	detectedVersion, _ := compat.DetectVersion(w.Version)
@@ -284,6 +272,20 @@ func runPins(name string) error {
 	return nil
 }
 
+func filterActivePins(allPins map[string]any, options []config.Option) map[string]any {
+	optionSet := make(map[string]bool, len(options))
+	for _, o := range options {
+		optionSet[o.Name] = true
+	}
+	active := make(map[string]any, len(allPins))
+	for k, v := range allPins {
+		if optionSet[k] {
+			active[k] = v
+		}
+	}
+	return active
+}
+
 func versionVerifyCmd(w *config.Wizard) string {
 	if w.Version != nil {
 		return w.Version.CustomVersionVerify
@@ -309,25 +311,3 @@ func majorVer(version string) string {
 	return parts[0]
 }
 
-func confirmPrompt(msg string) bool {
-	fmt.Printf("%s [Y/n] ", msg)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimSpace(strings.ToLower(line))
-	return line == "" || line == "y" || line == "yes"
-}
-
-func confirmDangerousPrompt(msg string) bool {
-	fmt.Printf("%s [y/N] ", msg)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimSpace(strings.ToLower(line))
-	return line == "y" || line == "yes"
-}
-
-func promptPresetSave() string {
-	fmt.Print("  Save as preset? (name or Enter to skip): ")
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	return strings.TrimSpace(line)
-}

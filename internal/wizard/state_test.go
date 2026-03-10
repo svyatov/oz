@@ -179,19 +179,19 @@ func TestFormatAnswer(t *testing.T) {
 		val  any
 		want string
 	}{
-		{"confirm_true", config.Option{Type: "confirm"}, true, "Yes"},
-		{"confirm_false", config.Option{Type: "confirm"}, false, "No"},
+		{"confirm_true", config.Option{Type: config.OptionConfirm}, true, "Yes"},
+		{"confirm_false", config.Option{Type: config.OptionConfirm}, false, "No"},
 		{"select_label_lookup", config.Option{
-			Type:    "select",
+			Type:    config.OptionSelect,
 			Choices: config.FlexChoices{{Value: "go", Label: "Go"}},
 		}, "go", "Go"},
-		{"select_none", config.Option{Type: "select"}, "_none", "None"},
-		{"select_fallback", config.Option{Type: "select"}, "unknown", "unknown"},
+		{"select_none", config.Option{Type: config.OptionSelect}, config.NoneValue, "None"},
+		{"select_fallback", config.Option{Type: config.OptionSelect}, "unknown", "unknown"},
 		{"multi_select_labels", config.Option{
-			Type:    "multi_select",
+			Type:    config.OptionMultiSelect,
 			Choices: config.FlexChoices{{Value: "a", Label: "Alpha"}, {Value: "b", Label: "Beta"}},
 		}, []string{"a", "b"}, "Alpha, Beta"},
-		{"input_fallback", config.Option{Type: "input"}, "hello", "hello"},
+		{"input_fallback", config.Option{Type: config.OptionInput}, "hello", "hello"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

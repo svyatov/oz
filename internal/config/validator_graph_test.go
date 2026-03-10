@@ -14,8 +14,8 @@ type graphCase struct {
 
 func graphMinimal() []Option {
 	return []Option{
-		{Name: "first", Type: "select", Label: "First", ChoicesFrom: "echo a"},
-		{Name: "second", Type: "input", Label: "Second"},
+		{Name: "first", Type: OptionSelect, Label: "First", ChoicesFrom: "echo a"},
+		{Name: "second", Type: OptionInput, Label: "Second"},
 	}
 }
 
@@ -80,7 +80,7 @@ func graphRefCases() []graphCase {
 		}, ""},
 		{"chain_backward_valid", func(opts []Option) []Option {
 			opts = append(opts, Option{
-				Name: "third", Type: "input", Label: "Third",
+				Name: "third", Type: OptionInput, Label: "Third",
 				ShowWhen: map[string]any{"second": "val"},
 			})
 			return opts
@@ -106,7 +106,7 @@ func graphConflictCases() []graphCase {
 			return opts
 		}, "conflict on key"},
 		{"conflict_hide_subset_of_show_keys", func(opts []Option) []Option {
-			opts = append(opts, Option{Name: "third", Type: "input", Label: "Third"})
+			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
 			opts[2].ShowWhen = map[string]any{"first": "x", "second": "y"}
 			opts[2].HideWhen = map[string]any{"first": "x"}
 			return opts
@@ -117,13 +117,13 @@ func graphConflictCases() []graphCase {
 			return opts
 		}, ""},
 		{"no_conflict_different_keys", func(opts []Option) []Option {
-			opts = append(opts, Option{Name: "third", Type: "input", Label: "Third"})
+			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
 			opts[2].ShowWhen = map[string]any{"first": "x"}
 			opts[2].HideWhen = map[string]any{"second": "y"}
 			return opts
 		}, ""},
 		{"no_conflict_hide_has_extra_keys", func(opts []Option) []Option {
-			opts = append(opts, Option{Name: "third", Type: "input", Label: "Third"})
+			opts = append(opts, Option{Name: "third", Type: OptionInput, Label: "Third"})
 			opts[2].ShowWhen = map[string]any{"first": "x"}
 			opts[2].HideWhen = map[string]any{"first": "x", "second": "y"}
 			return opts
