@@ -20,8 +20,8 @@ Generate a new oz wizard YAML configuration file from a CLI tool's help output.
 
 3. **Generate a complete wizard config** with ALL options from the help text.
    Every option must have a `description` extracted from the help text.
-   If there are more than ~20 options, include the most common ones and group
-   advanced options behind `show_when` on an `advanced_mode` confirm.
+   Users can pin frequently-used options to skip them during the wizard,
+   so include all options flat — don't gate behind `advanced_mode`.
 
 4. **Review with the user.** Ask if they want to:
    - Remove or reorder options
@@ -89,11 +89,15 @@ command: "base-command"           # required
 #   available_versions: "1.0.0 2.0.0 3.0.0"             # or static list
 
 # Version compatibility filters (requires version_control)
+# Additive: only list version-specific options. Unlisted options always show.
+# Multiple entries can match simultaneously (e.g. ">= 8.0" and ">= 8.1").
 # compat:
-#   - versions: ">= 8.0"
-#     options: [new_feature]
 #   - versions: "< 8.0"
 #     options: [legacy_option]
+#   - versions: ">= 8.0"
+#     options: [new_feature]
+#   - versions: ">= 8.1"
+#     options: [newer_feature]
 
 options:
   # Input: positional argument (put these first)
@@ -236,23 +240,42 @@ options:
       description: "Plain CSS preprocessor, full control."
 ```
 
-**Conditional visibility:**
+**Conditional visibility (`hide_when`):**
 
 ```yaml
-- name: advanced_mode
+- name: api
   type: confirm
-  label: "Configure advanced options?"
-  description: "Show additional settings for fine-tuning."
+  label: "API-only application?"
+  description: "Skip views and assets, configure for API-only use."
+  flag: --api
   default: false
 
-- name: log_level
+- name: css
   type: select
-  label: "Log level?"
-  description: "Verbosity of application logging."
-  flag: --log-level
+  label: "Which CSS framework?"
+  description: "CSS approach for styling the application."
+  flag: --css
+  hide_when:
+    api: true           # irrelevant for API-only apps
+  choices: [tailwind, bootstrap, sass]
+```
+
+**Conditional visibility (`show_when`):**
+
+```yaml
+- name: database
+  type: select
+  label: "Which database?"
+  flag: --database
+  choices: [sqlite3, postgresql, mysql]
+
+- name: db_host
+  type: input
+  label: "Database host?"
+  description: "Hostname for the database server."
+  flag: --db-host
   show_when:
-    advanced_mode: true
-  choices: [debug, info, warn, error]
+    database: [postgresql, mysql]  # OR semantics: shown for either
 ```
 
 **Dynamic choices with interpolation:**
@@ -293,7 +316,9 @@ options:
 - Every option: `name`, `type`, `label`, `flag` (unless `positional: true`)
 - Select/multi_select: `choices` or `choices_from` (mutually exclusive)
 
-**Ordering:** positional options first, then commonly changed options, then rare ones. Use `show_when` for advanced options.
+**Ordering:** positional options first, then commonly changed options, then rare ones.
+Use `hide_when` for options irrelevant given earlier answers (e.g. CSS when API-only).
+Don't gate behind `advanced_mode` — users pin frequently-used options instead.
 
 **Visibility:**
 

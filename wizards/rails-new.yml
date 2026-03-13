@@ -29,6 +29,20 @@ options:
       pattern: "^[a-zA-Z][a-zA-Z0-9_-]*$"
       message: "Must start with a letter, then letters/digits/hyphens/underscores."
 
+  - name: api
+    type: confirm
+    label: "API-only application?"
+    description: "Skip views and assets, configure for API-only use."
+    flag: --api
+    default: false
+
+  - name: minimal
+    type: confirm
+    label: "Minimal application?"
+    description: "Skip all optional frameworks (Action Mailer, Active Job, etc.)."
+    flag: --minimal
+    default: false
+
   # 7.2 database (mysql, trilogy, postgresql, sqlite3)
   - name: database
     type: select
@@ -86,6 +100,8 @@ options:
     label: "Which JavaScript approach?"
     description: "Bundler or import map for JavaScript."
     flag: --javascript
+    hide_when:
+      api: true
     default: importmap
     allow_none: true
     flag_none: --skip-javascript
@@ -111,6 +127,8 @@ options:
     label: "Which CSS processor?"
     description: "CSS framework or preprocessor for styling."
     flag: --css
+    hide_when:
+      api: true
     allow_none: true
     choices:
       - value: tailwind
@@ -135,6 +153,8 @@ options:
     label: "Which asset pipeline?"
     description: "Asset pipeline for serving static assets."
     flag: --asset-pipeline
+    hide_when:
+      api: true
     default: sprockets
     allow_none: true
     flag_none: --skip-asset-pipeline
@@ -145,20 +165,6 @@ options:
       - value: propshaft
         label: Propshaft
         description: "Modern, simpler asset pipeline replacement."
-
-  - name: api
-    type: confirm
-    label: "API-only application?"
-    description: "Skip views and assets, configure for API-only use."
-    flag: --api
-    default: false
-
-  - name: minimal
-    type: confirm
-    label: "Minimal application?"
-    description: "Skip all optional frameworks (Action Mailer, Active Job, etc.)."
-    flag: --minimal
-    default: false
 
   - name: template
     type: input
@@ -234,6 +240,8 @@ options:
     label: "Skip Hotwire?"
     description: "Don't include Turbo and Stimulus for real-time updates."
     flag: --skip-hotwire
+    hide_when:
+      api: true
     default: false
 
   - name: skip_jbuilder
