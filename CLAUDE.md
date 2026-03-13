@@ -1,6 +1,6 @@
 # oz
 
-Config-driven CLI wizard framework in Go. Reads YAML wizard definitions, runs interactive Bubbletea prompts, builds and executes shell commands.
+Config-driven CLI wizard framework in Go. Reads YAML wizard definitions, runs interactive Bubbletea prompts, builds and executes shell commands. Wizard configs live in `~/.config/oz/wizards/` (override with `OZ_CONFIG_DIR` env var or `--config-dir` flag).
 
 ## Working Style
 
@@ -18,7 +18,7 @@ go build ./cmd/oz/                            # build binary
 
 ## Linting
 
-37 linters via golangci-lint. Key thresholds:
+50+ linters via golangci-lint (including govet analyzers). Key thresholds:
 - **funlen**: 60 lines / 40 statements
 - **gocyclo**: 15
 - **gocognit**: 30
@@ -107,6 +107,7 @@ oz run (r) <wizard>
 - Use `errors.Is()`/`errors.As()` for comparisons — never `==` or direct type assertion on errors.
 - Error type names: `ErrFoo` for sentinel values, `FooError` for types.
 - Never return nil error when err != nil.
+- Don't return `(nil, nil)` — always return a value or an error.
 
 ### Type safety (forcetypeassert, unconvert)
 
@@ -119,12 +120,15 @@ oz run (r) <wizard>
 - Always close HTTP response bodies (`defer resp.Body.Close()`).
 - Use stdlib constants (`http.StatusOK`, `http.MethodGet`) instead of literals.
 
-### Style (godot, nakedret, nestif, lll)
+### Context (fatcontext)
+
+- Never store `context.Context` in a struct — pass it as a function parameter.
+
+### Style (godot, nakedret, nestif)
 
 - Comments must end with a period.
 - No naked returns in functions longer than 5 lines.
 - Prefer early returns over deeply nested `if` blocks.
-- Lines ≤120 chars.
 
 ### Modern Go (intrange, modernize)
 
