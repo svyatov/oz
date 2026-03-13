@@ -2,6 +2,10 @@
 
 Config-driven CLI wizard framework in Go. Reads YAML wizard definitions, runs interactive Bubbletea prompts, builds and executes shell commands.
 
+## Working Style
+
+When implementing a plan, proceed directly to code changes. Do not spend excessive time on exploration or planning agents if the plan is already provided. If you need to explore, timebox it to 2-3 minutes max before starting implementation.
+
 ## Commands
 
 ```bash
@@ -114,6 +118,14 @@ When adding or modifying subcommands, verify shell completion works:
 - Run `go build ./cmd/oz/ && ./oz __complete "" 2>/dev/null` — all top-level commands must appear
 - Cobra hides commands without `Run`/`RunE` and without subcommands — always provide a `RunE` (can just call `cmd.Help()`)
 - Test nested completions too: `./oz __complete <parent> "" 2>/dev/null`
+
+## Pre-commit Checklist
+
+Always run lints (`golangci-lint run`) and tests (`go test ./...`) before committing. Fix any lint issues before presenting work as complete.
+
+## CLI / UI Guidelines
+
+When implementing UI changes (TUI, CLI output), consider ALL field types and edge cases (e.g., confirm fields, select fields, text inputs). Don't assume a fix for one field type covers all others.
 
 ## Code Quality
 
