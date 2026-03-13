@@ -1,0 +1,352 @@
+name: rails-new
+description: "Scaffold a new Ruby on Rails application with interactive option selection."
+command: "rails new --no-rc"
+
+version_control:
+  label: "Rails"
+  command: "rails --version"
+  pattern: '(\d+\.\d+\.\d+)'
+  custom_version_command: "rails _{{version}}_ new --no-rc"
+  custom_version_verify_command: "rails _{{version}}_ --version"
+  available_versions_command: "gem list rails -e -q | sed 's/rails (//;s/)//'"
+
+compat:
+  - versions: "< 8.0"
+    options: [database, asset_pipeline]
+  - versions: ">= 8.0"
+    options: [database_v8, skip_thruster, skip_kamal, skip_solid]
+  - versions: ">= 8.1"
+    options: [skip_bundler_audit]
+
+options:
+  - name: app_name
+    type: input
+    label: "Application name"
+    description: "Directory name for the new Rails project."
+    flag: --name
+    required: true
+    validate:
+      pattern: "^[a-zA-Z][a-zA-Z0-9_-]*$"
+      message: "Must start with a letter, then letters/digits/hyphens/underscores."
+
+  # 7.2 database (mysql, trilogy, postgresql, sqlite3)
+  - name: database
+    type: select
+    label: "Which database?"
+    description: "Database adapter for Active Record."
+    flag: --database
+    default: sqlite3
+    allow_none: true
+    flag_none: --skip-active-record
+    choices:
+      - value: sqlite3
+        label: SQLite
+        description: "File-based, no server needed."
+      - value: postgresql
+        label: PostgreSQL
+        description: "Production-ready relational database."
+      - value: mysql
+        label: MySQL
+        description: "Popular open-source relational database."
+      - value: trilogy
+        label: Trilogy
+        description: "MySQL-compatible client from GitHub."
+
+  # 8.0+ database (adds mariadb adapters)
+  - name: database_v8
+    type: select
+    label: "Which database?"
+    description: "Database adapter for Active Record."
+    flag: --database
+    default: sqlite3
+    allow_none: true
+    flag_none: --skip-active-record
+    choices:
+      - value: sqlite3
+        label: SQLite
+        description: "File-based, no server needed."
+      - value: postgresql
+        label: PostgreSQL
+        description: "Production-ready relational database."
+      - value: mysql
+        label: MySQL
+        description: "Popular open-source relational database."
+      - value: trilogy
+        label: Trilogy
+        description: "MySQL-compatible client from GitHub."
+      - value: mariadb-mysql
+        label: MariaDB (mysql2)
+        description: "MariaDB via the mysql2 adapter."
+      - value: mariadb-trilogy
+        label: MariaDB (trilogy)
+        description: "MariaDB via the trilogy adapter."
+
+  - name: javascript
+    type: select
+    label: "Which JavaScript approach?"
+    description: "Bundler or import map for JavaScript."
+    flag: --javascript
+    default: importmap
+    allow_none: true
+    flag_none: --skip-javascript
+    choices:
+      - value: importmap
+        label: Import maps
+        description: "No bundler needed, uses browser-native import maps."
+      - value: esbuild
+        label: esbuild
+        description: "Fast bundler written in Go."
+      - value: bun
+        label: Bun
+        description: "All-in-one JS runtime and bundler."
+      - value: webpack
+        label: Webpack
+        description: "Full-featured bundler with broad plugin ecosystem."
+      - value: rollup
+        label: Rollup
+        description: "ES module bundler, good for libraries."
+
+  - name: css
+    type: select
+    label: "Which CSS processor?"
+    description: "CSS framework or preprocessor for styling."
+    flag: --css
+    allow_none: true
+    choices:
+      - value: tailwind
+        label: Tailwind CSS
+        description: "Utility-first framework, fast prototyping."
+      - value: bootstrap
+        label: Bootstrap
+        description: "Component library with opinionated design."
+      - value: bulma
+        label: Bulma
+        description: "Modern CSS framework based on Flexbox."
+      - value: postcss
+        label: PostCSS
+        description: "Transforming CSS with JS plugins."
+      - value: sass
+        label: Sass
+        description: "CSS preprocessor with variables and nesting."
+
+  # 7.2 only
+  - name: asset_pipeline
+    type: select
+    label: "Which asset pipeline?"
+    description: "Asset pipeline for serving static assets."
+    flag: --asset-pipeline
+    default: sprockets
+    allow_none: true
+    flag_none: --skip-asset-pipeline
+    choices:
+      - value: sprockets
+        label: Sprockets
+        description: "Classic Rails asset pipeline."
+      - value: propshaft
+        label: Propshaft
+        description: "Modern, simpler asset pipeline replacement."
+
+  - name: api
+    type: confirm
+    label: "API-only application?"
+    description: "Skip views and assets, configure for API-only use."
+    flag: --api
+    default: false
+
+  - name: minimal
+    type: confirm
+    label: "Minimal application?"
+    description: "Skip all optional frameworks (Action Mailer, Active Job, etc.)."
+    flag: --minimal
+    default: false
+
+  - name: template
+    type: input
+    label: "Application template path"
+    description: "Path or URL to a Rails application template."
+    flag: --template
+
+  - name: skip_git
+    type: confirm
+    label: "Skip git init?"
+    description: "Don't initialize a git repository, .gitignore, or .gitattributes."
+    flag: --skip-git
+    default: false
+
+  - name: skip_docker
+    type: confirm
+    label: "Skip Docker files?"
+    description: "Don't generate Dockerfile, .dockerignore, or bin/docker-entrypoint."
+    flag: --skip-docker
+    default: false
+
+  - name: skip_keeps
+    type: confirm
+    label: "Skip .keep files?"
+    description: "Don't add source control .keep files to empty directories."
+    flag: --skip-keeps
+    default: false
+
+  - name: skip_action_mailer
+    type: confirm
+    label: "Skip Action Mailer?"
+    description: "Don't include the email sending framework."
+    flag: --skip-action-mailer
+    default: false
+
+  - name: skip_action_mailbox
+    type: confirm
+    label: "Skip Action Mailbox?"
+    description: "Don't include the inbound email routing framework."
+    flag: --skip-action-mailbox
+    default: false
+
+  - name: skip_action_text
+    type: confirm
+    label: "Skip Action Text?"
+    description: "Don't include the rich text content framework."
+    flag: --skip-action-text
+    default: false
+
+  - name: skip_active_job
+    type: confirm
+    label: "Skip Active Job?"
+    description: "Don't include the background job framework."
+    flag: --skip-active-job
+    default: false
+
+  - name: skip_active_storage
+    type: confirm
+    label: "Skip Active Storage?"
+    description: "Don't include the file upload framework."
+    flag: --skip-active-storage
+    default: false
+
+  - name: skip_action_cable
+    type: confirm
+    label: "Skip Action Cable?"
+    description: "Don't include the WebSocket framework."
+    flag: --skip-action-cable
+    default: false
+
+  - name: skip_hotwire
+    type: confirm
+    label: "Skip Hotwire?"
+    description: "Don't include Turbo and Stimulus for real-time updates."
+    flag: --skip-hotwire
+    default: false
+
+  - name: skip_jbuilder
+    type: confirm
+    label: "Skip jbuilder?"
+    description: "Don't include the JSON API builder gem."
+    flag: --skip-jbuilder
+    default: false
+
+  - name: skip_test
+    type: confirm
+    label: "Skip test framework?"
+    description: "Don't generate test files or test directory structure."
+    flag: --skip-test
+    default: false
+
+  - name: skip_system_test
+    type: confirm
+    label: "Skip system tests?"
+    description: "Don't generate system test files (browser-driven tests)."
+    flag: --skip-system-test
+    default: false
+
+  - name: skip_bootsnap
+    type: confirm
+    label: "Skip Bootsnap?"
+    description: "Don't include the boot-time optimization gem."
+    flag: --skip-bootsnap
+    default: false
+
+  - name: skip_dev_gems
+    type: confirm
+    label: "Skip dev gems?"
+    description: "Don't include development gems like web-console."
+    flag: --skip-dev-gems
+    default: false
+
+  # 8.0+
+  - name: skip_thruster
+    type: confirm
+    label: "Skip Thruster?"
+    description: "Don't include the HTTP/2 proxy and asset caching server."
+    flag: --skip-thruster
+    default: false
+
+  - name: skip_rubocop
+    type: confirm
+    label: "Skip RuboCop?"
+    description: "Don't include the Ruby linter and formatter."
+    flag: --skip-rubocop
+    default: false
+
+  - name: skip_brakeman
+    type: confirm
+    label: "Skip Brakeman?"
+    description: "Don't include the security vulnerability scanner."
+    flag: --skip-brakeman
+    default: false
+
+  # 8.1+
+  - name: skip_bundler_audit
+    type: confirm
+    label: "Skip bundler-audit?"
+    description: "Don't include the gem vulnerability scanner."
+    flag: --skip-bundler-audit
+    default: false
+
+  - name: skip_ci
+    type: confirm
+    label: "Skip CI files?"
+    description: "Don't generate GitHub CI workflow files."
+    flag: --skip-ci
+    default: false
+
+  # 8.0+
+  - name: skip_kamal
+    type: confirm
+    label: "Skip Kamal?"
+    description: "Don't include the deployment tool setup."
+    flag: --skip-kamal
+    default: false
+
+  # 8.0+
+  - name: skip_solid
+    type: confirm
+    label: "Skip Solid?"
+    description: "Don't include Solid Cache, Queue, and Cable setup."
+    flag: --skip-solid
+    default: false
+
+  - name: skip_bundle
+    type: confirm
+    label: "Skip bundle install?"
+    description: "Don't run bundle install after generating the app."
+    flag: --skip-bundle
+    default: false
+
+  - name: skip_decrypted_diffs
+    type: confirm
+    label: "Skip decrypted diffs?"
+    description: "Don't configure git to show decrypted diffs of encrypted credentials."
+    flag: --skip-decrypted-diffs
+    default: false
+
+  - name: devcontainer
+    type: confirm
+    label: "Generate devcontainer?"
+    description: "Generate VS Code devcontainer configuration files."
+    flag: --devcontainer
+    default: false
+
+  - name: extra_flags
+    type: input
+    label: "Extra flags"
+    description: "Additional flags to pass to rails new (e.g. --force)."
+    positional: true

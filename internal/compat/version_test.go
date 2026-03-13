@@ -82,27 +82,34 @@ func TestMatchVersionRange(t *testing.T) {
 	}
 }
 
-func TestMatchedRange(t *testing.T) {
+func TestMatchedRanges(t *testing.T) {
 	entries := []config.CompatEntry{
 		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"a"}},
 		{Versions: ">= 2.0.0", Options: []string{"b"}},
+		{Versions: ">= 2.5.0", Options: []string{"c"}},
 	}
 
 	tests := []struct {
 		name    string
 		version string
-		want    string
+		want    []string
 	}{
-		{"match_first", "1.5.0", ">= 1.0.0, < 2.0.0"},
-		{"match_second", "2.1.0", ">= 2.0.0"},
-		{"no_match", "0.5.0", ""},
-		{"empty_version", "", ""},
+		{"match_first_only", "1.5.0", []string{">= 1.0.0, < 2.0.0"}},
+		{"match_second_only", "2.1.0", []string{">= 2.0.0"}},
+		{"match_multiple", "3.0.0", []string{">= 2.0.0", ">= 2.5.0"}},
+		{"no_match", "0.5.0", nil},
+		{"empty_version", "", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MatchedRange(entries, tt.version)
-			if got != tt.want {
-				t.Errorf("MatchedRange(..., %q) = %q, want %q", tt.version, got, tt.want)
+			got := MatchedRanges(entries, tt.version)
+			if len(got) != len(tt.want) {
+				t.Fatalf("MatchedRanges(..., %q) = %v, want %v", tt.version, got, tt.want)
+			}
+			for i, v := range got {
+				if v != tt.want[i] {
+					t.Errorf("MatchedRanges(..., %q)[%d] = %q, want %q", tt.version, i, v, tt.want[i])
+				}
 			}
 		})
 	}
@@ -214,13 +221,15 @@ func TestOptionHints(t *testing.T) {
 
 func TestFilterOptions(t *testing.T) {
 	opts := []config.Option{
-		{Name: "a", Type: config.OptionInput, Label: "A"},
-		{Name: "b", Type: config.OptionInput, Label: "B"},
-		{Name: "c", Type: config.OptionInput, Label: "C"},
+		{Name: "shared", Type: config.OptionInput, Label: "Shared"},
+		{Name: "old_only", Type: config.OptionInput, Label: "Old"},
+		{Name: "new_only", Type: config.OptionInput, Label: "New"},
+		{Name: "newer_only", Type: config.OptionInput, Label: "Newer"},
 	}
-	compat := []config.CompatEntry{
-		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"a", "c"}},
-		{Versions: ">= 2.0.0", Options: []string{"b"}},
+	entries := []config.CompatEntry{
+		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"old_only"}},
+		{Versions: ">= 2.0.0", Options: []string{"new_only"}},
+		{Versions: ">= 3.0.0", Options: []string{"newer_only"}},
 	}
 
 	tests := []struct {
@@ -229,16 +238,18 @@ func TestFilterOptions(t *testing.T) {
 		version   string
 		wantNames []string
 	}{
-		{"filters_correctly", compat, "1.5.0", []string{"a", "c"}},
-		{"empty_compat_returns_all", nil, "1.5.0", []string{"a", "b", "c"}},
-		{"no_match_returns_all", compat, "0.1.0", []string{"a", "b", "c"}},
-		{"empty_version_returns_all", compat, "", []string{"a", "b", "c"}},
+		{"old_version", entries, "1.5.0", []string{"shared", "old_only"}},
+		{"new_version", entries, "2.5.0", []string{"shared", "new_only"}},
+		{"newer_version_additive", entries, "3.0.0", []string{"shared", "new_only", "newer_only"}},
+		{"empty_compat_returns_all", nil, "1.5.0", []string{"shared", "old_only", "new_only", "newer_only"}},
+		{"no_match_returns_ungated", entries, "0.1.0", []string{"shared"}},
+		{"empty_version_returns_all", entries, "", []string{"shared", "old_only", "new_only", "newer_only"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FilterOptions(opts, tt.compat, tt.version)
 			if len(got) != len(tt.wantNames) {
-				t.Fatalf("got %d options, want %d", len(got), len(tt.wantNames))
+				t.Fatalf("got %v, want %v", optNames(got), tt.wantNames)
 			}
 			for i, o := range got {
 				if o.Name != tt.wantNames[i] {
@@ -247,4 +258,12 @@ func TestFilterOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func optNames(opts []config.Option) []string {
+	names := make([]string, len(opts))
+	for i, o := range opts {
+		names[i] = o.Name
+	}
+	return names
 }

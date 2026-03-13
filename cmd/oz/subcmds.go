@@ -64,30 +64,8 @@ detect its version, show the active compat range, and report any issues.`,
 			}
 
 			fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Detected version:"), ver)
-
-			if w.Version.CustomVersionCmd != "" {
-				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version template:"), w.Version.CustomVersionCmd)
-				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Effective command:"), w.EffectiveCommand(ver))
-			}
-			if w.Version.CustomVersionVerify != "" {
-				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Verify template:"), w.Version.CustomVersionVerify)
-			}
-			if w.Version.AvailVersionsCmd != "" {
-				fmt.Printf("  %s command — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersionsCmd)
-			} else if w.Version.AvailVersions != "" {
-				fmt.Printf("  %s static — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersions)
-			}
-
-			// Show which compat entry matches
-			if len(w.Compat) > 0 {
-				matchedRange := compat.MatchedRange(w.Compat, ver)
-				if matchedRange != "" {
-					filtered := compat.FilterOptions(w.Options, w.Compat, ver)
-					fmt.Printf("  %s %s (%d options)\n", ui.AccentStyle.Render("Compat match:"), matchedRange, len(filtered))
-				} else {
-					fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Compat match:"), "none (all options shown)")
-				}
-			}
+			printDoctorVersionDetails(w, ver)
+			printDoctorCompat(w, ver)
 
 			fmt.Println()
 			return nil
@@ -95,26 +73,64 @@ detect its version, show the active compat range, and report any issues.`,
 	}
 }
 
+func printDoctorVersionDetails(w *config.Wizard, ver string) {
+	if w.Version.CustomVersionCmd != "" {
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version template:"), w.Version.CustomVersionCmd)
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Effective command:"), w.EffectiveCommand(ver))
+	}
+	if w.Version.CustomVersionVerify != "" {
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Verify template:"), w.Version.CustomVersionVerify)
+	}
+	if w.Version.AvailVersionsCmd != "" {
+		fmt.Printf("  %s command — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersionsCmd)
+	} else if w.Version.AvailVersions != "" {
+		fmt.Printf("  %s static — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersions)
+	}
+}
+
+func printDoctorCompat(w *config.Wizard, ver string) {
+	if len(w.Compat) == 0 {
+		return
+	}
+	matched := compat.MatchedRanges(w.Compat, ver)
+	if len(matched) > 0 {
+		filtered := compat.FilterOptions(w.Options, w.Compat, ver)
+		fmt.Printf("  %s %s (%d options)\n", ui.AccentStyle.Render("Compat match:"),
+			strings.Join(matched, " + "), len(filtered))
+	} else {
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Compat match:"), "none (all options shown)")
+	}
+}
+
 func showCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
+	var forVersion string
+
+	cmd := &cobra.Command{
 		Use:     "show",
 		Aliases: []string{"s"},
 		Short:   "Show all options with descriptions",
 		Long: `Display every wizard option with its type, flags, default value,
 choices, and visibility conditions. Useful for reviewing a wizard
-config without running it.`,
-		Example: fmt.Sprintf("  oz run %s show", wizardName),
+config without running it.
+
+Use --for-version to see options for a specific version instead of
+the detected one.`,
+		Example: fmt.Sprintf("  oz run %s show\n  oz run %s show --for-version 8.0",
+			wizardName, wizardName),
 		RunE: func(_ *cobra.Command, _ []string) error {
 			w, err := loadWizardConfig(wizardName)
 			if err != nil {
 				return err
 			}
 
-			detectedVersion, _ := compat.DetectVersion(w.Version)
-			options := compat.FilterOptions(w.Options, w.Compat, detectedVersion)
+			version := forVersion
+			if version == "" {
+				version, _ = compat.DetectVersion(w.Version)
+			}
+			options := compat.FilterOptions(w.Options, w.Compat, version)
 
-			fmt.Printf("\n  %s\n", ui.Header(w.Name, detectedVersion, versionLabel(w)))
-			effectiveCmd := w.EffectiveCommand(detectedVersion)
+			fmt.Printf("\n  %s\n", ui.Header(w.Name, version, versionLabel(w)))
+			effectiveCmd := w.EffectiveCommand(version)
 			if effectiveCmd != w.Command {
 				fmt.Printf("  %s\n", ui.MutedStyle.Render("command: "+effectiveCmd))
 			}
@@ -125,6 +141,10 @@ config without running it.`,
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(&forVersion, "for-version", "", "show options for a specific version")
+
+	return cmd
 }
 
 func printOptionExplanation(step, total int, o config.Option) {

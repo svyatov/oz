@@ -36,44 +36,50 @@ func DetectVersion(vc *config.VersionControl) (string, error) {
 	return string(matches[1]), nil
 }
 
-// MatchedRange returns the version constraint string that matches, or "" if none.
-func MatchedRange(entries []config.CompatEntry, version string) string {
+// MatchedRanges returns all version constraint strings that match the given version.
+func MatchedRanges(entries []config.CompatEntry, version string) []string {
 	if version == "" {
-		return ""
+		return nil
 	}
+	var matched []string
 	for _, c := range entries {
 		if matchVersionRange(version, c.Versions) {
-			return c.Versions
+			matched = append(matched, c.Versions)
 		}
 	}
-	return ""
+	return matched
 }
 
 // FilterOptions returns the subset of options allowed for the detected version.
-// If no compat entries exist, all options are returned.
+// Options not mentioned in any compat entry are always included.
+// Options in a compat entry are included only when the entry's version matches.
+// If no compat entries exist or version is empty, all options are returned.
 func FilterOptions(options []config.Option, compat []config.CompatEntry, version string) []config.Option {
 	if len(compat) == 0 || version == "" {
 		return options
 	}
 
-	var allowed map[string]bool
+	// Collect all option names gated by any compat entry.
+	gated := make(map[string]bool)
 	for _, c := range compat {
-		if matchVersionRange(version, c.Versions) {
-			allowed = make(map[string]bool, len(c.Options))
-			for _, name := range c.Options {
-				allowed[name] = true
-			}
-			break
+		for _, name := range c.Options {
+			gated[name] = true
 		}
 	}
 
-	if allowed == nil {
-		return options
+	// Collect options allowed by matching entries.
+	allowed := make(map[string]bool)
+	for _, c := range compat {
+		if matchVersionRange(version, c.Versions) {
+			for _, name := range c.Options {
+				allowed[name] = true
+			}
+		}
 	}
 
 	filtered := make([]config.Option, 0, len(options))
 	for _, o := range options {
-		if allowed[o.Name] {
+		if !gated[o.Name] || allowed[o.Name] {
 			filtered = append(filtered, o)
 		}
 	}
