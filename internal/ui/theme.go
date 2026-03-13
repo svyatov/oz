@@ -31,11 +31,17 @@ var (
 )
 
 var (
-	TitleStyle  = lipgloss.NewStyle().Bold(true)
-	MutedStyle  = lipgloss.NewStyle().Foreground(Muted)
-	AccentStyle = lipgloss.NewStyle().Foreground(Accent)
-	GreenStyle  = lipgloss.NewStyle().Foreground(Green)
+	TitleStyle    = lipgloss.NewStyle().Bold(true)
+	MutedStyle    = lipgloss.NewStyle().Foreground(Muted)
+	AccentStyle   = lipgloss.NewStyle().Foreground(Accent)
+	GreenStyle    = lipgloss.NewStyle().Foreground(Green)
+	CyanBoldStyle = lipgloss.NewStyle().Foreground(Cyan).Bold(true)
 )
+
+// Width returns the rendered width of a string, accounting for ANSI sequences.
+func Width(s string) int {
+	return lipgloss.Width(s)
+}
 
 // SuccessMsgf prints a green success confirmation padded with blank lines.
 func SuccessMsgf(format string, args ...any) {

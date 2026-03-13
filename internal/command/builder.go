@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/ui"
 )
@@ -89,8 +87,8 @@ func PrintCommand(parts []Part) {
 
 // formatCommandColored returns the command with color-coded segments.
 func formatCommandColored(parts []Part) string {
-	highlightStyle := lipgloss.NewStyle().Foreground(ui.Cyan).Bold(true)
-	flagStyle := lipgloss.NewStyle().Foreground(ui.Accent)
+	highlightStyle := ui.CyanBoldStyle
+	flagStyle := ui.AccentStyle
 
 	var b strings.Builder
 	for i, p := range parts {

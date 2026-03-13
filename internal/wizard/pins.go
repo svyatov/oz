@@ -9,7 +9,6 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/svyatov/oz/internal/compat"
 	"github.com/svyatov/oz/internal/config"
@@ -63,7 +62,7 @@ func newPinsModel(
 
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
-	s.Style = lipgloss.NewStyle().Foreground(ui.Accent)
+	s.Style = ui.AccentStyle
 
 	return &PinsModel{
 		options:             options,
@@ -361,8 +360,8 @@ func (m *PinsModel) viewEdit() string {
 	replacement := ui.PinEditIndicator()
 	fieldView = strings.Replace(fieldView, placeholder, replacement, 1)
 
-	oldIndent := "\n" + strings.Repeat(" ", 2+lipgloss.Width(placeholder)+2)
-	newIndent := "\n" + strings.Repeat(" ", 2+lipgloss.Width(replacement)+2)
+	oldIndent := "\n" + strings.Repeat(" ", 2+ui.Width(placeholder)+2)
+	newIndent := "\n" + strings.Repeat(" ", 2+ui.Width(replacement)+2)
 	fieldView = strings.Replace(fieldView, oldIndent, newIndent, 1)
 
 	b.WriteString("\n")

@@ -11,7 +11,6 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/svyatov/oz/internal/compat"
 	"github.com/svyatov/oz/internal/config"
@@ -97,7 +96,7 @@ func newVersionLoaderModel(
 ) *VersionLoaderModel {
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
-	s.Style = lipgloss.NewStyle().Foreground(ui.Accent)
+	s.Style = ui.AccentStyle
 
 	return &VersionLoaderModel{
 		wizardName:    wizardName,
