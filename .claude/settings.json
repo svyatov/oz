@@ -22,6 +22,17 @@
             "statusMessage": "Testing..."
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=$(echo $CLAUDE_TOOL_INPUT | jq -r '.file_path // empty'); if [ -n \"$filepath\" ] && echo \"$filepath\" | grep -qE '\\.md$'; then markdownlint-cli2 \"$filepath\" 2>&1 | tail -20; fi",
+            "timeout": 15,
+            "statusMessage": "Markdown lint..."
+          }
+        ]
       }
     ]
   }

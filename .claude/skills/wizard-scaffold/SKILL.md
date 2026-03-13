@@ -14,9 +14,14 @@ Generate a new oz wizard YAML configuration file from a CLI tool's help output.
    - **Base command** (e.g. `rails new`, `docker run`)
    - **Help command** (e.g. `rails new -h`, `docker run --help`)
 
-2. **Run the help command** with Bash. Parse the output to identify every flag, positional arg, description, default, and enumerated value. Use the type selection guide below to map each to an option type.
+2. **Run the help command** with Bash. Parse the output to identify every flag,
+   positional arg, description, default, and enumerated value.
+   Use the type selection guide below to map each to an option type.
 
-3. **Generate a complete wizard config** with ALL options from the help text. Every option must have a `description` extracted from the help text. If there are more than ~20 options, include the most common ones and group advanced options behind `show_when` on an `advanced_mode` confirm.
+3. **Generate a complete wizard config** with ALL options from the help text.
+   Every option must have a `description` extracted from the help text.
+   If there are more than ~20 options, include the most common ones and group
+   advanced options behind `show_when` on an `advanced_mode` confirm.
 
 4. **Review with the user.** Ask if they want to:
    - Remove or reorder options
@@ -32,15 +37,15 @@ Generate a new oz wizard YAML configuration file from a CLI tool's help output.
 
 ## Type Selection Guide
 
-| Help text pattern                      | Type                                   | Notes                  |
-| -------------------------------------- | -------------------------------------- | ---------------------- |
-| `--flag` (boolean, no value)           | `confirm`                              | `--verbose`, `--force` |
-| `--skip-*` (boolean, skips something)  | `confirm`                              | label: "Skip X?"      |
-| `--no-*` (negation flag)              | `confirm` with `flag_false`            | label uses positive form |
-| `--flag=VALUE` with listed values      | `select`                               | extract choices from help |
-| `--flag=VALUE` free-form               | `input`                                | `--name=NAME`          |
-| `--flag=V1,V2,...` comma list          | `multi_select` + `separator: ","`      |                        |
-| `ARG` (positional argument)            | `input` + `positional: true`           | put first              |
+| Help text pattern             | Type                              | Notes                     |
+| ----------------------------- | --------------------------------- | ------------------------- |
+| `--flag` (boolean, no value)  | `confirm`                         | `--verbose`, `--force`    |
+| `--skip-*` (boolean, skip)    | `confirm`                         | label: "Skip X?"          |
+| `--no-*` (negation flag)      | `confirm` with `flag_false`       | label uses positive form  |
+| `--flag=VALUE` listed values  | `select`                          | extract choices from help |
+| `--flag=VALUE` free-form      | `input`                           | `--name=NAME`             |
+| `--flag=V1,V2,...` comma list | `multi_select` + `separator: ","` |                           |
+| `ARG` (positional argument)   | `input` + `positional: true`      | put first                 |
 
 ## Label & Description Guidelines
 
@@ -321,4 +326,6 @@ options:
 - `positional` is mutually exclusive with `flag`/`flag_true`/`flag_false`
 - `{{option_name}}` in `choices_from` cannot reference itself or later options
 
-**Defaults:** select defaults to first choice, confirm defaults to `false`, input defaults to empty. Default values must exist in the choices list. Multi_select defaults must be a YAML list.
+**Defaults:** select defaults to first choice, confirm defaults to `false`,
+input defaults to empty. Default values must exist in the choices list.
+Multi_select defaults must be a YAML list.
