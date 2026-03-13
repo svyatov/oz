@@ -12,6 +12,7 @@ import (
 	"github.com/svyatov/oz/internal/compat"
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/store"
+	"github.com/svyatov/oz/internal/ui"
 	"github.com/svyatov/oz/internal/wizard"
 )
 
@@ -188,7 +189,7 @@ func promptAndSavePreset(st *store.Store, wizardName string, allAnswers config.V
 		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to save preset: %v\n", err)
 		} else {
-			fmt.Printf("  Preset %q saved.\n", presetSaveName)
+			ui.SuccessMsgf("Preset %q saved", presetSaveName)
 		}
 	}
 }
@@ -263,7 +264,7 @@ func runPins(name string) error {
 	if count == 1 {
 		word = "option"
 	}
-	fmt.Printf("  %d %s pinned.\n", count, word)
+	ui.SuccessMsgf("%d %s pinned", count, word)
 	return nil
 }
 

@@ -34,7 +34,20 @@ var (
 	TitleStyle  = lipgloss.NewStyle().Bold(true)
 	MutedStyle  = lipgloss.NewStyle().Foreground(Muted)
 	AccentStyle = lipgloss.NewStyle().Foreground(Accent)
+	GreenStyle  = lipgloss.NewStyle().Foreground(Green)
 )
+
+// SuccessMsgf prints a green success confirmation padded with blank lines.
+func SuccessMsgf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Print("\n" + GreenStyle.Render("  "+msg) + "\n\n")
+}
+
+// InfoMsgf prints an accent informational/empty-state message padded with blank lines.
+func InfoMsgf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Print("\n" + AccentStyle.Render("  "+msg) + "\n\n")
+}
 
 // CompletedStepLine renders a completed step: `  01  ✓ Label  Answer`.
 func CompletedStepLine(stepNum int, label, answer string) string {

@@ -191,7 +191,7 @@ func listCmd() *cobra.Command {
 				return fmt.Errorf("listing wizards: %w", err)
 			}
 			if len(wizards) == 0 {
-				fmt.Printf("No wizards found in %s.\n", config.WizardsDir(configDir))
+				ui.InfoMsgf("No wizards found in %s", config.WizardsDir(configDir))
 				return nil
 			}
 			maxLen := 0
@@ -237,7 +237,7 @@ func removeCmd() *cobra.Command {
 			if err := os.Remove(path); err != nil {
 				return fmt.Errorf("removing wizard: %w", err)
 			}
-			fmt.Printf("  Wizard %q removed.\n", args[0])
+			ui.SuccessMsgf("Wizard %q removed", args[0])
 			return nil
 		},
 		ValidArgsFunction: completeWizardNames,
@@ -270,7 +270,7 @@ in your editor ($VISUAL, $EDITOR, or vi). Use --no-edit to skip the editor.`,
 			if err := os.WriteFile(path, []byte(wizardTemplate(args[0])), 0o644); err != nil {
 				return fmt.Errorf("writing wizard config: %w", err)
 			}
-			fmt.Printf("  Created %s.\n", path)
+			ui.SuccessMsgf("Created %s", path)
 			if noEdit {
 				return nil
 			}
@@ -305,7 +305,7 @@ func validateCmd() *cobra.Command {
 			if len(errs) > 0 {
 				return fmt.Errorf("validation errors:\n%s", config.FormatErrors(errs))
 			}
-			fmt.Println("Valid.")
+			ui.SuccessMsgf("Valid")
 			return nil
 		},
 	}

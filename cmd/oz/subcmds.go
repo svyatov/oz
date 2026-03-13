@@ -44,34 +44,38 @@ detect its version, show the active compat range, and report any issues.`,
 				return err
 			}
 
-			fmt.Printf("  Wizard: %s\n", w.Name)
-			fmt.Printf("  Command: %s\n", w.Command)
+			fmt.Println()
+			fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Wizard:"), w.Name)
+			fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Command:"), w.Command)
 
 			if w.Version == nil {
-				fmt.Println("  Version detection: not configured")
+				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version detection:"), "not configured")
+				fmt.Println()
 				return nil
 			}
 
 			ver, err := compat.DetectVersion(w.Version)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "  Version detection: %s %v\n",
+				fmt.Fprintf(os.Stderr, "  %s %s %v\n",
+					ui.AccentStyle.Render("Version detection:"),
 					ui.MutedStyle.Render("failed —"), err)
+				fmt.Println()
 				return nil
 			}
 
-			fmt.Printf("  Detected version: %s\n", ver)
+			fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Detected version:"), ver)
 
 			if w.Version.CustomVersionCmd != "" {
-				fmt.Printf("  Version template: %s\n", w.Version.CustomVersionCmd)
-				fmt.Printf("  Effective command: %s\n", w.EffectiveCommand(ver))
+				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version template:"), w.Version.CustomVersionCmd)
+				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Effective command:"), w.EffectiveCommand(ver))
 			}
 			if w.Version.CustomVersionVerify != "" {
-				fmt.Printf("  Verify template: %s\n", w.Version.CustomVersionVerify)
+				fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Verify template:"), w.Version.CustomVersionVerify)
 			}
 			if w.Version.AvailVersionsCmd != "" {
-				fmt.Printf("  Available versions: command — %s\n", w.Version.AvailVersionsCmd)
+				fmt.Printf("  %s command — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersionsCmd)
 			} else if w.Version.AvailVersions != "" {
-				fmt.Printf("  Available versions: static — %s\n", w.Version.AvailVersions)
+				fmt.Printf("  %s static — %s\n", ui.AccentStyle.Render("Available versions:"), w.Version.AvailVersions)
 			}
 
 			// Show which compat entry matches
@@ -79,12 +83,13 @@ detect its version, show the active compat range, and report any issues.`,
 				matchedRange := compat.MatchedRange(w.Compat, ver)
 				if matchedRange != "" {
 					filtered := compat.FilterOptions(w.Options, w.Compat, ver)
-					fmt.Printf("  Compat match: %s (%d options)\n", matchedRange, len(filtered))
+					fmt.Printf("  %s %s (%d options)\n", ui.AccentStyle.Render("Compat match:"), matchedRange, len(filtered))
 				} else {
-					fmt.Println("  Compat match: none (all options shown)")
+					fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Compat match:"), "none (all options shown)")
 				}
 			}
 
+			fmt.Println()
 			return nil
 		},
 	}
@@ -243,15 +248,17 @@ func pinsListCmd(wizardName string) *cobra.Command {
 			}
 			pinnedVer, _ := st.LoadPinnedVersion(w.Name)
 			if pinnedVer == "" && len(pins) == 0 {
-				fmt.Println("  No pins set.")
+				ui.InfoMsgf("No pins set")
 				return nil
 			}
+			fmt.Println()
 			if pinnedVer != "" {
 				fmt.Printf("  %s: %s\n", ui.AccentStyle.Render("version"), pinnedVer)
 			}
 			for k, v := range pins {
 				fmt.Printf("  %s: %s\n", ui.AccentStyle.Render(k), v.Display())
 			}
+			fmt.Println()
 			return nil
 		},
 	}
@@ -282,7 +289,7 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 			if err := st.SavePinnedVersion(w.Name, ""); err != nil {
 				return fmt.Errorf("saving pinned version: %w", err)
 			}
-			fmt.Println("  Pins cleared.")
+			ui.SuccessMsgf("Pins cleared")
 			return nil
 		},
 	}
@@ -321,12 +328,14 @@ func listPresets(wizardName string) error {
 		return fmt.Errorf("listing presets: %w", err)
 	}
 	if len(names) == 0 {
-		fmt.Println("  No presets found.")
+		ui.InfoMsgf("No presets found")
 		return nil
 	}
+	fmt.Println()
 	for _, n := range names {
 		fmt.Printf("  %s\n", ui.AccentStyle.Render(n))
 	}
+	fmt.Println()
 	return nil
 }
 
@@ -371,13 +380,13 @@ Use --verbose to include labels, descriptions, and choice annotations.`,
 			detectedVersion, _ := compat.DetectVersion(w.Version)
 			w.Command = w.EffectiveCommand(detectedVersion)
 
-			fmt.Printf("\n  Preset: %s\n\n", args[0])
+			fmt.Printf("\n  %s %s\n\n", ui.AccentStyle.Render("Preset:"), args[0])
 
 			if verbose {
 				printPresetVerbose(values, w.Options)
 			} else {
 				for k, v := range values {
-					fmt.Printf("  %s: %s\n", k, v.Display())
+					fmt.Printf("  %s: %s\n", ui.AccentStyle.Render(k), v.Display())
 				}
 			}
 
@@ -400,7 +409,7 @@ func printPresetVerbose(values config.Values, options []config.Option) {
 	for k, v := range values {
 		opt, known := optMap[k]
 		if !known {
-			fmt.Printf("  %s: %s\n", k, v.Display())
+			fmt.Printf("  %s: %s\n", ui.AccentStyle.Render(k), v.Display())
 			continue
 		}
 		fmt.Printf("  %s: %s\n", ui.TitleStyle.Render(opt.Label), v.Display())
@@ -446,7 +455,7 @@ func presetsSaveCmd(wizardName string) *cobra.Command {
 			if err := st.SavePreset(wizardName, args[0], state.LastUsed); err != nil {
 				return fmt.Errorf("saving preset %q: %w", args[0], err)
 			}
-			fmt.Printf("  Preset %q saved.\n", args[0])
+			ui.SuccessMsgf("Preset %q saved", args[0])
 			return nil
 		},
 	}
@@ -472,7 +481,7 @@ func presetsRemoveCmd(wizardName string) *cobra.Command {
 			if err := st.RemovePreset(wizardName, args[0]); err != nil {
 				return fmt.Errorf("removing preset %q: %w", args[0], err)
 			}
-			fmt.Printf("  Preset %q removed.\n", args[0])
+			ui.SuccessMsgf("Preset %q removed", args[0])
 			return nil
 		},
 	}
