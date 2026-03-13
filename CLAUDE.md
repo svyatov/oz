@@ -19,6 +19,7 @@ go build ./cmd/oz/                            # build binary
 ## Linting
 
 50+ linters via golangci-lint (including govet analyzers). Key thresholds:
+
 - **funlen**: 60 lines / 40 statements
 - **gocyclo**: 15
 - **gocognit**: 30
@@ -36,7 +37,7 @@ All new code must pass `task lint` with zero issues.
 
 ## Architecture
 
-```
+```txt
 cmd/oz/
   main.go              CLI entrypoint (cobra)
   subcmds.go           Wizard subcommand definitions
@@ -87,6 +88,7 @@ oz run (r) <wizard>
 ```
 
 **Key abstractions:**
+
 - `Field` interface (`Init`, `Update`, `View`, `Value`, `SetValue`) — each option type implements this
 - `FieldValue` — type-safe sum type (string | bool | []string) replacing `any` across the codebase
 - `Engine` is the Bubbletea `Model` — manages step navigation, visibility (`show_when`/`hide_when`), back/forward
@@ -151,6 +153,7 @@ oz run (r) <wizard>
 ## Shell Completion
 
 When adding or modifying subcommands, verify shell completion works:
+
 - Run `go build ./cmd/oz/ && ./oz __complete "" 2>/dev/null` — all top-level commands must appear
 - Cobra hides commands without `Run`/`RunE` and without subcommands — always provide a `RunE` (can just call `cmd.Help()`)
 - Test nested completions too: `./oz __complete <parent> "" 2>/dev/null`
