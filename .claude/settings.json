@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=$(echo $CLAUDE_TOOL_INPUT | jq -r '.file_path // empty'); if [ -n \"$filepath\" ] && echo \"$filepath\" | grep -q '\\.go$'; then golangci-lint run --new-from-rev=HEAD --timeout=30s ./... 2>&1 | head -30; fi",
+            "timeout": 30,
+            "statusMessage": "Linting..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=$(echo $CLAUDE_TOOL_INPUT | jq -r '.file_path // empty'); if [ -n \"$filepath\" ] && echo \"$filepath\" | grep -q '\\.go$'; then dir=$(dirname \"$filepath\"); pkg=\"./${dir#$PWD/}\"; go test \"$pkg/...\" -count=1 -timeout=30s 2>&1 | tail -20; fi",
+            "timeout": 30,
+            "statusMessage": "Testing..."
+          }
+        ]
+      }
+    ]
+  }
+}
