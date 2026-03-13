@@ -102,6 +102,38 @@ oz run (r) <wizard>
 - Use `maps.Copy`, `strings.FieldsSeq`, `slices` — prefer stdlib over hand-rolled utilities
 - Exhaustive switch via `exhaustive` linter — all enum-like cases must be handled
 
+### Error handling (wrapcheck, errorlint, errname, nilerr)
+
+- Use `errors.Is()`/`errors.As()` for comparisons — never `==` or direct type assertion on errors.
+- Error type names: `ErrFoo` for sentinel values, `FooError` for types.
+- Never return nil error when err != nil.
+
+### Type safety (forcetypeassert, unconvert)
+
+- Always use two-value form: `v, ok := x.(Type)` — never bare `x.(Type)`.
+- Don't add redundant type conversions.
+
+### Performance (perfsprint, bodyclose, usestdlibvars)
+
+- Use `strconv.Itoa(n)` / `strconv.FormatBool(b)` instead of `fmt.Sprintf` for simple conversions.
+- Always close HTTP response bodies (`defer resp.Body.Close()`).
+- Use stdlib constants (`http.StatusOK`, `http.MethodGet`) instead of literals.
+
+### Style (godot, nakedret, nestif, lll)
+
+- Comments must end with a period.
+- No naked returns in functions longer than 5 lines.
+- Prefer early returns over deeply nested `if` blocks.
+- Lines ≤120 chars.
+
+### Modern Go (intrange, modernize)
+
+- `for i := range n` instead of `for i := 0; i < n; i++`.
+
+### Strings (goconst)
+
+- Extract string literals used 3+ times into constants.
+
 ## Versioning and Releases
 
 - [Semantic Versioning](https://semver.org/) for all releases
