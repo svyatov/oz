@@ -64,12 +64,15 @@ options:
 | `oz run <wizard> -n` | Dry-run (print command only) |
 | `oz run <wizard> -p <preset>` | Run with a saved preset |
 | `oz list` | List available wizards |
+| `oz list --remote` | Browse wizards in the registry |
+| `oz add <name>` | Install a wizard from registry or local file |
+| `oz update <wizard>` | Re-fetch a wizard from the registry |
 | `oz create <name>` | Create a new wizard from template |
 | `oz edit <wizard>` | Open wizard config in `$EDITOR` |
 | `oz remove <wizard>` | Remove a wizard config |
 | `oz validate <path>` | Validate a wizard YAML file |
 
-**Aliases:** `r` (run), `c`/`new` (create), `e` (edit), `rm` (remove), `l`/`ls` (list).
+**Aliases:** `r` (run), `c`/`new` (create), `e` (edit), `rm` (remove), `l`/`ls` (list), `u` (update).
 
 ### Per-Wizard Subcommands
 
@@ -110,4 +113,58 @@ Wizards live in `~/.config/oz/wizards/` (override with `OZ_CONFIG_DIR` or `--con
 | `show_when` / `hide_when` | Conditional visibility based on other answers |
 | `choices_from` | Shell command for dynamic choices |
 | `version_control` | Auto-detect tool version and filter options |
-| `compat` | Map version ranges to allowed options |
+| `versions` | Semver constraint to show option only for matching versions |
+
+### Version Control
+
+Wizards can detect the installed tool version and filter options by semver range:
+
+```yaml
+version_control:
+  command: ruby --version
+  pattern: '(\d+\.\d+\.\d+)'
+  label: Ruby
+  custom_version_command: rbenv versions --bare
+  available_versions: "3.2,3.1,3.0"        # or use available_versions_command
+  custom_version_verify: rbenv versions --bare | grep -q {{version}}
+
+options:
+  - name: yjit
+    type: confirm
+    label: Enable YJIT?
+    flag: --yjit
+    versions: ">= 3.1"     # only shown when version is 3.1+
+```
+
+Supports all semver constraint syntax: `>=`, `<=`, `>`, `<`, `!=`, tilde (`~1.2`), caret (`^2.0`), wildcards (`1.2.x`), hyphen ranges (`1.2 - 1.4`), and OR (`||`).
+
+### Conditional Visibility
+
+Show or hide options based on previous answers:
+
+```yaml
+- name: db
+  type: select
+  label: Database
+  choices:
+    - { value: pg, label: PostgreSQL }
+    - { value: sqlite, label: SQLite }
+
+- name: pool_size
+  type: input
+  label: Connection pool size
+  flag: --pool
+  show_when:
+    db: pg            # only shown when db=pg
+```
+
+### Dynamic Choices
+
+Load choices from a shell command at runtime:
+
+```yaml
+- name: branch
+  type: select
+  label: Branch
+  choices_from: git branch --format='%(refname:short)'
+```

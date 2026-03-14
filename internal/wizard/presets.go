@@ -318,7 +318,9 @@ func (m *PresetsModel) finishRename(newName string) (tea.Model, tea.Cmd) {
 	delete(m.presets, m.renamingFrom)
 	m.presets[newName] = values
 	m.presetNames = sortedPresetNames(m.presets)
-	m.cursor = slices.Index(m.presetNames, newName)
+	if idx := slices.Index(m.presetNames, newName); idx >= 0 {
+		m.cursor = idx
+	}
 	m.mode = presetsListMode
 	return m, nil
 }
@@ -376,7 +378,9 @@ func (m *PresetsModel) createPreset(sourceIdx int) (tea.Model, tea.Cmd) {
 
 	m.presets[m.activeName] = values
 	m.presetNames = sortedPresetNames(m.presets)
-	m.cursor = slices.Index(m.presetNames, m.activeName)
+	if idx := slices.Index(m.presetNames, m.activeName); idx >= 0 {
+		m.cursor = idx
+	}
 
 	// Enter values editing for the new preset.
 	m.editor = NewValuesEditor(m.options, values, m.lastUsed, m.hints)

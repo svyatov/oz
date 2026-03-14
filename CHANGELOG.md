@@ -7,24 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-
-- Rename `delete` subcommand to `remove` (with `rm` alias)
-- Rename `preset` subcommand to `presets` (plural, consistent with collection semantics)
-- Rename `--preset` flag to `--with-preset` (`-p`) to avoid shadowing the subcommand name
-- Add `-n` shorthand for `--dry-run`
-- Rename `explain` to `inspect` (consistent with `presets inspect`)
-- Rename `pins show` to `pins list` (consistent with `presets list`)
-- Convert `--pins` flag to `pins` subcommand with `list` and `clear` sub-commands
+## [0.1.0] - 2026-03-14
 
 ### Added
 
-- Short aliases for subcommands (`r`, `c`/`new`, `e`, `rm`, `l`/`ls`)
 - Interactive Bubbletea wizard UI with rich color palette
-- CLI entrypoint with `list` and `validate` subcommands
 - YAML-driven wizard config with select, confirm, input, and multi_select field types
-- Version detection and semver-based option compatibility filtering
+- CLI entrypoint with `list`, `validate`, `create`, `edit`, `remove`, and `run` commands
+- Short aliases for subcommands (`r`, `c`/`new`, `e`, `rm`, `l`/`ls`, `u`)
+- Version detection and semver-based option/choice compatibility filtering
+- Custom version selection with optional verification
 - Command builder with positional args and flag styles (equals/space)
 - Last-used state persistence and named presets
-- Batch config validation with detailed error reporting
-- golangci-lint with 37 linters enabled
+- Pinned options with interactive TUI manager
+- Conditional visibility (`show_when`/`hide_when`)
+- Dynamic choices via `choices_from` shell commands
+- Registry integration (`add`, `update`, `list --remote`)
+- `doctor` subcommand for tool installation and version checks
+- `show` subcommand to display all options with descriptions
+- Batch config validation with detailed error reporting and cycle detection
+- Dry-run mode (`-n`/`--dry-run`)
+- Preset management (list, show, save, remove)
+- Shell completion for all commands
+- golangci-lint with 50+ linters enabled
+
+[Unreleased]: https://github.com/svyatov/oz/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/svyatov/oz/releases/tag/v0.1.0
