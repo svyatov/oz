@@ -82,39 +82,6 @@ func TestMatchVersionRange(t *testing.T) {
 	}
 }
 
-func TestMatchedRanges(t *testing.T) {
-	entries := []config.CompatEntry{
-		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"a"}},
-		{Versions: ">= 2.0.0", Options: []string{"b"}},
-		{Versions: ">= 2.5.0", Options: []string{"c"}},
-	}
-
-	tests := []struct {
-		name    string
-		version string
-		want    []string
-	}{
-		{"match_first_only", "1.5.0", []string{">= 1.0.0, < 2.0.0"}},
-		{"match_second_only", "2.1.0", []string{">= 2.0.0"}},
-		{"match_multiple", "3.0.0", []string{">= 2.0.0", ">= 2.5.0"}},
-		{"no_match", "0.5.0", nil},
-		{"empty_version", "", nil},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := MatchedRanges(entries, tt.version)
-			if len(got) != len(tt.want) {
-				t.Fatalf("MatchedRanges(..., %q) = %v, want %v", tt.version, got, tt.want)
-			}
-			for i, v := range got {
-				if v != tt.want[i] {
-					t.Errorf("MatchedRanges(..., %q)[%d] = %q, want %q", tt.version, i, v, tt.want[i])
-				}
-			}
-		})
-	}
-}
-
 func TestExpandTemplate(t *testing.T) {
 	tests := []struct {
 		name, template, version, want string
@@ -179,34 +146,37 @@ func TestFetchAvailableVersions(t *testing.T) {
 func TestOptionHints(t *testing.T) {
 	tests := []struct {
 		name    string
-		entries []config.CompatEntry
+		options []config.Option
 		want    map[string]string
 	}{
 		{
-			"no_compat",
-			nil,
-			nil,
+			"no_versions",
+			[]config.Option{
+				{Name: "a", Type: config.OptionInput, Label: "A"},
+			},
+			map[string]string{},
 		},
 		{
-			"single_entry",
-			[]config.CompatEntry{
-				{Versions: ">= 8.0", Options: []string{"a", "b"}},
+			"single_versioned",
+			[]config.Option{
+				{Name: "a", Type: config.OptionInput, Label: "A", Versions: ">= 8.0"},
+				{Name: "b", Type: config.OptionInput, Label: "B", Versions: ">= 8.0"},
 			},
 			map[string]string{"a": "v8.0+", "b": "v8.0+"},
 		},
 		{
-			"multiple_entries",
-			[]config.CompatEntry{
-				{Versions: ">= 7.0, < 8.0", Options: []string{"a", "c"}},
-				{Versions: ">= 8.0", Options: []string{"a", "b"}},
+			"mixed_versioned_and_unversioned",
+			[]config.Option{
+				{Name: "a", Type: config.OptionInput, Label: "A"},
+				{Name: "b", Type: config.OptionInput, Label: "B", Versions: ">= 8.0"},
+				{Name: "c", Type: config.OptionInput, Label: "C", Versions: "< 8.0"},
 			},
-			// "a" in both → no hint, "b" only in >=8, "c" only in >=7,<8
-			map[string]string{"b": "v8.0+", "c": "v7.0+"},
+			map[string]string{"b": "v8.0+", "c": "< v8.0"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := OptionHints(tt.entries)
+			got := OptionHints(tt.options)
 			if len(got) != len(tt.want) {
 				t.Fatalf("got %v, want %v", got, tt.want)
 			}
@@ -222,32 +192,25 @@ func TestOptionHints(t *testing.T) {
 func TestFilterOptions(t *testing.T) {
 	opts := []config.Option{
 		{Name: "shared", Type: config.OptionInput, Label: "Shared"},
-		{Name: "old_only", Type: config.OptionInput, Label: "Old"},
-		{Name: "new_only", Type: config.OptionInput, Label: "New"},
-		{Name: "newer_only", Type: config.OptionInput, Label: "Newer"},
-	}
-	entries := []config.CompatEntry{
-		{Versions: ">= 1.0.0, < 2.0.0", Options: []string{"old_only"}},
-		{Versions: ">= 2.0.0", Options: []string{"new_only"}},
-		{Versions: ">= 3.0.0", Options: []string{"newer_only"}},
+		{Name: "old_only", Type: config.OptionInput, Label: "Old", Versions: ">= 1.0.0, < 2.0.0"},
+		{Name: "new_only", Type: config.OptionInput, Label: "New", Versions: ">= 2.0.0"},
+		{Name: "newer_only", Type: config.OptionInput, Label: "Newer", Versions: ">= 3.0.0"},
 	}
 
 	tests := []struct {
 		name      string
-		compat    []config.CompatEntry
 		version   string
 		wantNames []string
 	}{
-		{"old_version", entries, "1.5.0", []string{"shared", "old_only"}},
-		{"new_version", entries, "2.5.0", []string{"shared", "new_only"}},
-		{"newer_version_additive", entries, "3.0.0", []string{"shared", "new_only", "newer_only"}},
-		{"empty_compat_returns_all", nil, "1.5.0", []string{"shared", "old_only", "new_only", "newer_only"}},
-		{"no_match_returns_ungated", entries, "0.1.0", []string{"shared"}},
-		{"empty_version_returns_all", entries, "", []string{"shared", "old_only", "new_only", "newer_only"}},
+		{"old_version", "1.5.0", []string{"shared", "old_only"}},
+		{"new_version", "2.5.0", []string{"shared", "new_only"}},
+		{"newer_version", "3.0.0", []string{"shared", "new_only", "newer_only"}},
+		{"no_match_returns_ungated", "0.1.0", []string{"shared"}},
+		{"empty_version_returns_all", "", []string{"shared", "old_only", "new_only", "newer_only"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FilterOptions(opts, tt.compat, tt.version)
+			got := FilterOptions(opts, tt.version)
 			if len(got) != len(tt.wantNames) {
 				t.Fatalf("got %v, want %v", optNames(got), tt.wantNames)
 			}
@@ -260,10 +223,51 @@ func TestFilterOptions(t *testing.T) {
 	}
 }
 
+func TestFilterChoices(t *testing.T) {
+	choices := config.FlexChoices{
+		{Value: "sqlite3", Label: "SQLite"},
+		{Value: "postgresql", Label: "PostgreSQL"},
+		{Value: "mariadb-mysql", Label: "MariaDB (mysql2)", Versions: ">= 8.0"},
+		{Value: "mariadb-trilogy", Label: "MariaDB (trilogy)", Versions: ">= 8.0"},
+	}
+
+	tests := []struct {
+		name       string
+		version    string
+		wantValues []string
+	}{
+		{"empty_version_returns_all", "", []string{"sqlite3", "postgresql", "mariadb-mysql", "mariadb-trilogy"}},
+		{"old_version_filters_gated", "7.2.0", []string{"sqlite3", "postgresql"}},
+		{"new_version_includes_gated", "8.0.0", []string{"sqlite3", "postgresql", "mariadb-mysql", "mariadb-trilogy"}},
+		{"newer_version_includes_gated", "9.0.0", []string{"sqlite3", "postgresql", "mariadb-mysql", "mariadb-trilogy"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FilterChoices(choices, tt.version)
+			if len(got) != len(tt.wantValues) {
+				t.Fatalf("got %v, want %v", choiceValues(got), tt.wantValues)
+			}
+			for i, c := range got {
+				if c.Value != tt.wantValues[i] {
+					t.Errorf("choice[%d].Value = %q, want %q", i, c.Value, tt.wantValues[i])
+				}
+			}
+		})
+	}
+}
+
 func optNames(opts []config.Option) []string {
 	names := make([]string, len(opts))
 	for i, o := range opts {
 		names[i] = o.Name
 	}
 	return names
+}
+
+func choiceValues(choices config.FlexChoices) []string {
+	values := make([]string, len(choices))
+	for i, c := range choices {
+		values[i] = c.Value
+	}
+	return values
 }

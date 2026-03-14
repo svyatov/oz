@@ -81,7 +81,12 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 		}
 
 		w.Command = w.EffectiveCommand(vr.Selected)
-		options := compat.FilterOptions(w.Options, w.Compat, vr.Selected)
+		options := compat.FilterOptions(w.Options, vr.Selected)
+		for i := range options {
+			if len(options[i].Choices) > 0 {
+				options[i].Choices = compat.FilterChoices(options[i].Choices, vr.Selected)
+			}
+		}
 
 		majorVersion := majorVer(vr.Selected)
 		state, err := st.LoadState(w.Name, majorVersion)
@@ -246,7 +251,7 @@ func runPresets(name string) error {
 		state = &store.StateEntry{}
 	}
 
-	hints := compat.OptionHints(w.Compat)
+	hints := compat.OptionHints(w.Options)
 	result, err := wizard.RunPresets(w.Options, presets, state.LastUsed, hints)
 	if err != nil {
 		return fmt.Errorf("managing presets: %w", err)
@@ -303,7 +308,7 @@ func runPins(name string) error {
 	}
 
 	hasCustomVersion := w.Version != nil && w.Version.CustomVersionCmd != ""
-	hints := compat.OptionHints(w.Compat)
+	hints := compat.OptionHints(w.Options)
 	pinnedVer, _ := st.LoadPinnedVersion(w.Name)
 
 	result, err := wizard.RunPins(

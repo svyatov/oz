@@ -10,14 +10,6 @@ version_control:
   custom_version_verify_command: "rails _{{version}}_ --version"
   available_versions_command: "gem list rails -e -q | sed 's/rails (//;s/)//'"
 
-compat:
-  - versions: "< 8.0"
-    options: [database, asset_pipeline]
-  - versions: ">= 8.0"
-    options: [database_v8, skip_thruster, skip_kamal, skip_solid]
-  - versions: ">= 8.1"
-    options: [skip_bundler_audit]
-
 options:
   - name: app_name
     type: input
@@ -43,31 +35,7 @@ options:
     flag: --minimal
     default: false
 
-  # 7.2 database (mysql, trilogy, postgresql, sqlite3)
   - name: database
-    type: select
-    label: "Which database?"
-    description: "Database adapter for Active Record."
-    flag: --database
-    default: sqlite3
-    allow_none: true
-    flag_none: --skip-active-record
-    choices:
-      - value: sqlite3
-        label: SQLite
-        description: "File-based, no server needed."
-      - value: postgresql
-        label: PostgreSQL
-        description: "Production-ready relational database."
-      - value: mysql
-        label: MySQL
-        description: "Popular open-source relational database."
-      - value: trilogy
-        label: Trilogy
-        description: "MySQL-compatible client from GitHub."
-
-  # 8.0+ database (adds mariadb adapters)
-  - name: database_v8
     type: select
     label: "Which database?"
     description: "Database adapter for Active Record."
@@ -91,9 +59,11 @@ options:
       - value: mariadb-mysql
         label: MariaDB (mysql2)
         description: "MariaDB via the mysql2 adapter."
+        versions: ">= 8.0"
       - value: mariadb-trilogy
         label: MariaDB (trilogy)
         description: "MariaDB via the trilogy adapter."
+        versions: ">= 8.0"
 
   - name: javascript
     type: select
@@ -147,12 +117,12 @@ options:
         label: Sass
         description: "CSS preprocessor with variables and nesting."
 
-  # 7.2 only
   - name: asset_pipeline
     type: select
     label: "Which asset pipeline?"
     description: "Asset pipeline for serving static assets."
     flag: --asset-pipeline
+    versions: "< 8.0"
     hide_when:
       api: true
     default: sprockets
@@ -279,12 +249,12 @@ options:
     flag: --skip-dev-gems
     default: false
 
-  # 8.0+
   - name: skip_thruster
     type: confirm
     label: "Skip Thruster?"
     description: "Don't include the HTTP/2 proxy and asset caching server."
     flag: --skip-thruster
+    versions: ">= 8.0"
     default: false
 
   - name: skip_rubocop
@@ -301,12 +271,12 @@ options:
     flag: --skip-brakeman
     default: false
 
-  # 8.1+
   - name: skip_bundler_audit
     type: confirm
     label: "Skip bundler-audit?"
     description: "Don't include the gem vulnerability scanner."
     flag: --skip-bundler-audit
+    versions: ">= 8.1"
     default: false
 
   - name: skip_ci
@@ -316,20 +286,20 @@ options:
     flag: --skip-ci
     default: false
 
-  # 8.0+
   - name: skip_kamal
     type: confirm
     label: "Skip Kamal?"
     description: "Don't include the deployment tool setup."
     flag: --skip-kamal
+    versions: ">= 8.0"
     default: false
 
-  # 8.0+
   - name: skip_solid
     type: confirm
     label: "Skip Solid?"
     description: "Don't include Solid Cache, Queue, and Cable setup."
     flag: --skip-solid
+    versions: ">= 8.0"
     default: false
 
   - name: skip_bundle

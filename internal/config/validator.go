@@ -29,12 +29,10 @@ func Validate(w *Wizard) []error {
 
 	validateVersionControl(w.Version, &errs)
 
-	if len(w.Compat) > 0 && w.Version == nil {
-		errs.addf("compat requires version_control to be set")
-	}
-
 	optionNames := validateOptions(w.Options, &errs)
-	validateReferences(w.Options, w.Compat, optionNames, &errs)
+	validateReferences(w.Options, optionNames, &errs)
+	validateVersionsConstraints(w, &errs)
+	validateVersionGating(w.Options, &errs)
 	validateVisibilityGraph(w.Options, &errs)
 
 	return []error(errs)
@@ -227,7 +225,7 @@ func validateDuplicateChoices(o Option, prefix string, errs *errorCollector) {
 	}
 }
 
-func validateReferences(options []Option, compat []CompatEntry, optionNames map[string]bool, errs *errorCollector) {
+func validateReferences(options []Option, optionNames map[string]bool, errs *errorCollector) {
 	for i, o := range options {
 		for ref := range o.ShowWhen {
 			if !optionNames[ref] {
@@ -241,13 +239,62 @@ func validateReferences(options []Option, compat []CompatEntry, optionNames map[
 		}
 		validateChoicesFromInterpolations(o, i, optionNames, errs)
 	}
-	for i, c := range compat {
-		for _, name := range c.Options {
-			if !optionNames[name] {
-				errs.addf("compat[%d]: references unknown option %q", i, name)
+}
+
+// validateVersionsConstraints checks that versions fields are valid and consistent.
+func validateVersionsConstraints(w *Wizard, errs *errorCollector) {
+	hasVersions := false
+	for _, o := range w.Options {
+		if o.Versions != "" {
+			hasVersions = true
+			if !isValidConstraint(o.Versions) {
+				errs.addf("%s: invalid versions constraint %q", optionPrefix(indexOf(w.Options, o.Name), o.Name), o.Versions)
+			}
+		}
+		for j, c := range o.Choices {
+			if c.Versions != "" {
+				hasVersions = true
+				prefix := optionPrefix(indexOf(w.Options, o.Name), o.Name)
+				if !isValidConstraint(c.Versions) {
+					errs.addf("%s: choices[%d]: invalid versions constraint %q", prefix, j, c.Versions)
+				}
 			}
 		}
 	}
+	if hasVersions && w.Version == nil {
+		errs.addf("versions constraints require version_control to be set")
+	}
+}
+
+func indexOf(options []Option, name string) int {
+	for i, o := range options {
+		if o.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// isValidConstraint checks if a comma-separated version constraint string is parseable.
+func isValidConstraint(constraint string) bool {
+	for part := range strings.SplitSeq(constraint, ",") {
+		p := strings.TrimSpace(part)
+		if p == "" {
+			return false
+		}
+		// Strip operator prefix.
+		for _, prefix := range []string{">=", "<=", ">", "<", "="} {
+			if strings.HasPrefix(p, prefix) {
+				p = strings.TrimSpace(p[len(prefix):])
+				break
+			}
+		}
+		// Must have a non-empty version after the operator.
+		if p == "" {
+			return false
+		}
+	}
+	return true
 }
 
 func validateChoicesFromInterpolations(o Option, idx int, optionNames map[string]bool, errs *errorCollector) {

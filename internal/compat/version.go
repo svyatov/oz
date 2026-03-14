@@ -36,51 +36,33 @@ func DetectVersion(vc *config.VersionControl) (string, error) {
 	return string(matches[1]), nil
 }
 
-// MatchedRanges returns all version constraint strings that match the given version.
-func MatchedRanges(entries []config.CompatEntry, version string) []string {
+// FilterOptions returns options whose Versions constraint matches the detected version.
+// Options without a Versions field are always included.
+// If version is empty, all options are returned.
+func FilterOptions(options []config.Option, version string) []config.Option {
 	if version == "" {
-		return nil
-	}
-	var matched []string
-	for _, c := range entries {
-		if matchVersionRange(version, c.Versions) {
-			matched = append(matched, c.Versions)
-		}
-	}
-	return matched
-}
-
-// FilterOptions returns the subset of options allowed for the detected version.
-// Options not mentioned in any compat entry are always included.
-// Options in a compat entry are included only when the entry's version matches.
-// If no compat entries exist or version is empty, all options are returned.
-func FilterOptions(options []config.Option, compat []config.CompatEntry, version string) []config.Option {
-	if len(compat) == 0 || version == "" {
 		return options
 	}
-
-	// Collect all option names gated by any compat entry.
-	gated := make(map[string]bool)
-	for _, c := range compat {
-		for _, name := range c.Options {
-			gated[name] = true
-		}
-	}
-
-	// Collect options allowed by matching entries.
-	allowed := make(map[string]bool)
-	for _, c := range compat {
-		if matchVersionRange(version, c.Versions) {
-			for _, name := range c.Options {
-				allowed[name] = true
-			}
-		}
-	}
-
 	filtered := make([]config.Option, 0, len(options))
 	for _, o := range options {
-		if !gated[o.Name] || allowed[o.Name] {
+		if o.Versions == "" || matchVersionRange(version, o.Versions) {
 			filtered = append(filtered, o)
+		}
+	}
+	return filtered
+}
+
+// FilterChoices returns choices whose Versions constraint matches the detected version.
+// Choices without a Versions field are always included.
+// If version is empty, all choices are returned.
+func FilterChoices(choices config.FlexChoices, version string) config.FlexChoices {
+	if version == "" {
+		return choices
+	}
+	filtered := make(config.FlexChoices, 0, len(choices))
+	for _, c := range choices {
+		if c.Versions == "" || matchVersionRange(version, c.Versions) {
+			filtered = append(filtered, c)
 		}
 	}
 	return filtered
@@ -175,29 +157,12 @@ func ParseAvailableVersions(raw string) []string {
 }
 
 // OptionHints returns a map of option name → human-readable version hint.
-// Options available in ALL compat entries (or with no compat) get "".
-func OptionHints(entries []config.CompatEntry) map[string]string {
-	if len(entries) == 0 {
-		return nil
-	}
-
+// Only options with a Versions constraint get a hint.
+func OptionHints(options []config.Option) map[string]string {
 	hints := make(map[string]string)
-	for _, e := range entries {
-		label := formatHint(e.Versions)
-		for _, name := range e.Options {
-			if _, exists := hints[name]; !exists {
-				hints[name] = label
-			} else {
-				// Present in multiple entries → no hint needed.
-				hints[name] = ""
-			}
-		}
-	}
-
-	// Remove empty entries (options in all entries).
-	for k, v := range hints {
-		if v == "" {
-			delete(hints, k)
+	for _, o := range options {
+		if o.Versions != "" {
+			hints[o.Name] = formatHint(o.Versions)
 		}
 	}
 	return hints

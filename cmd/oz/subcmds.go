@@ -65,7 +65,7 @@ detect its version, show the active compat range, and report any issues.`,
 
 			fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Detected version:"), ver)
 			printDoctorVersionDetails(w, ver)
-			printDoctorCompat(w, ver)
+			printDoctorVersionGating(w, ver)
 
 			fmt.Println()
 			return nil
@@ -88,17 +88,16 @@ func printDoctorVersionDetails(w *config.Wizard, ver string) {
 	}
 }
 
-func printDoctorCompat(w *config.Wizard, ver string) {
-	if len(w.Compat) == 0 {
-		return
-	}
-	matched := compat.MatchedRanges(w.Compat, ver)
-	if len(matched) > 0 {
-		filtered := compat.FilterOptions(w.Options, w.Compat, ver)
-		fmt.Printf("  %s %s (%d options)\n", ui.AccentStyle.Render("Compat match:"),
-			strings.Join(matched, " + "), len(filtered))
+func printDoctorVersionGating(w *config.Wizard, ver string) {
+	filtered := compat.FilterOptions(w.Options, ver)
+	total := len(w.Options)
+	active := len(filtered)
+	if active == total {
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version gating:"),
+			fmt.Sprintf("all %d options active", total))
 	} else {
-		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Compat match:"), "none (all options shown)")
+		fmt.Printf("  %s %s\n", ui.AccentStyle.Render("Version gating:"),
+			fmt.Sprintf("%d of %d options active", active, total))
 	}
 }
 
@@ -127,7 +126,12 @@ the detected one.`,
 			if version == "" {
 				version, _ = compat.DetectVersion(w.Version)
 			}
-			options := compat.FilterOptions(w.Options, w.Compat, version)
+			options := compat.FilterOptions(w.Options, version)
+			for i := range options {
+				if len(options[i].Choices) > 0 {
+					options[i].Choices = compat.FilterChoices(options[i].Choices, version)
+				}
+			}
 
 			fmt.Printf("\n  %s\n", ui.Header(w.Name, version, versionLabel(w)))
 			effectiveCmd := w.EffectiveCommand(version)

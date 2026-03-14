@@ -45,9 +45,8 @@ type Wizard struct {
 	Description string          `yaml:"description"`
 	Command     string          `yaml:"command"`
 	FlagStyle   FlagStyle       `yaml:"flag_style"` // "equals" (default) or "space"
-	Version     *VersionControl `yaml:"version_control"`
-	Compat      []CompatEntry   `yaml:"compat"`
-	Options     []Option        `yaml:"options"`
+	Version *VersionControl `yaml:"version_control"`
+	Options []Option        `yaml:"options"`
 }
 
 // EffectiveFlagStyle returns the wizard-level flag style, defaulting to equals.
@@ -78,12 +77,6 @@ func (w *Wizard) EffectiveCommand(version string) string {
 	return w.Command
 }
 
-// CompatEntry maps a version range to allowed option names.
-type CompatEntry struct {
-	Versions string   `yaml:"versions"`
-	Options  []string `yaml:"options"`
-}
-
 // Option is a single wizard step.
 type Option struct {
 	Default     *FieldValue `yaml:"default,omitempty"`
@@ -98,6 +91,7 @@ type Option struct {
 	Flag        string      `yaml:"flag"`
 	FlagTrue    string      `yaml:"flag_true"`
 	Name        string      `yaml:"name"`
+	Versions    string      `yaml:"versions"`
 	Separator   string      `yaml:"separator"`
 	FlagStyle   FlagStyle   `yaml:"flag_style"`
 	ChoicesFrom string      `yaml:"choices_from"`
@@ -120,6 +114,7 @@ type Choice struct {
 	Value       string `yaml:"value"`
 	Label       string `yaml:"label"`
 	Description string `yaml:"description"`
+	Versions    string `yaml:"versions"`
 }
 
 // FlexChoices is a []Choice that accepts both string shorthand and full object syntax in YAML.

@@ -20,13 +20,6 @@ command: ""
 #   available_versions_command: "ls /opt/mytool/versions"
 #   available_versions: "1.0.0 2.0.0 3.0.0"
 
-# Version compatibility filters
-# compat:
-#   - versions: ">=2.0.0"
-#     options: [new_feature]
-#   - versions: "<2.0.0"
-#     options: [legacy_option]
-
 options:
   # Select: single choice from a list
   - name: example_select
@@ -43,11 +36,15 @@ options:
     #   other_option: some_value
     # hide_when:                 # inverse of show_when
     #   other_option: some_value
+    # versions: ">= 2.0"         # only show for version >= 2.0
     choices:
       - value: value1
         label: Value 1
         description: First option
       - value2                   # string shorthand: value=label
+      # - value: value3
+      #   label: Value 3
+      #   versions: ">= 3.0"    # choice-level version gating
 
   # Select with dynamic choices from shell command
   # - name: container

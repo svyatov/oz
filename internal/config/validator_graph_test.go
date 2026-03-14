@@ -48,6 +48,103 @@ func graphCases() []graphCase {
 	return cases
 }
 
+type versionGatingCase struct {
+	name    string
+	modify  func([]Option) []Option
+	wantErr string
+}
+
+func versionGatingMinimal() []Option {
+	return []Option{
+		{
+			Name: "database", Type: OptionSelect, Label: "DB",
+			Versions: "< 8.0",
+			Choices: FlexChoices{
+				{Value: "sqlite", Label: "SQLite"},
+				{Value: "postgres", Label: "PostgreSQL"},
+			},
+		},
+		{Name: "name", Type: OptionInput, Label: "Name"},
+	}
+}
+
+func TestValidateVersionGating(t *testing.T) {
+	for _, tt := range versionGatingCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := tt.modify(versionGatingMinimal())
+			var errs errorCollector
+			validateVersionGating(opts, &errs)
+			var msgs []string
+			for _, e := range errs {
+				msgs = append(msgs, e.Error())
+			}
+			combined := strings.Join(msgs, "\n")
+			if tt.wantErr == "" {
+				if len(errs) != 0 {
+					t.Errorf("expected no errors, got:\n%s", combined)
+				}
+			} else {
+				if !strings.Contains(combined, tt.wantErr) {
+					t.Errorf("expected error containing %q, got:\n%s", tt.wantErr, combined)
+				}
+			}
+		})
+	}
+}
+
+func versionGatingCases() []versionGatingCase {
+	return []versionGatingCase{
+		{"valid_no_versions", func(opts []Option) []Option {
+			opts[0].Versions = ""
+			return opts
+		}, ""},
+		{"valid_choice_within_option_range", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "mysql", Label: "MySQL", Versions: "< 7.0",
+			})
+			return opts
+		}, ""},
+		{"choice_versions_outside_option_versions", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "mariadb", Label: "MariaDB", Versions: ">= 9.0",
+			})
+			return opts
+		}, "can never match"},
+		{"default_in_version_gated_choice", func(opts []Option) []Option {
+			opts[0].Versions = ""
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "mariadb", Label: "MariaDB", Versions: ">= 8.0",
+			})
+			defVal := StringVal("mariadb")
+			opts[0].Default = &defVal
+			return opts
+		}, "version-gated choice"},
+		{"default_in_ungated_choice_valid", func(opts []Option) []Option {
+			defVal := StringVal("sqlite")
+			opts[0].Default = &defVal
+			return opts
+		}, ""},
+		{"show_when_refs_version_gated_option", func(opts []Option) []Option {
+			opts[1].ShowWhen = Values{"database": StringVal("sqlite")}
+			return opts
+		}, "show_when references version-gated option"},
+		{"hide_when_refs_version_gated_option", func(opts []Option) []Option {
+			opts[1].HideWhen = Values{"database": StringVal("sqlite")}
+			return opts
+		}, "hide_when references version-gated option"},
+		{"show_when_refs_ungated_option_valid", func(opts []Option) []Option {
+			opts[0].Versions = ""
+			opts[1].ShowWhen = Values{"database": StringVal("sqlite")}
+			return opts
+		}, ""},
+		{"both_version_gated_skip_visibility_check", func(opts []Option) []Option {
+			opts[1].Versions = "< 8.0"
+			opts[1].ShowWhen = Values{"database": StringVal("sqlite")}
+			return opts
+		}, ""},
+	}
+}
+
 func graphRefCases() []graphCase {
 	return []graphCase{
 		{"self_ref_show_when", func(opts []Option) []Option {

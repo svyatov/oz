@@ -60,9 +60,16 @@ func baseCases() []validationCase {
 		{"missing_name", func(w *Wizard) { w.Name = "" }, "name is required"},
 		{"missing_command", func(w *Wizard) { w.Command = "" }, "command is required"},
 		{"invalid_flag_style", func(w *Wizard) { w.FlagStyle = "bad" }, "flag_style must be"},
-		{"compat_without_detect", func(w *Wizard) {
-			w.Compat = []CompatEntry{{Versions: ">= 1.0", Options: []string{"opt1"}}}
-		}, "compat requires version_control"},
+		{"versions_without_version_control", func(w *Wizard) {
+			w.Options[0].Versions = ">= 1.0"
+		}, "versions constraints require version_control"},
+		{"choice_versions_without_version_control", func(w *Wizard) {
+			w.Options[0].Type = OptionSelect
+			w.Options[0].Choices = FlexChoices{
+				{Value: "a", Label: "A"},
+				{Value: "b", Label: "B", Versions: ">= 2.0"},
+			}
+		}, "versions constraints require version_control"},
 		{"duplicate_option_name", func(w *Wizard) {
 			w.Options = append(w.Options, Option{Name: "opt1", Type: OptionInput, Label: "Dup"})
 		}, "duplicate option name"},
@@ -87,10 +94,14 @@ func baseCases() []validationCase {
 		{"show_when_unknown_option", func(w *Wizard) {
 			w.Options[0].ShowWhen = Values{"nonexistent": BoolVal(true)}
 		}, "references unknown option"},
-		{"compat_unknown_option", func(w *Wizard) {
+		{"versions_valid_with_version_control", func(w *Wizard) {
 			w.Version = &VersionControl{Command: "cmd", Pattern: `(\d+)`}
-			w.Compat = []CompatEntry{{Versions: ">= 1.0", Options: []string{"nope"}}}
-		}, "references unknown option"},
+			w.Options[0].Versions = ">= 1.0"
+		}, ""},
+		{"versions_invalid_constraint", func(w *Wizard) {
+			w.Version = &VersionControl{Command: "cmd", Pattern: `(\d+)`}
+			w.Options[0].Versions = ">= "
+		}, "invalid versions constraint"},
 	}
 }
 
