@@ -1,6 +1,6 @@
 module github.com/svyatov/oz
 
-go 1.25.0
+go 1.26.1
 
 require (
 	charm.land/bubbles/v2 v2.0.0

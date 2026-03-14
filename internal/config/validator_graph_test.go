@@ -93,12 +93,32 @@ func TestValidateVersionGating(t *testing.T) {
 }
 
 func TestConstraintsOverlap(t *testing.T) {
-	tests := []struct {
-		name string
-		a, b string
-		want bool
-	}{
-		// Basic overlapping ranges.
+	for _, tt := range overlapCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			got := constraintsOverlap(tt.a, tt.b)
+			if got != tt.want {
+				t.Errorf("constraintsOverlap(%q, %q) = %v, want %v",
+					tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
+type overlapCase struct {
+	name string
+	a, b string
+	want bool
+}
+
+func overlapCases() []overlapCase {
+	cases := overlapBasicCases()
+	cases = append(cases, overlapAdvancedCases()...)
+	return cases
+}
+
+func overlapBasicCases() []overlapCase {
+	return []overlapCase{
+		// Overlapping ranges.
 		{"both_gte", ">= 1.0.0", ">= 2.0.0", true},
 		{"nested_range", ">= 1.0.0, < 3.0.0", ">= 2.0.0, < 4.0.0", true},
 		{"subset", ">= 2.0.0, < 3.0.0", ">= 1.0.0, < 4.0.0", true},
@@ -123,36 +143,60 @@ func TestConstraintsOverlap(t *testing.T) {
 		{"large_major_no_overlap", ">= 2027.0.0", "< 2026.0.0", false},
 		{"large_minor_overlap", ">= 0.180.0", "< 0.181.0", true},
 
-		// Tilde and caret.
-		{"tilde_overlap", "~1.2.0", ">= 1.2.5", true},
-		{"tilde_no_overlap", "~1.2.0", ">= 1.3.0", false},
-		{"caret_overlap", "^1.0.0", ">= 1.5.0", true},
-		{"caret_no_overlap", "^1.0.0", ">= 2.0.0", false},
-
-		// Wildcards.
-		{"wildcard_overlap", "1.x", ">= 1.5.0", true},
-		{"wildcard_no_overlap", "1.x", ">= 2.0.0", false},
-
-		// OR constraints.
-		{"or_overlap_first", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 1.5.0", true},
-		{"or_overlap_second", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 6.0.0", true},
-
 		// Invalid constraints.
 		{"invalid_a", ">>> bad", ">= 1.0.0", false},
 		{"invalid_b", ">= 1.0.0", ">>> bad", false},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := constraintsOverlap(tt.a, tt.b)
-			if got != tt.want {
-				t.Errorf("constraintsOverlap(%q, %q) = %v, want %v",
-					tt.a, tt.b, got, tt.want)
-			}
-		})
+}
+
+func overlapAdvancedCases() []overlapCase {
+	return []overlapCase{
+		// Tilde and caret.
+		{"tilde_overlap", "~1.2.0", ">= 1.2.5", true},
+		{"tilde_no_overlap", "~1.2.0", ">= 1.3.0", false},
+		{"adjacent_tilde", "~1.2.0", "~1.3.0", false},
+		{"caret_overlap", "^1.0.0", ">= 1.5.0", true},
+		{"caret_no_overlap", "^1.0.0", ">= 2.0.0", false},
+		{"adjacent_caret", "^1.0.0", "^2.0.0", false},
+
+		// Wildcards.
+		{"wildcard_overlap", "1.x", ">= 1.5.0", true},
+		{"wildcard_no_overlap", "1.x", ">= 2.0.0", false},
+		{"wildcard_disjoint", "1.x", "2.x", false},
+
+		// OR constraints — overlap with one branch.
+		{"or_overlap_first", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 1.5.0", true},
+		{"or_overlap_second", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 6.0.0", true},
+		// OR constraints — no branch overlaps.
+		{"or_no_overlap", "< 5.0", ">= 5.0 || >= 10.0", false},
+		{"or_no_overlap_rev", ">= 5.0 || >= 10.0", "< 5.0", false},
+		{"or_both_sides_no_overlap",
+			">= 1.0.0, < 2.0.0 || >= 10.0.0, < 11.0.0",
+			">= 3.0.0, < 4.0.0", false},
+
+		// Hyphen ranges.
+		{"hyphen_overlap", "1.0.0 - 2.0.0", "1.5.0 - 3.0.0", true},
+		{"hyphen_no_overlap", "1.0.0 - 2.0.0", "3.0.0 - 4.0.0", false},
+
+		// Exact version vs range.
+		{"exact_in_range", ">= 7.0, < 9.0", "= 8.0.0", true},
+		{"exact_outside_range", ">= 7.0, < 9.0", "= 9.0.0", false},
 	}
 }
 
 func versionGatingCases() []versionGatingCase {
+	cases := choiceOverlapCases()
+	cases = append(cases, visibilityGatingCases()...)
+	return cases
+}
+
+func choiceOverlapCases() []versionGatingCase {
+	cases := choiceOverlapBasicCases()
+	cases = append(cases, choiceOverlapAdvancedCases()...)
+	return cases
+}
+
+func choiceOverlapBasicCases() []versionGatingCase {
 	return []versionGatingCase{
 		{"valid_no_versions", func(opts []Option) []Option {
 			opts[0].Versions = ""
@@ -170,6 +214,78 @@ func versionGatingCases() []versionGatingCase {
 			})
 			return opts
 		}, "can never match"},
+		{"choice_touching_option_boundary", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "new_db", Label: "NewDB", Versions: ">= 8.0",
+			})
+			return opts
+		}, "can never match"},
+		{"choice_tilde_outside_option", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "tilde_db", Label: "TildeDB", Versions: "~8.0",
+			})
+			return opts
+		}, "can never match"},
+		{"choice_caret_outside_option", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "caret_db", Label: "CaretDB", Versions: "^8.0",
+			})
+			return opts
+		}, "can never match"},
+		{"choice_wildcard_outside_option", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "wild_db", Label: "WildDB", Versions: "8.x",
+			})
+			return opts
+		}, "can never match"},
+	}
+}
+
+func choiceOverlapAdvancedCases() []versionGatingCase {
+	return []versionGatingCase{
+		{"choice_or_no_branch_overlaps", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "or_db", Label: "OrDB", Versions: ">= 8.0 || >= 10.0",
+			})
+			return opts
+		}, "can never match"},
+		{"choice_or_one_branch_overlaps", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "or_ok", Label: "OrOK", Versions: "< 7.0 || >= 10.0",
+			})
+			return opts
+		}, ""},
+		{"choice_exact_version_in_range", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "exact_db", Label: "ExactDB", Versions: "= 7.0.0",
+			})
+			return opts
+		}, ""},
+		{"choice_exact_version_outside_range", func(opts []Option) []Option {
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "exact_out", Label: "ExactOut", Versions: "= 8.0.0",
+			})
+			return opts
+		}, "can never match"},
+		{"choice_large_version_overlap", func(opts []Option) []Option {
+			opts[0].Versions = ">= 2026.0.0"
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "future", Label: "Future", Versions: ">= 2026.5.0",
+			})
+			return opts
+		}, ""},
+		{"choice_large_version_no_overlap", func(opts []Option) []Option {
+			opts[0].Versions = ">= 2026.0.0, < 2027.0.0"
+			opts[0].Choices = append(opts[0].Choices, Choice{
+				Value: "too_new", Label: "TooNew", Versions: ">= 2027.0.0",
+			})
+			return opts
+		}, "can never match"},
+	}
+}
+
+func visibilityGatingCases() []versionGatingCase {
+	return []versionGatingCase{
 		{"default_in_version_gated_choice", func(opts []Option) []Option {
 			opts[0].Versions = ""
 			opts[0].Choices = append(opts[0].Choices, Choice{

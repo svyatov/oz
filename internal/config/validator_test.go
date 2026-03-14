@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func fvptr(v FieldValue) *FieldValue { return &v }
 
 func TestValidate(t *testing.T) {
 	minimal := func() *Wizard {
@@ -255,38 +254,38 @@ func semanticDefaultCases() []validationCase {
 		{"default_not_in_choices", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = fvptr(StringVal("c"))
+			w.Options[0].Default = new(StringVal("c"))
 		}, "not among the defined choices"},
 		{"default_in_choices_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = fvptr(StringVal("a"))
+			w.Options[0].Default = new(StringVal("a"))
 		}, ""},
 		{"default_multi_select_not_in_choices", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = fvptr(StringsVal("a", "z"))
+			w.Options[0].Default = new(StringsVal("a", "z"))
 		}, "not among the defined choices"},
 		{"default_multi_select_all_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}}
-			w.Options[0].Default = fvptr(StringsVal("a", "b"))
+			w.Options[0].Default = new(StringsVal("a", "b"))
 		}, ""},
 		{"default_multi_select_scalar_rejected", func(w *Wizard) {
 			w.Options[0].Type = OptionMultiSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
-			w.Options[0].Default = fvptr(StringVal("a"))
+			w.Options[0].Default = new(StringVal("a"))
 		}, "must be a list"},
 		{"default_with_choices_from_skipped", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].ChoicesFrom = "echo a b c"
-			w.Options[0].Default = fvptr(StringVal("anything"))
+			w.Options[0].Default = new(StringVal("anything"))
 		}, ""},
 		{"default_empty_with_allow_none_valid", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect
 			w.Options[0].Choices = FlexChoices{{Value: "a", Label: "A"}}
 			w.Options[0].AllowNone = true
-			w.Options[0].Default = fvptr(StringVal(""))
+			w.Options[0].Default = new(StringVal(""))
 		}, ""},
 		{"duplicate_choice_values", func(w *Wizard) {
 			w.Options[0].Type = OptionSelect

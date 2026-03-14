@@ -10,7 +10,7 @@ import (
 	"github.com/svyatov/oz/internal/config"
 )
 
-func fvptr(v config.FieldValue) *config.FieldValue { return &v }
+
 
 func key(code rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: code, Text: string(code)}
@@ -49,7 +49,7 @@ func testOptions() []config.Option {
 			Name:    "name",
 			Type:    config.OptionInput,
 			Label:   "App name",
-			Default: fvptr(config.StringVal("myapp")),
+			Default: new(config.StringVal("myapp")),
 		},
 	}
 }
@@ -657,28 +657,28 @@ func TestResolveDefault(t *testing.T) {
 			config.Option{Name: "db", Type: config.OptionSelect},
 			config.Values{"db": config.StringVal("pg")},
 			nil,
-			fvptr(config.StringVal("pg")),
+			new(config.StringVal("pg")),
 		},
 		{
 			"from_last_used",
 			config.Option{Name: "db", Type: config.OptionSelect},
 			config.Values{},
 			config.Values{"db": config.StringVal("mysql")},
-			fvptr(config.StringVal("mysql")),
+			new(config.StringVal("mysql")),
 		},
 		{
 			"from_default",
-			config.Option{Name: "name", Type: config.OptionInput, Default: fvptr(config.StringVal("myapp"))},
+			config.Option{Name: "name", Type: config.OptionInput, Default: new(config.StringVal("myapp"))},
 			config.Values{},
 			config.Values{},
-			fvptr(config.StringVal("myapp")),
+			new(config.StringVal("myapp")),
 		},
 		{
 			"confirm_fallback",
 			config.Option{Name: "api", Type: config.OptionConfirm},
 			config.Values{},
 			config.Values{},
-			fvptr(config.BoolVal(false)),
+			new(config.BoolVal(false)),
 		},
 		{
 			"select_first_choice",
@@ -688,7 +688,7 @@ func TestResolveDefault(t *testing.T) {
 			},
 			config.Values{},
 			config.Values{},
-			fvptr(config.StringVal("pg")),
+			new(config.StringVal("pg")),
 		},
 	}
 	for _, tt := range tests {

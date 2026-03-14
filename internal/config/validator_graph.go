@@ -82,14 +82,17 @@ func validateVisibilityRefsVersionGated(o Option, prefix string, versioned map[s
 var versionRe = regexp.MustCompile(`\d+(?:\.\d+)*`)
 
 // constraintsOverlap checks if two version constraints can ever be simultaneously satisfied.
-// Concatenates both constraints (AND semantics) and probes with versions extracted from
-// the constraint text plus ±1 neighbors to catch strict inequality boundaries.
+// Checks each constraint independently (not concatenated) so OR (||) in either
+// constraint is handled correctly.
 func constraintsOverlap(a, b string) bool {
-	c, err := semver.NewConstraint(a + ", " + b)
-	if err != nil {
+	ca, errA := semver.NewConstraint(a)
+	cb, errB := semver.NewConstraint(b)
+	if errA != nil || errB != nil {
 		return false
 	}
-	return slices.ContainsFunc(probeVersions(a, b), c.Check)
+	return slices.ContainsFunc(probeVersions(a, b), func(v *semver.Version) bool {
+		return ca.Check(v) && cb.Check(v)
+	})
 }
 
 // probeVersions extracts version numbers from constraint strings
