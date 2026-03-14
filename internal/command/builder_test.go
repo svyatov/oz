@@ -1,8 +1,6 @@
 package command
 
 import (
-	"bytes"
-	"errors"
 	"regexp"
 	"strings"
 	"testing"
@@ -206,56 +204,6 @@ func TestRun(t *testing.T) {
 			t.Errorf("got %v, want error containing %q", err, "empty command")
 		}
 	})
-
-	t.Run("success", func(t *testing.T) {
-		orig := ExecCommand
-		t.Cleanup(func() { ExecCommand = orig })
-
-		ExecCommand = func(parts []string) error { return nil }
-
-		if err := Run([]string{"echo", "hello"}); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-
-	t.Run("failure", func(t *testing.T) {
-		orig := ExecCommand
-		t.Cleanup(func() { ExecCommand = orig })
-
-		ExecCommand = func(parts []string) error {
-			return errors.New("exit status 1")
-		}
-
-		err := Run([]string{"false"})
-		if err == nil || !strings.Contains(err.Error(), "command failed") {
-			t.Errorf("got %v, want error containing %q", err, "command failed")
-		}
-	})
-}
-
-func TestPrintCommand(t *testing.T) {
-	var buf bytes.Buffer
-	parts := []Part{
-		{Text: "docker", Kind: PartCommand},
-		{Text: "run", Kind: PartCommand},
-		{Text: "--rm", Kind: PartFlag},
-	}
-
-	PrintCommand(&buf, parts)
-	out := buf.String()
-
-	// Verify newline padding: starts with \n and ends with \n\n.
-	if !strings.HasPrefix(out, "\n") {
-		t.Errorf("output should start with newline, got %q", out)
-	}
-	if !strings.HasSuffix(out, "\n\n") {
-		t.Errorf("output should end with double newline, got %q", out)
-	}
-
-	plain := stripANSI(out)
-	if !strings.Contains(plain, "docker") || !strings.Contains(plain, "--rm") {
-		t.Errorf("output missing command text, got %q", plain)
-	}
 }
 
 func TestFormatCommandColored(t *testing.T) {

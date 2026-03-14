@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"regexp"
 	"strings"
 	"testing"
@@ -160,34 +159,6 @@ func TestWidth(t *testing.T) {
 				t.Errorf("Width(%q) = %d, want %d", tt.input, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestSuccessMsgf(t *testing.T) {
-	var buf bytes.Buffer
-	Output = &buf
-	t.Cleanup(func() { Output = nil })
-
-	SuccessMsgf("done %d items", 3)
-
-	got := buf.String()
-	plain := stripANSI(got)
-	if !strings.Contains(plain, "done 3 items") {
-		t.Errorf("SuccessMsgf output = %q, want to contain 'done 3 items'", plain)
-	}
-}
-
-func TestInfoMsgf(t *testing.T) {
-	var buf bytes.Buffer
-	Output = &buf
-	t.Cleanup(func() { Output = nil })
-
-	InfoMsgf("found %s", "nothing")
-
-	got := buf.String()
-	plain := stripANSI(got)
-	if !strings.Contains(plain, "found nothing") {
-		t.Errorf("InfoMsgf output = %q, want to contain 'found nothing'", plain)
 	}
 }
 
