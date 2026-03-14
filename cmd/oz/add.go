@@ -54,7 +54,7 @@ func addRemote(name string, force bool) error {
 		return fmt.Errorf("downloading wizard: %w", err)
 	}
 
-	return installWizard(data, force)
+	return installWizard(data, force, "Added")
 }
 
 func addLocal(path string, force bool) error {
@@ -63,10 +63,10 @@ func addLocal(path string, force bool) error {
 		return fmt.Errorf("reading file: %w", err)
 	}
 
-	return installWizard(data, force)
+	return installWizard(data, force, "Added")
 }
 
-func installWizard(data []byte, force bool) error {
+func installWizard(data []byte, force bool, verb string) error {
 	w, err := config.ParseWizard(data)
 	if err != nil {
 		return fmt.Errorf("parsing wizard: %w", err)
@@ -92,7 +92,7 @@ func installWizard(data []byte, force bool) error {
 		return fmt.Errorf("writing wizard config: %w", err)
 	}
 
-	ui.SuccessMsgf("Added wizard %q", w.Name)
+	ui.SuccessMsgf("%s wizard %q", verb, w.Name)
 
 	return nil
 }

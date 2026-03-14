@@ -166,7 +166,7 @@ func confirmAndExecute(
 	st *store.Store, wizardName string,
 	parts []command.Part, allAnswers config.Values,
 ) error {
-	if !confirmPrompt("  Execute?") {
+	if !confirmPrompt("Execute?") {
 		return nil
 	}
 	promptAndSavePreset(st, wizardName, allAnswers)

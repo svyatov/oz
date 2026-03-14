@@ -190,6 +190,18 @@ func (s *Store) SavePinnedVersion(wizard, version string) error {
 	})
 }
 
+// RemoveWizardData deletes all stored state, pins, and presets for a wizard.
+func (s *Store) RemoveWizardData(wizard string) error {
+	var errs []error
+	if err := os.Remove(s.statePath(wizard)); err != nil && !os.IsNotExist(err) {
+		errs = append(errs, fmt.Errorf("removing state: %w", err))
+	}
+	if err := os.RemoveAll(s.presetsDir(wizard)); err != nil {
+		errs = append(errs, fmt.Errorf("removing presets: %w", err))
+	}
+	return errors.Join(errs...)
+}
+
 // --- Presets ---
 
 func (s *Store) presetsDir(wizard string) string {
@@ -219,6 +231,12 @@ func (s *Store) ListPresets(wizard string) ([]string, error) {
 		names = append(names, strings.TrimSuffix(e.Name(), ".yml"))
 	}
 	return names, nil
+}
+
+// PresetExists checks whether a named preset file exists.
+func (s *Store) PresetExists(wizard, name string) bool {
+	_, err := os.Stat(s.presetPath(wizard, name))
+	return err == nil
 }
 
 // LoadPreset reads a named preset, returning a map of option name → value.

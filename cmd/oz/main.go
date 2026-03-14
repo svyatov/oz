@@ -14,6 +14,7 @@ import (
 
 	"github.com/svyatov/oz/internal/config"
 	"github.com/svyatov/oz/internal/registry"
+	"github.com/svyatov/oz/internal/store"
 	"github.com/svyatov/oz/internal/ui"
 )
 
@@ -38,8 +39,11 @@ func main() {
 
 func newRootCmd(args []string) *cobra.Command {
 	root := &cobra.Command{
-		Use:           "oz",
-		Short:         "Config-driven CLI wizard framework",
+		Use:   "oz",
+		Short: "Config-driven CLI wizard framework",
+		Long: `Config-driven CLI wizard framework.
+
+Respects NO_COLOR environment variable to disable colored output.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,
@@ -90,7 +94,7 @@ Wizard subcommands (use after wizard name):
 	}
 
 	cmd.PersistentFlags().BoolP("dry-run", "n", false, "print command without executing")
-	cmd.PersistentFlags().StringP("preset", "p", "", "run with saved preset (non-interactive)")
+	cmd.PersistentFlags().StringP("preset", "p", "", "run with saved preset (non-interactive, executes immediately)")
 
 	return cmd
 }
@@ -189,6 +193,7 @@ func listCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
+		Args:    cobra.NoArgs,
 		Short:   "List available wizards",
 		Long: `List all wizard configs found in the config directory.
 
@@ -281,14 +286,18 @@ func newListTable() *table.Table {
 }
 
 func removeCmd() *cobra.Command {
-	var force bool
+	var force, purge bool
 
 	cmd := &cobra.Command{
 		Use:     "remove <wizard>",
 		Aliases: []string{"rm"},
 		Short:   "Remove a wizard config",
-		Long:    "Delete a wizard YAML config file. Requires confirmation unless --force is set.",
-		Example: "  oz remove myapp\n  oz rm myapp -f",
+		Long: `Delete a wizard YAML config file. Requires confirmation unless --force is set.
+
+Use --purge to also delete saved state, pins, and presets for the wizard.
+Without --purge, this data is kept so it can be reused if the wizard is
+reinstalled later.`,
+		Example: "  oz remove myapp\n  oz rm myapp -f\n  oz rm myapp --purge",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := config.WizardPath(configDir, args[0])
@@ -296,10 +305,17 @@ func removeCmd() *cobra.Command {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
 			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove wizard %q?", args[0])) {
+				ui.InfoMsgf("Cancelled")
 				return nil
 			}
 			if err := os.Remove(path); err != nil {
 				return fmt.Errorf("removing wizard: %w", err)
+			}
+			if purge {
+				st := store.New(configDir)
+				if err := st.RemoveWizardData(args[0]); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+				}
 			}
 			ui.SuccessMsgf("Wizard %q removed", args[0])
 			return nil
@@ -308,6 +324,7 @@ func removeCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "skip confirmation prompt")
+	cmd.Flags().BoolVar(&purge, "purge", false, "also remove saved state, pins, and presets")
 
 	return cmd
 }
@@ -369,7 +386,7 @@ func validateCmd() *cobra.Command {
 			if len(errs) > 0 {
 				return fmt.Errorf("validation errors:\n%s", config.FormatErrors(errs))
 			}
-			ui.SuccessMsgf("Valid")
+			ui.SuccessMsgf("%s is valid", w.Name)
 			return nil
 		},
 	}

@@ -34,6 +34,7 @@ func completePresetNames(wizardName string) completionFunc {
 func doctorCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
+		Args:  cobra.NoArgs,
 		Short: "Check tool installation and detected version",
 		Long: `Run diagnostics for the wizard's underlying tool: verify it is installed,
 detect its version, show the active compat range, and report any issues.`,
@@ -107,6 +108,7 @@ func showCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "show",
 		Aliases: []string{"s"},
+		Args:    cobra.NoArgs,
 		Short:   "Show all options with descriptions",
 		Long: `Display every wizard option with its type, flags, default value,
 choices, and visibility conditions. Useful for reviewing a wizard
@@ -236,6 +238,7 @@ func printConditions(label string, conds config.Values) {
 func pinsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pins",
+		Args:  cobra.NoArgs,
 		Short: "Manage pinned options",
 		Long: `Open an interactive TUI to pin option values. Pinned options are
 skipped during the wizard and use their pinned value automatically.
@@ -256,6 +259,7 @@ func pinsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
+		Args:    cobra.NoArgs,
 		Short:   "List current pins",
 		Long:    "Display all currently pinned option values for this wizard.",
 		Example: fmt.Sprintf("  oz run %s pins list", wizardName),
@@ -293,6 +297,7 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "clear",
+		Args:    cobra.NoArgs,
 		Short:   "Remove all pins",
 		Long:    "Remove all pinned option values and the pinned version for this wizard.",
 		Example: fmt.Sprintf("  oz run %s pins clear\n  oz run %s pins clear --force", wizardName, wizardName),
@@ -303,6 +308,7 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 			}
 
 			if !force && !confirmDangerousPrompt("Clear all pins?") {
+				ui.InfoMsgf("Cancelled")
 				return nil
 			}
 
@@ -326,6 +332,7 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 func presetsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "presets",
+		Args:  cobra.NoArgs,
 		Short: "Manage presets",
 		Long: `Open an interactive TUI to manage named presets for this wizard.
 Presets store a complete set of option values that can be replayed
@@ -370,6 +377,7 @@ func presetsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
+		Args:    cobra.NoArgs,
 		Short:   "List presets",
 		Long:    "List all saved presets for this wizard.",
 		Example: fmt.Sprintf("  oz run %s presets list", wizardName),
@@ -453,10 +461,14 @@ func printPresetVerbose(values config.Values, options []config.Option) {
 }
 
 func presetsSaveCmd(wizardName string) *cobra.Command {
-	return &cobra.Command{
+	var force bool
+
+	cmd := &cobra.Command{
 		Use:               "save <name>",
 		Short:             "Save last-used values as named preset",
-		Long:              "Save the most recent wizard answers as a named preset for later replay.",
+		Long: `Save the most recent wizard answers as a named preset for later replay.
+If a preset with the same name already exists, requires confirmation
+unless --force is set.`,
 		Example:           fmt.Sprintf("  oz run %s presets save fast", wizardName),
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completePresetNames(wizardName),
@@ -479,6 +491,13 @@ func presetsSaveCmd(wizardName string) *cobra.Command {
 				return errors.New("no last-used values to save — run the wizard first")
 			}
 
+			if !force && st.PresetExists(wizardName, args[0]) {
+				if !confirmDangerousPrompt(fmt.Sprintf("Overwrite preset %q?", args[0])) {
+					ui.InfoMsgf("Cancelled")
+					return nil
+				}
+			}
+
 			if err := st.SavePreset(wizardName, args[0], state.LastUsed); err != nil {
 				return fmt.Errorf("saving preset %q: %w", args[0], err)
 			}
@@ -486,6 +505,10 @@ func presetsSaveCmd(wizardName string) *cobra.Command {
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "overwrite existing preset without confirmation")
+
+	return cmd
 }
 
 func presetsRemoveCmd(wizardName string) *cobra.Command {
@@ -502,6 +525,7 @@ func presetsRemoveCmd(wizardName string) *cobra.Command {
 		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
 			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove preset %q?", args[0])) {
+				ui.InfoMsgf("Cancelled")
 				return nil
 			}
 			st := store.New(configDir)

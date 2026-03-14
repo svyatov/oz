@@ -16,8 +16,9 @@ func updateCmd() *cobra.Command {
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "update <wizard>",
-		Short: "Re-fetch a wizard from the registry",
+		Use:     "update <wizard>",
+		Aliases: []string{"u"},
+		Short:   "Re-fetch a wizard from the registry",
 		Long: `Download the latest version of a wizard config from the remote
 registry and overwrite the local copy.
 
@@ -26,10 +27,10 @@ in the remote registry.`,
 		Example:           "  oz update rails-new\n  oz update --all",
 		ValidArgsFunction: completeWizardNames,
 		Args: func(_ *cobra.Command, args []string) error {
-			if all {
-				return nil
+			if all && len(args) > 0 {
+				return errors.New("--all does not accept arguments")
 			}
-			if len(args) == 0 {
+			if !all && len(args) != 1 {
 				return errors.New("specify a wizard name or use --all")
 			}
 			return nil
@@ -55,7 +56,7 @@ func updateOne(name string) error {
 		return fmt.Errorf("downloading wizard: %w", err)
 	}
 
-	return installWizard(data, true)
+	return installWizard(data, true, "Updated")
 }
 
 func updateAll() error {
@@ -94,7 +95,7 @@ func updateAll() error {
 			continue
 		}
 
-		if err := installWizard(data, true); err != nil {
+		if err := installWizard(data, true, "Updated"); err != nil {
 			fmt.Fprintf(os.Stderr, "  skipping %s: %v\n", w.Name, err)
 			continue
 		}
