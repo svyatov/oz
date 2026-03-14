@@ -155,10 +155,10 @@ func runWizard(name string, presetName string, dryRun bool) error {
 	parts := command.Build(w, allAnswers)
 	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Values)
 	if dryRun {
-		command.PrintCommand(parts)
+		command.PrintCommand(os.Stdout, parts)
 		return nil
 	}
-	command.PrintCommand(parts)
+	command.PrintCommand(os.Stdout, parts)
 	return confirmAndExecute(st, w.Name, parts, allAnswers)
 }
 
@@ -212,10 +212,10 @@ func runWithPreset(
 
 	parts := command.Build(w, values)
 	if dryRun {
-		command.PrintCommand(parts)
+		command.PrintCommand(os.Stdout, parts)
 		return nil
 	}
-	command.PrintCommand(parts)
+	command.PrintCommand(os.Stdout, parts)
 	if err := command.Run(command.PlainParts(parts)); err != nil {
 		return fmt.Errorf("executing command: %w", err)
 	}

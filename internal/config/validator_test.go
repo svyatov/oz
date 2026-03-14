@@ -530,3 +530,92 @@ func yamlUnmarshal(data []byte, v any) error {
 	}
 	return nil
 }
+
+func TestIndexOf(t *testing.T) {
+	options := []Option{
+		{Name: "alpha"},
+		{Name: "beta"},
+	}
+	tests := []struct {
+		name string
+		find string
+		want int
+	}{
+		{"found_first", "alpha", 0},
+		{"found_second", "beta", 1},
+		{"not_found", "gamma", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := indexOf(options, tt.find); got != tt.want {
+				t.Errorf("indexOf(%q) = %d, want %d", tt.find, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOptionPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		idx  int
+		opt  string
+		want string
+	}{
+		{"with_name", 2, "verbose", "options[2] (verbose)"},
+		{"empty_name", 0, "", "options[0]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := optionPrefix(tt.idx, tt.opt); got != tt.want {
+				t.Errorf("optionPrefix(%d, %q) = %q, want %q", tt.idx, tt.opt, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateOptionFlagStyle(t *testing.T) {
+	w := &Wizard{
+		Name:    "test",
+		Command: "cmd",
+		Options: []Option{
+			{Name: "opt1", Type: OptionInput, Label: "Opt 1", FlagStyle: "bad"},
+		},
+	}
+	errs := Validate(w)
+	combined := FormatErrors(errs)
+	if !strings.Contains(combined, "flag_style must be") {
+		t.Errorf("expected option-level flag_style error, got:\n%s", combined)
+	}
+}
+
+func TestValidateRuleOnNonInputType(t *testing.T) {
+	tests := []struct {
+		name    string
+		optType OptionType
+	}{
+		{"confirm", OptionConfirm},
+		{"multi_select", OptionMultiSelect},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &Wizard{
+				Name:    "test",
+				Command: "cmd",
+				Options: []Option{
+					{
+						Name:       "opt1",
+						Type:       tt.optType,
+						Label:      "Opt 1",
+						Validate:   &InputRule{Pattern: ".*"},
+						ChoicesFrom: "echo a",
+					},
+				},
+			}
+			errs := Validate(w)
+			combined := FormatErrors(errs)
+			if !strings.Contains(combined, "validate is only valid for input") {
+				t.Errorf("expected validate error for %s, got:\n%s", tt.optType, combined)
+			}
+		})
+	}
+}

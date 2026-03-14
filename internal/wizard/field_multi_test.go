@@ -22,6 +22,20 @@ func newTestMultiSelectField() *MultiSelectField {
 	})
 }
 
+func TestMultiSelectInit(t *testing.T) {
+	f := newTestMultiSelectField()
+	cmd := f.Init()
+	if cmd != nil {
+		t.Error("expected nil cmd from Init")
+	}
+	if f.cursor != 0 {
+		t.Errorf("expected cursor=0 after Init, got %d", f.cursor)
+	}
+	if len(f.selected) != 0 {
+		t.Errorf("expected empty selected map, got %d entries", len(f.selected))
+	}
+}
+
 func TestMultiSelectToggleSpace(t *testing.T) {
 	f := newTestMultiSelectField()
 

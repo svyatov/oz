@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -549,4 +550,300 @@ func TestPresetsNoActionOnEmptyList(t *testing.T) {
 	if m.mode != presetsListMode {
 		t.Fatalf("expected list mode after d on empty, got %d", m.mode)
 	}
+}
+
+func TestPresetsViewListMode(t *testing.T) {
+	existing := map[string]config.Values{
+		"dev":  {"db": config.StringVal("pg")},
+		"prod": {"db": config.StringVal("mysql")},
+	}
+	m := newPresetsModel(presetOptions(), existing, nil, nil)
+	m.Init()
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in list mode")
+	}
+	if !strings.Contains(content, "Manage presets") {
+		t.Error("expected title 'Manage presets' in list view")
+	}
+	if !strings.Contains(content, "dev") {
+		t.Error("expected preset name 'dev' in list view")
+	}
+	if !strings.Contains(content, "prod") {
+		t.Error("expected preset name 'prod' in list view")
+	}
+}
+
+func TestPresetsViewValuesMode(t *testing.T) {
+	existing := map[string]config.Values{
+		"test": {"db": config.StringVal("pg")},
+	}
+	m := newPresetsModel(presetOptions(), existing, nil, nil)
+	m.Init()
+
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = mustPresets(t, model)
+	if m.mode != presetsValuesMode {
+		t.Fatalf("expected values mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in values mode")
+	}
+	if !strings.Contains(content, "test") {
+		t.Error("expected preset name 'test' in values view title")
+	}
+	if !strings.Contains(content, "Database") {
+		t.Error("expected option label 'Database' in values view")
+	}
+}
+
+func TestPresetsViewNameMode(t *testing.T) {
+	m := newPresetsModel(presetOptions(), nil, nil, nil)
+	m.Init()
+
+	model, _ := m.Update(key('n'))
+	m = mustPresets(t, model)
+	if m.mode != presetsNameMode {
+		t.Fatalf("expected name mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in name mode")
+	}
+	if !strings.Contains(content, "New preset") {
+		t.Error("expected 'New preset' title in name view")
+	}
+}
+
+func TestPresetsViewSourceMode(t *testing.T) {
+	lastUsed := config.Values{"db": config.StringVal("pg")}
+	m := newPresetsModel(presetOptions(), nil, lastUsed, nil)
+	m.Init()
+
+	// Create new to get to source mode.
+	model, _ := m.Update(key('n'))
+	m = mustPresets(t, model)
+	for _, c := range "test" {
+		model, _ = m.Update(key(c))
+		m = mustPresets(t, model)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustPresets(t, model)
+	if m.mode != presetsSourceMode {
+		t.Fatalf("expected source mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in source mode")
+	}
+	if !strings.Contains(content, "Start from") {
+		t.Error("expected 'Start from' text in source view")
+	}
+	if !strings.Contains(content, "Empty") {
+		t.Error("expected 'Empty' source option")
+	}
+	if !strings.Contains(content, "Last-used") {
+		t.Error("expected 'Last-used' source option")
+	}
+}
+
+func TestPresetsViewDeleteMode(t *testing.T) {
+	existing := map[string]config.Values{
+		"doomed": {},
+	}
+	m := newPresetsModel(presetOptions(), existing, nil, nil)
+	m.Init()
+
+	model, _ := m.Update(key('d'))
+	m = mustPresets(t, model)
+	if m.mode != presetsDeleteMode {
+		t.Fatalf("expected delete mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in delete mode")
+	}
+	if !strings.Contains(content, "Delete") {
+		t.Error("expected 'Delete' text in delete view")
+	}
+	if !strings.Contains(content, "doomed") {
+		t.Error("expected preset name 'doomed' in delete view")
+	}
+}
+
+func TestPresetsViewWhenDone(t *testing.T) {
+	m := newPresetsModel(presetOptions(), nil, nil, nil)
+	m.Init()
+	m.done = true
+
+	v := m.View()
+	if v.Content != "" {
+		t.Errorf("expected empty content when done, got %q", v.Content)
+	}
+}
+
+func TestPresetsViewPresetRow(t *testing.T) {
+	existing := map[string]config.Values{
+		"staging": {"db": config.StringVal("pg"), "verbose": config.BoolVal(true)},
+	}
+	m := newPresetsModel(presetOptions(), existing, nil, nil)
+	m.Init()
+
+	content := stripANSI(m.viewList())
+	if !strings.Contains(content, "staging") {
+		t.Error("expected preset name 'staging' in viewList")
+	}
+	if !strings.Contains(content, "2 values") {
+		t.Error("expected '2 values' count in preset row")
+	}
+}
+
+func TestPresetsUpdateValuesNav(t *testing.T) {
+	existing := map[string]config.Values{
+		"test": {},
+	}
+	m := newPresetsModel(presetOptions(), existing, nil, nil)
+	m.Init()
+
+	// Enter preset values.
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = mustPresets(t, model)
+	if m.editor.cursor != 0 {
+		t.Fatalf("expected cursor at 0, got %d", m.editor.cursor)
+	}
+
+	// Navigate down.
+	model, _ = m.Update(specialKey(tea.KeyDown))
+	m = mustPresets(t, model)
+	if m.editor.cursor != 1 {
+		t.Errorf("expected cursor at 1 after down, got %d", m.editor.cursor)
+	}
+
+	// Navigate up.
+	model, _ = m.Update(specialKey(tea.KeyUp))
+	m = mustPresets(t, model)
+	if m.editor.cursor != 0 {
+		t.Errorf("expected cursor at 0 after up, got %d", m.editor.cursor)
+	}
+
+	// Cycle right on select field.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPresets(t, model)
+	if v := m.editor.values["db"]; v.String() != "pg" {
+		t.Errorf("expected db=pg after cycle right, got %v", v)
+	}
+
+	// Cycle left on select field.
+	model, _ = m.Update(specialKey(tea.KeyLeft))
+	m = mustPresets(t, model)
+	if _, ok := m.editor.values["db"]; ok {
+		t.Error("expected db unpinned after cycle left")
+	}
+}
+
+func TestPresetsUpdateSource(t *testing.T) {
+	lastUsed := config.Values{"db": config.StringVal("pg")}
+	existing := map[string]config.Values{
+		"base": {"db": config.StringVal("mysql")},
+	}
+	m := newPresetsModel(presetOptions(), existing, lastUsed, nil)
+	m.Init()
+
+	// Create new preset with source selection.
+	model, _ := m.Update(key('n'))
+	m = mustPresets(t, model)
+	for _, c := range "newp" {
+		model, _ = m.Update(key(c))
+		m = mustPresets(t, model)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustPresets(t, model)
+	if m.mode != presetsSourceMode {
+		t.Fatalf("expected source mode, got %d", m.mode)
+	}
+
+	// Navigate down in source selection.
+	if m.sourceCursor != 0 {
+		t.Fatalf("expected sourceCursor at 0, got %d", m.sourceCursor)
+	}
+	model, _ = m.Update(specialKey(tea.KeyDown))
+	m = mustPresets(t, model)
+	if m.sourceCursor != 1 {
+		t.Errorf("expected sourceCursor at 1 after down, got %d", m.sourceCursor)
+	}
+
+	// Navigate up wraps.
+	model, _ = m.Update(specialKey(tea.KeyUp))
+	m = mustPresets(t, model)
+	if m.sourceCursor != 0 {
+		t.Errorf("expected sourceCursor at 0 after up, got %d", m.sourceCursor)
+	}
+
+	// Select "Empty" via Enter.
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustPresets(t, model)
+	if m.mode != presetsValuesMode {
+		t.Fatalf("expected values mode after source select, got %d", m.mode)
+	}
+	if len(m.presets["newp"]) != 0 {
+		t.Error("expected empty values from 'Empty' source")
+	}
+}
+
+func TestPresetsFinishRename(t *testing.T) {
+	t.Run("empty_name_rejected", func(t *testing.T) {
+		existing := map[string]config.Values{
+			"old": {"db": config.StringVal("pg")},
+		}
+		m := newPresetsModel(presetOptions(), existing, nil, nil)
+		m.Init()
+
+		// Start rename.
+		model, _ := m.Update(key('r'))
+		m = mustPresets(t, model)
+
+		// Clear name and submit empty.
+		m.nameInput.SetValue("")
+		model, _ = m.Update(specialKey(tea.KeyEnter))
+		m = mustPresets(t, model)
+		if m.mode != presetsNameMode {
+			t.Fatalf("expected name mode for empty name, got %d", m.mode)
+		}
+		if m.nameErr == "" {
+			t.Error("expected error for empty name")
+		}
+	})
+
+	t.Run("same_name_returns_to_list", func(t *testing.T) {
+		existing := map[string]config.Values{
+			"keep": {"db": config.StringVal("pg")},
+		}
+		m := newPresetsModel(presetOptions(), existing, nil, nil)
+		m.Init()
+
+		// Start rename.
+		model, _ := m.Update(key('r'))
+		m = mustPresets(t, model)
+
+		// Submit same name.
+		model, _ = m.Update(specialKey(tea.KeyEnter))
+		m = mustPresets(t, model)
+		if m.mode != presetsListMode {
+			t.Fatalf("expected list mode for same name, got %d", m.mode)
+		}
+		if _, ok := m.presets["keep"]; !ok {
+			t.Error("expected preset 'keep' to still exist")
+		}
+	})
 }

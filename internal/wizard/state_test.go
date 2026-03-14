@@ -202,6 +202,108 @@ func TestFormatAnswer(t *testing.T) {
 	}
 }
 
+func TestFormatAnswerMultiSelectEmpty(t *testing.T) {
+	opt := config.Option{
+		Type:    config.OptionMultiSelect,
+		Choices: config.FlexChoices{{Value: "a", Label: "Alpha"}},
+	}
+	got := FormatAnswer(&opt, config.StringsVal())
+	if got != "" {
+		t.Errorf("expected empty string for empty multi_select, got %q", got)
+	}
+}
+
+func TestFormatAnswerMultiSelectUnknownValue(t *testing.T) {
+	opt := config.Option{
+		Type:    config.OptionMultiSelect,
+		Choices: config.FlexChoices{{Value: "a", Label: "Alpha"}},
+	}
+	got := FormatAnswer(&opt, config.StringsVal("a", "unknown"))
+	if got != "Alpha, unknown" {
+		t.Errorf("expected 'Alpha, unknown', got %q", got)
+	}
+}
+
+func TestResolveDefaultFromSources(t *testing.T) {
+	dbChoices := []config.Choice{{Value: "pg"}}
+	sqliteDefault := new(config.FieldValue)
+	*sqliteDefault = config.StringVal("sqlite")
+
+	t.Run("found_in_first_source", func(t *testing.T) {
+		opt := config.Option{Name: "db", Type: config.OptionSelect, Choices: dbChoices}
+		got := resolveDefault(&opt, config.Values{"db": config.StringVal("mysql")})
+		assertResolvedScalar(t, got, "mysql")
+	})
+	t.Run("found_in_second_source", func(t *testing.T) {
+		opt := config.Option{Name: "db", Type: config.OptionSelect, Choices: dbChoices}
+		got := resolveDefault(&opt, config.Values{}, config.Values{"db": config.StringVal("pg")})
+		assertResolvedScalar(t, got, "pg")
+	})
+	t.Run("falls_back_to_opt_default", func(t *testing.T) {
+		opt := config.Option{
+			Name: "db", Type: config.OptionSelect,
+			Default: sqliteDefault, Choices: dbChoices,
+		}
+		got := resolveDefault(&opt, config.Values{})
+		assertResolvedScalar(t, got, "sqlite")
+	})
+	t.Run("select_first_choice_fallback", func(t *testing.T) {
+		twoChoices := []config.Choice{{Value: "pg"}, {Value: "mysql"}}
+		opt := config.Option{Name: "db", Type: config.OptionSelect, Choices: twoChoices}
+		got := resolveDefault(&opt, config.Values{})
+		assertResolvedScalar(t, got, "pg")
+	})
+}
+
+func TestResolveDefaultTypeFallbacks(t *testing.T) {
+	empty := config.Values{}
+
+	t.Run("confirm_defaults_false", func(t *testing.T) {
+		opt := config.Option{Name: "flag", Type: config.OptionConfirm}
+		assertResolvedScalar(t, resolveDefault(&opt, empty), "false")
+	})
+	t.Run("input_defaults_empty", func(t *testing.T) {
+		opt := config.Option{Name: "name", Type: config.OptionInput}
+		assertResolvedScalar(t, resolveDefault(&opt, empty), "")
+	})
+	t.Run("multi_select_no_default", func(t *testing.T) {
+		opt := config.Option{Name: "features", Type: config.OptionMultiSelect}
+		if got := resolveDefault(&opt, empty); got != nil {
+			t.Errorf("expected nil, got %v", got)
+		}
+	})
+	t.Run("select_no_choices_no_default", func(t *testing.T) {
+		opt := config.Option{Name: "empty", Type: config.OptionSelect}
+		if got := resolveDefault(&opt, empty); got != nil {
+			t.Errorf("expected nil, got %v", got)
+		}
+	})
+}
+
+func assertResolvedScalar(t *testing.T, got *config.FieldValue, want string) {
+	t.Helper()
+	if got == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if got.Scalar() != want {
+		t.Errorf("expected %q, got %q", want, got.Scalar())
+	}
+}
+
+func TestValuesMatchExpectedListActualScalar(t *testing.T) {
+	// Expected is a list, actual is scalar: match if actual is in expected.
+	actual := config.StringVal("go")
+	expected := config.StringsVal("go", "rust")
+	if !valuesMatch(actual, expected) {
+		t.Error("expected match: scalar 'go' should be in list [go, rust]")
+	}
+
+	actual = config.StringVal("python")
+	if valuesMatch(actual, expected) {
+		t.Error("expected no match: scalar 'python' should not be in list [go, rust]")
+	}
+}
+
 func assertIntSlice(t *testing.T, got, want []int) {
 	t.Helper()
 	if len(got) != len(want) {

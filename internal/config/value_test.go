@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -122,6 +123,35 @@ func TestFieldValueYAMLRoundTrip(t *testing.T) {
 				t.Errorf("display = %q, want %q", got.Display(), tt.val.Display())
 			}
 		})
+	}
+}
+
+func TestFieldValueScalarZeroValue(t *testing.T) {
+	var v FieldValue
+	if got := v.Scalar(); got != "" {
+		t.Errorf("Scalar() = %q, want empty string", got)
+	}
+}
+
+func TestFieldValueDisplayBoolFalse(t *testing.T) {
+	v := BoolVal(false)
+	if got := v.Display(); got != "false" {
+		t.Errorf("Display() = %q, want %q", got, "false")
+	}
+}
+
+func TestFieldValueUnmarshalYAMLMappingNode(t *testing.T) {
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte("key: value"), &node); err != nil {
+		t.Fatalf("unmarshal node: %v", err)
+	}
+	var v FieldValue
+	err := v.UnmarshalYAML(node.Content[0])
+	if err == nil {
+		t.Fatal("expected error for mapping node, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "unsupported YAML node kind") {
+		t.Errorf("error = %q, want it to contain %q", got, "unsupported YAML node kind")
 	}
 }
 

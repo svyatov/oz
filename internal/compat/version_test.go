@@ -1,6 +1,7 @@
 package compat
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/svyatov/oz/internal/config"
@@ -307,4 +308,133 @@ func choiceValues(choices config.FlexChoices) []string {
 		values[i] = c.Value
 	}
 	return values
+}
+
+func TestDetectVersion(t *testing.T) {
+	for _, tt := range detectVersionCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DetectVersion(tt.vc)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("error %q does not contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+type detectVersionCase struct {
+	name    string
+	vc      *config.VersionControl
+	want    string
+	wantErr string
+}
+
+func detectVersionCases() []detectVersionCase {
+	return []detectVersionCase{
+		{"nil_vc", nil, "", ""},
+		{
+			"valid_command_and_pattern",
+			&config.VersionControl{Command: `echo "v1.2.3"`, Pattern: `v(\d+\.\d+\.\d+)`},
+			"1.2.3", "",
+		},
+		{
+			"pattern_no_match",
+			&config.VersionControl{Command: `echo "no version here"`, Pattern: `v(\d+\.\d+\.\d+)`},
+			"", "did not match",
+		},
+		{
+			"invalid_regex",
+			&config.VersionControl{Command: `echo test`, Pattern: `[invalid`},
+			"", "compiling pattern",
+		},
+		{
+			"failing_command",
+			&config.VersionControl{Command: `false`, Pattern: `(.+)`},
+			"", "running",
+		},
+	}
+}
+
+func TestVerifyVersion(t *testing.T) {
+	tests := []struct {
+		name      string
+		verifyCmd string
+		version   string
+		wantErr   string
+	}{
+		{
+			"success",
+			"echo {{version}}",
+			"1.0",
+			"",
+		},
+		{
+			"failure",
+			"false",
+			"1.0",
+			"not available",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := VerifyVersion(tt.verifyCmd, tt.version)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+				}
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("error %q does not contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestFetchAvailableVersions_error(t *testing.T) {
+	_, err := FetchAvailableVersions("false")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "fetching versions") {
+		t.Errorf("error %q does not contain %q", err, "fetching versions")
+	}
+}
+
+func TestFormatHint(t *testing.T) {
+	tests := []struct {
+		name       string
+		constraint string
+		want       string
+	}{
+		{"gte", ">= 8.0", "v8.0+"},
+		{"lt", "< 8.0", "< v8.0"},
+		{"gte_comma_range", ">= 8.0, < 9.0", "v8.0+"},
+		{"exact_eq", "= 1.0", "= 1.0"},
+		{"tilde", "~1.0", "~1.0"},
+		{"caret", "^2.0", "^2.0"},
+		{"ne", "!= 3.0", "!= 3.0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatHint(tt.constraint)
+			if got != tt.want {
+				t.Errorf("formatHint(%q) = %q, want %q", tt.constraint, got, tt.want)
+			}
+		})
+	}
 }

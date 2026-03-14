@@ -3,12 +3,16 @@ package ui
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/term"
 )
+
+// Output is the writer used by SuccessMsgf and InfoMsgf. Tests can override it.
+var Output io.Writer = os.Stdout
 
 var lightDark = lipgloss.LightDark(detectDarkBackground())
 
@@ -47,13 +51,13 @@ func Width(s string) int {
 // SuccessMsgf prints a green success confirmation padded with blank lines.
 func SuccessMsgf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Print("\n" + GreenStyle.Render("  "+msg) + "\n\n")
+	_, _ = fmt.Fprint(Output, "\n"+GreenStyle.Render("  "+msg)+"\n\n")
 }
 
 // InfoMsgf prints an accent informational/empty-state message padded with blank lines.
 func InfoMsgf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	fmt.Print("\n" + AccentStyle.Render("  "+msg) + "\n\n")
+	_, _ = fmt.Fprint(Output, "\n"+AccentStyle.Render("  "+msg)+"\n\n")
 }
 
 // CompletedStepLine renders a completed step: `  01  ✓ Label  Answer`.

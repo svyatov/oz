@@ -1,11 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/svyatov/oz/internal/command"
+	"github.com/svyatov/oz/internal/config"
+	"github.com/svyatov/oz/internal/store"
+	"github.com/svyatov/oz/internal/ui"
 )
 
 const testWizardYAML = `name: testwiz
@@ -215,4 +223,1282 @@ func TestPinsClear(t *testing.T) {
 	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear", "--force"); err != nil {
 		t.Fatalf("pins clear: %v", err)
 	}
+}
+
+// --- Pure function tests ---
+
+func TestMajorVer(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"", ""},
+		{"1.2.3", "1.2"},
+		{"v1.2.3", "1.2"},
+		{"1.2", "1.2"},
+		{"1", "1.0"},
+		{"not-semver", "not-semver"},
+		{"8.0.3-rc1", "8.0"},
+		{"abc.def", "abc.def"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := majorVer(tt.input)
+			if got != tt.want {
+				t.Errorf("majorVer(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilterActivePins(t *testing.T) {
+	opts := func(names ...string) []config.Option {
+		out := make([]config.Option, len(names))
+		for i, n := range names {
+			out[i] = config.Option{Name: n}
+		}
+		return out
+	}
+
+	tests := []struct {
+		name    string
+		pins    config.Values
+		options []config.Option
+		want    map[string]bool
+	}{
+		{
+			"all match",
+			config.Values{"a": config.StringVal("1"), "b": config.StringVal("2")},
+			opts("a", "b"),
+			map[string]bool{"a": true, "b": true},
+		},
+		{
+			"partial match",
+			config.Values{"a": config.StringVal("1"), "c": config.StringVal("3")},
+			opts("a", "b"),
+			map[string]bool{"a": true},
+		},
+		{
+			"none match",
+			config.Values{"x": config.StringVal("1")},
+			opts("a", "b"),
+			map[string]bool{},
+		},
+		{
+			"empty pins",
+			config.Values{},
+			opts("a"),
+			map[string]bool{},
+		},
+		{
+			"empty options",
+			config.Values{"a": config.StringVal("1")},
+			nil,
+			map[string]bool{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterActivePins(tt.pins, tt.options)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %d pins, want %d", len(got), len(tt.want))
+			}
+			for k := range tt.want {
+				if _, ok := got[k]; !ok {
+					t.Errorf("expected key %q in result", k)
+				}
+			}
+		})
+	}
+}
+
+func TestVersionVerifyCmd(t *testing.T) {
+	tests := []struct {
+		name    string
+		wizard  *config.Wizard
+		want    string
+	}{
+		{
+			"nil version",
+			&config.Wizard{},
+			"",
+		},
+		{
+			"with verify",
+			&config.Wizard{Version: &config.VersionControl{
+				CustomVersionVerify: "ruby --version",
+			}},
+			"ruby --version",
+		},
+		{
+			"without verify",
+			&config.Wizard{Version: &config.VersionControl{}},
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := versionVerifyCmd(tt.wizard)
+			if got != tt.want {
+				t.Errorf("versionVerifyCmd() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestVersionLabel(t *testing.T) {
+	tests := []struct {
+		name   string
+		wizard *config.Wizard
+		want   string
+	}{
+		{
+			"nil version",
+			&config.Wizard{},
+			"",
+		},
+		{
+			"with label",
+			&config.Wizard{Version: &config.VersionControl{Label: "Ruby"}},
+			"Ruby",
+		},
+		{
+			"without label",
+			&config.Wizard{Version: &config.VersionControl{}},
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := versionLabel(tt.wizard)
+			if got != tt.want {
+				t.Errorf("versionLabel() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// --- Store-dependent tests ---
+
+func TestReconcilePresets(t *testing.T) {
+	dir := t.TempDir()
+	st := store.New(dir)
+
+	if err := st.SavePreset("wiz", "a", config.Values{"x": config.StringVal("old")}); err != nil {
+		t.Fatalf("saving preset a: %v", err)
+	}
+	if err := st.SavePreset("wiz", "b", config.Values{"y": config.StringVal("2")}); err != nil {
+		t.Fatalf("saving preset b: %v", err)
+	}
+
+	final := map[string]config.Values{
+		"a": {"x": config.StringVal("updated")},
+		"c": {"z": config.StringVal("new")},
+	}
+
+	if err := reconcilePresets(st, "wiz", []string{"a", "b"}, final); err != nil {
+		t.Fatalf("reconcilePresets: %v", err)
+	}
+
+	// "a" should be updated.
+	vals, err := st.LoadPreset("wiz", "a")
+	if err != nil {
+		t.Fatalf("loading preset a: %v", err)
+	}
+	if vals["x"].String() != "updated" {
+		t.Errorf("preset a/x = %q, want %q", vals["x"].String(), "updated")
+	}
+
+	// "c" should be added.
+	vals, err = st.LoadPreset("wiz", "c")
+	if err != nil {
+		t.Fatalf("loading preset c: %v", err)
+	}
+	if vals["z"].String() != "new" {
+		t.Errorf("preset c/z = %q, want %q", vals["z"].String(), "new")
+	}
+
+	// "b" should be removed.
+	if st.PresetExists("wiz", "b") {
+		t.Error("expected preset b to be removed")
+	}
+}
+
+// --- CLI integration tests ---
+
+func TestPresetsShow(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "show", "mypreset"); err != nil {
+		t.Fatalf("presets show: %v", err)
+	}
+}
+
+func TestPresetsShowVerbose(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "show", "mypreset", "-v"); err != nil {
+		t.Fatalf("presets show -v: %v", err)
+	}
+}
+
+func TestPresetsSaveForce(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+
+	// Save state so there's last-used data.
+	state := &store.StateEntry{
+		LastUsed: config.Values{"greeting": config.StringVal("world")},
+	}
+	if err := st.SaveState("testwiz", "", state); err != nil {
+		t.Fatalf("saving state: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "save", "mypreset", "--force"); err != nil {
+		t.Fatalf("presets save --force: %v", err)
+	}
+
+	if !st.PresetExists("testwiz", "mypreset") {
+		t.Error("expected preset to exist after save")
+	}
+}
+
+func TestPresetsRemoveForce(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "remove", "mypreset", "--force"); err != nil {
+		t.Fatalf("presets remove --force: %v", err)
+	}
+
+	if st.PresetExists("testwiz", "mypreset") {
+		t.Error("expected preset to be removed")
+	}
+}
+
+func TestPinsListWithPins(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePins("testwiz", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving pins: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "list"); err != nil {
+		t.Fatalf("pins list with pins: %v", err)
+	}
+}
+
+func TestRemovePurge(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+
+	// Save state and preset.
+	state := &store.StateEntry{
+		LastUsed: config.Values{"greeting": config.StringVal("world")},
+	}
+	if err := st.SaveState("testwiz", "", state); err != nil {
+		t.Fatalf("saving state: %v", err)
+	}
+	if err := st.SavePreset("testwiz", "fast", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "remove", "--force", "--purge", "testwiz"); err != nil {
+		t.Fatalf("remove --force --purge: %v", err)
+	}
+
+	// Wizard file should be gone.
+	wizPath := filepath.Join(dir, "wizards", "testwiz.yml")
+	if _, err := os.Stat(wizPath); err == nil {
+		t.Error("expected wizard file to be removed")
+	}
+
+	// State file should be gone.
+	statePath := filepath.Join(dir, "state", "testwiz.yml")
+	if _, err := os.Stat(statePath); err == nil {
+		t.Error("expected state file to be removed")
+	}
+
+	// Preset should be gone.
+	if st.PresetExists("testwiz", "fast") {
+		t.Error("expected preset to be removed")
+	}
+}
+
+func TestUpdateAll(t *testing.T) {
+	dir := setupTestConfig(t)
+	startRegistryServer(t)
+
+	// Install a wizard that exists in the registry.
+	dest := filepath.Join(dir, "wizards", "remotewiz.yml")
+	if err := os.WriteFile(dest, []byte("name: remotewiz\ncommand: old\noptions: []\n"), 0o644); err != nil {
+		t.Fatalf("writing wizard: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "update", "--all"); err != nil {
+		t.Fatalf("update --all: %v", err)
+	}
+
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("reading updated wizard: %v", err)
+	}
+	if !strings.Contains(string(data), "echo hello") {
+		t.Errorf("expected updated content, got: %s", data)
+	}
+}
+
+func TestUpdateAllArgs(t *testing.T) {
+	err := execCmd(t, "update", "--all", "foo")
+	if err == nil {
+		t.Fatal("expected error for --all with args")
+	}
+}
+
+func TestUpdateBare(t *testing.T) {
+	err := execCmd(t, "update")
+	if err == nil {
+		t.Fatal("expected error for bare update")
+	}
+}
+
+func TestFindEditor(t *testing.T) {
+	t.Setenv("VISUAL", "/usr/bin/true")
+	t.Setenv("EDITOR", "")
+
+	path, err := findEditor()
+	if err != nil {
+		t.Fatalf("findEditor: %v", err)
+	}
+	if path == "" {
+		t.Fatal("expected non-empty path")
+	}
+}
+
+func TestCompleteWizardNames(t *testing.T) {
+	t.Run("with args returns nil", func(t *testing.T) {
+		names, _ := completeWizardNames(nil, []string{"already"}, "")
+		if names != nil {
+			t.Errorf("expected nil, got %v", names)
+		}
+	})
+
+	t.Run("no args returns wizard names", func(t *testing.T) {
+		dir := setupTestConfig(t)
+		configDir = dir
+		t.Cleanup(func() { configDir = "" })
+
+		names, _ := completeWizardNames(nil, nil, "")
+		if len(names) == 0 {
+			t.Fatal("expected at least one wizard name")
+		}
+		found := false
+		for _, n := range names {
+			if strings.HasPrefix(n, "testwiz") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected testwiz in names, got %v", names)
+		}
+	})
+}
+
+func TestCompletePresetNames(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "fast", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	configDir = dir
+	t.Cleanup(func() { configDir = "" })
+
+	fn := completePresetNames("testwiz")
+	names, _ := fn(nil, nil, "")
+	if len(names) == 0 {
+		t.Fatal("expected at least one preset name")
+	}
+	if !slices.Contains(names, "fast") {
+		t.Errorf("expected 'fast' in names, got %v", names)
+	}
+
+	// With args should return nil.
+	names, _ = fn(nil, []string{"already"}, "")
+	if names != nil {
+		t.Errorf("expected nil with args, got %v", names)
+	}
+}
+
+const versionWizardYAML = `name: verwiz
+description: Version wizard
+command: echo
+version_control:
+  command: "echo 1.2.3"
+  pattern: '(\d+\.\d+\.\d+)'
+options:
+  - name: greeting
+    type: select
+    label: Pick greeting
+    flag: --greet
+    choices:
+      - hello
+`
+
+func setupVersionWizard(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	wizDir := filepath.Join(dir, "wizards")
+	if err := os.MkdirAll(wizDir, 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wizDir, "verwiz.yml"), []byte(versionWizardYAML), 0o644); err != nil {
+		t.Fatalf("writing version wizard: %v", err)
+	}
+	return dir
+}
+
+func TestDoctorWithVersion(t *testing.T) {
+	dir := setupVersionWizard(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "verwiz", "doctor"); err != nil {
+		t.Fatalf("doctor with version: %v", err)
+	}
+}
+
+func TestShowForVersion(t *testing.T) {
+	dir := setupTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "show", "--for-version", "1.0"); err != nil {
+		t.Fatalf("show --for-version: %v", err)
+	}
+}
+
+// --- Rich wizard for comprehensive print function coverage ---
+
+const richWizardYAML = `name: richwiz
+description: A rich test wizard
+command: echo
+version_control:
+  command: "echo 1.2.3"
+  pattern: '(\d+\.\d+\.\d+)'
+  custom_version_command: "echo v{{version}}"
+  custom_version_verify_command: "echo {{version}}"
+  available_versions: "1.0, 1.1, 1.2.3"
+options:
+  - name: greeting
+    type: select
+    label: Pick greeting
+    flag: --greet
+    default: hello
+    choices:
+      - value: hello
+        label: hello
+        description: say hi
+      - world
+  - name: verbose
+    type: confirm
+    label: Verbose?
+    flag_true: --verbose
+    flag_false: --quiet
+  - name: name
+    type: input
+    label: Your name
+    flag: --name
+    required: true
+    validate:
+      pattern: "^[a-z]+$"
+      min_length: 2
+      max_length: 20
+  - name: features
+    type: multi_select
+    label: Features
+    flag: --feature
+    separator: ","
+    choices:
+      - auth
+      - api
+  - name: advanced
+    type: input
+    label: Advanced
+    flag: --adv
+    show_when:
+      verbose: true
+  - name: hidden
+    type: input
+    label: Hidden
+    flag: --hidden
+    hide_when:
+      verbose: false
+  - name: positional_arg
+    type: select
+    label: Target
+    positional: true
+    choices:
+      - build
+      - test
+  - name: dynamic
+    type: select
+    label: Dynamic
+    flag: --dyn
+    choices_from: "echo one two three"
+`
+
+func setupRichTestConfig(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	wizDir := filepath.Join(dir, "wizards")
+	if err := os.MkdirAll(wizDir, 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wizDir, "richwiz.yml"), []byte(richWizardYAML), 0o644); err != nil {
+		t.Fatalf("writing rich wizard: %v", err)
+	}
+	return dir
+}
+
+// 1. printValidateInfo — exercises pattern, min_length, max_length.
+func TestShowRichWizard(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "show"); err != nil {
+		t.Fatalf("show rich wizard: %v", err)
+	}
+}
+
+// 2. printDoctorVersionDetails — exercises custom_version_cmd, custom_version_verify, avail_versions.
+func TestDoctorRichWizard(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "doctor"); err != nil {
+		t.Fatalf("doctor rich wizard: %v", err)
+	}
+}
+
+// 3. printDoctorVersionDetails with avail_versions_cmd instead of static.
+func TestDoctorAvailVersionsCmd(t *testing.T) {
+	dir := t.TempDir()
+	wizDir := filepath.Join(dir, "wizards")
+	if err := os.MkdirAll(wizDir, 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	yaml := `name: avcmdwiz
+description: Wizard with avail_versions_cmd
+command: echo
+version_control:
+  command: "echo 2.0.0"
+  pattern: '(\d+\.\d+\.\d+)'
+  available_versions_command: "echo 1.0 2.0"
+options:
+  - name: x
+    type: input
+    label: X
+    flag: --x
+`
+	if err := os.WriteFile(filepath.Join(wizDir, "avcmdwiz.yml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("writing wizard: %v", err)
+	}
+	if err := execCmd(t, "--config-dir", dir, "run", "avcmdwiz", "doctor"); err != nil {
+		t.Fatalf("doctor avail_versions_cmd: %v", err)
+	}
+}
+
+// 4. printPresetVerbose with unknown key (not in options).
+func TestPresetsShowVerboseUnknownKey(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("richwiz", "mypreset", config.Values{
+		"greeting":    config.StringVal("hello"),
+		"unknown_key": config.StringVal("mystery"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "presets", "show", "mypreset", "-v"); err != nil {
+		t.Fatalf("presets show -v with unknown key: %v", err)
+	}
+}
+
+// 5. listPresets with saved presets (non-empty).
+func TestPresetsListWithPresets(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "fast", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "list"); err != nil {
+		t.Fatalf("presets list with presets: %v", err)
+	}
+}
+
+// 6. removeCmd without --force — override confirmPrompt to return true.
+func TestRemoveCmdConfirm(t *testing.T) {
+	dir := setupTestConfig(t)
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return true }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "remove", "testwiz"); err != nil {
+		t.Fatalf("remove with confirm: %v", err)
+	}
+	path := filepath.Join(dir, "wizards", "testwiz.yml")
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("expected wizard file to be removed")
+	}
+}
+
+// 7. removeCmd without --force — override confirmPrompt to return false (cancel).
+func TestRemoveCmdCancel(t *testing.T) {
+	dir := setupTestConfig(t)
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return false }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "remove", "testwiz"); err != nil {
+		t.Fatalf("remove cancel: %v", err)
+	}
+	path := filepath.Join(dir, "wizards", "testwiz.yml")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("expected wizard file to still exist after cancel")
+	}
+}
+
+// 8. presetsRemoveCmd without --force — override confirmPrompt to return true.
+func TestPresetsRemoveConfirm(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return true }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "remove", "mypreset"); err != nil {
+		t.Fatalf("presets remove with confirm: %v", err)
+	}
+	if st.PresetExists("testwiz", "mypreset") {
+		t.Error("expected preset to be removed")
+	}
+}
+
+// 9. presetsRemoveCmd without --force — cancel.
+func TestPresetsRemoveCancel(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return false }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "remove", "mypreset"); err != nil {
+		t.Fatalf("presets remove cancel: %v", err)
+	}
+	if !st.PresetExists("testwiz", "mypreset") {
+		t.Error("expected preset to still exist after cancel")
+	}
+}
+
+// 10. presetsSaveCmd — overwrite existing preset via confirmPrompt.
+func TestPresetsSaveOverwrite(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+
+	// Save initial state.
+	state := &store.StateEntry{
+		LastUsed: config.Values{"greeting": config.StringVal("world")},
+	}
+	if err := st.SaveState("testwiz", "", state); err != nil {
+		t.Fatalf("saving state: %v", err)
+	}
+	// Save existing preset.
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return true }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "save", "mypreset"); err != nil {
+		t.Fatalf("presets save overwrite: %v", err)
+	}
+
+	vals, err := st.LoadPreset("testwiz", "mypreset")
+	if err != nil {
+		t.Fatalf("loading preset: %v", err)
+	}
+	if vals["greeting"].String() != "world" {
+		t.Errorf("expected overwritten value 'world', got %q", vals["greeting"].String())
+	}
+}
+
+// 11. presetsSaveCmd — cancel overwrite.
+func TestPresetsSaveOverwriteCancel(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+
+	state := &store.StateEntry{
+		LastUsed: config.Values{"greeting": config.StringVal("world")},
+	}
+	if err := st.SaveState("testwiz", "", state); err != nil {
+		t.Fatalf("saving state: %v", err)
+	}
+	if err := st.SavePreset("testwiz", "mypreset", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return false }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "save", "mypreset"); err != nil {
+		t.Fatalf("presets save cancel: %v", err)
+	}
+
+	// Should still have old value.
+	vals, err := st.LoadPreset("testwiz", "mypreset")
+	if err != nil {
+		t.Fatalf("loading preset: %v", err)
+	}
+	if vals["greeting"].String() != "hello" {
+		t.Errorf("expected original value 'hello', got %q", vals["greeting"].String())
+	}
+}
+
+// 12. presetsSaveCmd with no last-used state — should error.
+func TestPresetsSaveNoState(t *testing.T) {
+	dir := setupTestConfig(t)
+	err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "save", "mypreset", "--force")
+	if err == nil {
+		t.Fatal("expected error for no last-used state")
+	}
+	if !strings.Contains(err.Error(), "no last-used values") {
+		t.Errorf("expected 'no last-used values' error, got: %v", err)
+	}
+}
+
+// 13. pinsClearCmd without --force — override confirmPrompt to return true.
+func TestPinsClearConfirm(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePins("testwiz", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving pins: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return true }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear"); err != nil {
+		t.Fatalf("pins clear with confirm: %v", err)
+	}
+}
+
+// 14. pinsClearCmd without --force — cancel.
+func TestPinsClearCancel(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePins("testwiz", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving pins: %v", err)
+	}
+
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return false }
+	t.Cleanup(func() { confirmPrompt = orig })
+
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "pins", "clear"); err != nil {
+		t.Fatalf("pins clear cancel: %v", err)
+	}
+}
+
+// 15. createCmd when wizard already exists — should error.
+func TestCreateAlreadyExists(t *testing.T) {
+	dir := setupTestConfig(t)
+	err := execCmd(t, "--config-dir", dir, "create", "testwiz", "--no-edit")
+	if err == nil {
+		t.Fatal("expected error for existing wizard")
+	}
+	if !strings.Contains(err.Error(), "already exists") {
+		t.Errorf("expected 'already exists' error, got: %v", err)
+	}
+}
+
+// 16. editCmd when wizard does not exist — should error.
+func TestEditMissing(t *testing.T) {
+	dir := setupTestConfig(t)
+	err := execCmd(t, "--config-dir", dir, "edit", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for nonexistent wizard")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got: %v", err)
+	}
+}
+
+// 17. presetsShowCmd with verbose — exercise choice description annotation path.
+func TestPresetsShowVerboseWithChoiceMatch(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	st := store.New(dir)
+	// "hello" matches a choice with description "say hi".
+	if err := st.SavePreset("richwiz", "detailed", config.Values{
+		"greeting": config.StringVal("hello"),
+		"verbose":  config.BoolVal(true),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "presets", "show", "detailed", "-v"); err != nil {
+		t.Fatalf("presets show -v choice match: %v", err)
+	}
+}
+
+// 18. pinsListCmd with pinned version.
+func TestPinsListWithPinnedVersion(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePinnedVersion("richwiz", "1.2.3"); err != nil {
+		t.Fatalf("saving pinned version: %v", err)
+	}
+	if err := st.SavePins("richwiz", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving pins: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "pins", "list"); err != nil {
+		t.Fatalf("pins list with pinned version: %v", err)
+	}
+}
+
+// 19. presetsShowCmd non-verbose — simple key=value display.
+func TestPresetsShowRich(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("richwiz", "basic", config.Values{
+		"greeting": config.StringVal("world"),
+		"name":     config.StringVal("alice"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "presets", "show", "basic"); err != nil {
+		t.Fatalf("presets show rich: %v", err)
+	}
+}
+
+// 20. presetsShowCmd missing preset — should error.
+func TestPresetsShowMissing(t *testing.T) {
+	dir := setupTestConfig(t)
+	err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets", "show", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for missing preset")
+	}
+}
+
+// 21. show with rich wizard and --for-version to exercise effective command display.
+func TestShowRichForVersion(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "show", "--for-version", "1.2.3"); err != nil {
+		t.Fatalf("show rich --for-version: %v", err)
+	}
+}
+
+// 22. doctor with version detection failure (bad command).
+func TestDoctorVersionDetectFail(t *testing.T) {
+	dir := t.TempDir()
+	wizDir := filepath.Join(dir, "wizards")
+	if err := os.MkdirAll(wizDir, 0o755); err != nil {
+		t.Fatalf("creating wizards dir: %v", err)
+	}
+	yaml := `name: badver
+description: Bad version detection
+command: echo
+version_control:
+  command: "false"
+  pattern: '(\d+)'
+options:
+  - name: x
+    type: input
+    label: X
+    flag: --x
+`
+	if err := os.WriteFile(filepath.Join(wizDir, "badver.yml"), []byte(yaml), 0o644); err != nil {
+		t.Fatalf("writing wizard: %v", err)
+	}
+	// Doctor should still succeed (prints warning, not error).
+	if err := execCmd(t, "--config-dir", dir, "run", "badver", "doctor"); err != nil {
+		t.Fatalf("doctor bad version: %v", err)
+	}
+}
+
+// 23. presetsListCmd with rich wizard.
+func TestPresetsListRich(t *testing.T) {
+	dir := setupRichTestConfig(t)
+	st := store.New(dir)
+	if err := st.SavePreset("richwiz", "one", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+	if err := st.SavePreset("richwiz", "two", config.Values{
+		"greeting": config.StringVal("world"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	if err := execCmd(t, "--config-dir", dir, "run", "richwiz", "presets", "list"); err != nil {
+		t.Fatalf("presets list rich: %v", err)
+	}
+}
+
+// --- saveLastUsed tests ---
+
+func TestSaveLastUsed(t *testing.T) {
+	suppressOutput(t)
+
+	t.Run("nil LastUsed creates map and saves", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		state := &store.StateEntry{LastUsed: nil}
+		answers := config.Values{"greeting": config.StringVal("hello")}
+
+		saveLastUsed(st, "wiz", "", state, answers)
+
+		if state.LastUsed == nil {
+			t.Fatal("expected LastUsed to be initialized")
+		}
+		if state.LastUsed["greeting"].String() != "hello" {
+			t.Errorf("got %q, want %q", state.LastUsed["greeting"].String(), "hello")
+		}
+
+		loaded, err := st.LoadState("wiz", "")
+		if err != nil {
+			t.Fatalf("loading state: %v", err)
+		}
+		if loaded.LastUsed["greeting"].String() != "hello" {
+			t.Errorf("persisted value = %q, want %q", loaded.LastUsed["greeting"].String(), "hello")
+		}
+	})
+
+	t.Run("existing LastUsed merges answers", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		state := &store.StateEntry{
+			LastUsed: config.Values{"old": config.StringVal("kept")},
+		}
+		answers := config.Values{"new": config.StringVal("added")}
+
+		saveLastUsed(st, "wiz", "", state, answers)
+
+		if state.LastUsed["old"].String() != "kept" {
+			t.Errorf("old value = %q, want %q", state.LastUsed["old"].String(), "kept")
+		}
+		if state.LastUsed["new"].String() != "added" {
+			t.Errorf("new value = %q, want %q", state.LastUsed["new"].String(), "added")
+		}
+	})
+
+	t.Run("with version key", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		state := &store.StateEntry{LastUsed: nil}
+		answers := config.Values{"x": config.StringVal("1")}
+
+		saveLastUsed(st, "wiz", "1.2", state, answers)
+
+		loaded, err := st.LoadState("wiz", "1.2")
+		if err != nil {
+			t.Fatalf("loading versioned state: %v", err)
+		}
+		if loaded.LastUsed["x"].String() != "1" {
+			t.Errorf("versioned value = %q, want %q", loaded.LastUsed["x"].String(), "1")
+		}
+	})
+}
+
+// --- runWithPreset tests ---
+
+func newTestWizard(t *testing.T) (*config.Wizard, *store.Store) {
+	t.Helper()
+	st := store.New(t.TempDir())
+	w := &config.Wizard{
+		Name:    "testwiz",
+		Command: "echo",
+		Options: []config.Option{
+			{Name: "greeting", Type: config.OptionSelect, Flag: "--greet"},
+		},
+	}
+	return w, st
+}
+
+func saveTestPreset(t *testing.T, st *store.Store) {
+	t.Helper()
+	if err := st.SavePreset("testwiz", "fast", config.Values{
+		"greeting": config.StringVal("hello"),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+}
+
+func TestRunWithPresetMissing(t *testing.T) {
+	suppressOutput(t)
+	w, st := newTestWizard(t)
+
+	err := runWithPreset(w, st, "nonexistent", false)
+	if err == nil {
+		t.Fatal("expected error for missing preset")
+	}
+	if !strings.Contains(err.Error(), "nonexistent") {
+		t.Errorf("error should mention preset name, got: %v", err)
+	}
+}
+
+func TestRunWithPresetDryRun(t *testing.T) {
+	suppressOutput(t)
+	w, st := newTestWizard(t)
+	saveTestPreset(t, st)
+	mockExec(t)
+
+	if err := runWithPreset(w, st, "fast", true); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+}
+
+func TestRunWithPresetExec(t *testing.T) {
+	suppressOutput(t)
+	w, st := newTestWizard(t)
+	saveTestPreset(t, st)
+	called := mockExec(t)
+
+	if err := runWithPreset(w, st, "fast", false); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !*called {
+		t.Error("expected ExecCommand to be called")
+	}
+}
+
+func TestRunWithPresetExecFailure(t *testing.T) {
+	suppressOutput(t)
+	w, st := newTestWizard(t)
+	saveTestPreset(t, st)
+	mockExecErr(t, errors.New("boom"))
+
+	err := runWithPreset(w, st, "fast", false)
+	if err == nil {
+		t.Fatal("expected error from exec failure")
+	}
+	if !strings.Contains(err.Error(), "boom") {
+		t.Errorf("error should contain cause, got: %v", err)
+	}
+}
+
+// --- confirmAndExecute tests ---
+
+func TestConfirmAndExecute(t *testing.T) {
+	suppressOutput(t)
+
+	parts := []command.Part{
+		{Text: "echo", Kind: command.PartCommand},
+		{Text: "--greet=hello", Kind: command.PartFlag},
+	}
+	answers := config.Values{"greeting": config.StringVal("hello")}
+
+	t.Run("decline skips execution", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		mockConfirm(t, false)
+		mockExec(t)
+
+		err := confirmAndExecute(st, "wiz", parts, answers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("confirm executes command", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		mockConfirm(t, true)
+		mockPresetSave(t, "")
+		called := mockExec(t)
+
+		err := confirmAndExecute(st, "wiz", parts, answers)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !*called {
+			t.Error("expected ExecCommand to be called")
+		}
+	})
+
+	t.Run("exec failure returns error", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		mockConfirm(t, true)
+		mockPresetSave(t, "")
+		mockExecErr(t, errors.New("fail"))
+
+		err := confirmAndExecute(st, "wiz", parts, answers)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "fail") {
+			t.Errorf("error should contain cause, got: %v", err)
+		}
+	})
+}
+
+// --- promptAndSavePreset tests ---
+
+func TestPromptAndSavePreset(t *testing.T) {
+	suppressOutput(t)
+
+	t.Run("empty name skips save", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		mockPresetSave(t, "")
+
+		promptAndSavePreset(st, "wiz", config.Values{"x": config.StringVal("1")})
+
+		names, err := st.ListPresets("wiz")
+		if err != nil {
+			t.Fatalf("listing presets: %v", err)
+		}
+		if len(names) != 0 {
+			t.Errorf("expected no presets, got %v", names)
+		}
+	})
+
+	t.Run("non-empty name saves preset", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		mockPresetSave(t, "mypreset")
+
+		answers := config.Values{"x": config.StringVal("1")}
+		promptAndSavePreset(st, "wiz", answers)
+
+		if !st.PresetExists("wiz", "mypreset") {
+			t.Error("expected preset to exist")
+		}
+		vals, err := st.LoadPreset("wiz", "mypreset")
+		if err != nil {
+			t.Fatalf("loading preset: %v", err)
+		}
+		if vals["x"].String() != "1" {
+			t.Errorf("preset value = %q, want %q", vals["x"].String(), "1")
+		}
+	})
+}
+
+// --- reconcilePresets additional coverage ---
+
+func TestReconcilePresetsEdgeCases(t *testing.T) {
+	suppressOutput(t)
+
+	t.Run("singular word for count=1", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		final := map[string]config.Values{
+			"only": {"a": config.StringVal("1")},
+		}
+
+		err := reconcilePresets(st, "wiz", nil, final)
+		if err != nil {
+			t.Fatalf("reconcilePresets: %v", err)
+		}
+		if !st.PresetExists("wiz", "only") {
+			t.Error("expected preset to exist")
+		}
+	})
+
+	t.Run("empty final map removes all", func(t *testing.T) {
+		st := store.New(t.TempDir())
+		if err := st.SavePreset("wiz", "old", config.Values{
+			"a": config.StringVal("1"),
+		}); err != nil {
+			t.Fatalf("saving preset: %v", err)
+		}
+
+		err := reconcilePresets(st, "wiz", []string{"old"}, map[string]config.Values{})
+		if err != nil {
+			t.Fatalf("reconcilePresets: %v", err)
+		}
+		if st.PresetExists("wiz", "old") {
+			t.Error("expected preset to be removed")
+		}
+	})
+}
+
+// --- test helpers ---
+
+func suppressOutput(t *testing.T) {
+	t.Helper()
+	origOutput := ui.Output
+	ui.Output = io.Discard
+	t.Cleanup(func() { ui.Output = origOutput })
+}
+
+func mockConfirm(t *testing.T, result bool) {
+	t.Helper()
+	orig := confirmPrompt
+	confirmPrompt = func(_ string, _ bool) bool { return result }
+	t.Cleanup(func() { confirmPrompt = orig })
+}
+
+func mockPresetSave(t *testing.T, name string) {
+	t.Helper()
+	orig := promptPresetSave
+	promptPresetSave = func() string { return name }
+	t.Cleanup(func() { promptPresetSave = orig })
+}
+
+func mockExec(t *testing.T) *bool {
+	t.Helper()
+	called := false
+	orig := command.ExecCommand
+	command.ExecCommand = func(_ []string) error {
+		called = true
+		return nil
+	}
+	t.Cleanup(func() { command.ExecCommand = orig })
+	return &called
+}
+
+func mockExecErr(t *testing.T, err error) {
+	t.Helper()
+	orig := command.ExecCommand
+	command.ExecCommand = func(_ []string) error { return err }
+	t.Cleanup(func() { command.ExecCommand = orig })
 }

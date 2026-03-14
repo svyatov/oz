@@ -2,6 +2,7 @@ package wizard
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -443,5 +444,116 @@ func TestVersionLoaderNumberKeySelect(t *testing.T) {
 	}
 	if m.result.Selected != "3.0.0" {
 		t.Errorf("expected selected=3.0.0, got %q", m.result.Selected)
+	}
+}
+
+func TestVersionLoaderViewLoading(t *testing.T) {
+	vc := testVC()
+	m := newVersionLoaderModel("rails", vc, "")
+	m.showSpinner = true
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if !strings.Contains(content, "Detecting version") {
+		t.Error("expected 'Detecting version' in loading view")
+	}
+}
+
+func TestVersionLoaderViewLoadingBeforeDelay(t *testing.T) {
+	vc := testVC()
+	m := newVersionLoaderModel("rails", vc, "")
+
+	v := m.View()
+	if v.Content != "" {
+		t.Errorf("expected empty content before spinner delay, got %q", v.Content)
+	}
+}
+
+func TestVersionLoaderViewSelect(t *testing.T) {
+	vc := testVC()
+	m := newVersionLoaderModel("rails", vc, "")
+	m.Init()
+
+	model, _ := m.Update(versionDetectedMsg{version: "3.2.1"})
+	m = mustVL(t, model)
+	model, _ = m.Update(versionsListedMsg{versions: []string{"3.2.1", "3.0.0"}})
+	m = mustVL(t, model)
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view in select phase")
+	}
+	if !strings.Contains(content, "3.2.1") {
+		t.Error("expected version '3.2.1' in select view")
+	}
+	if !strings.Contains(content, "Custom...") {
+		t.Error("expected 'Custom...' in select view")
+	}
+}
+
+func TestVersionLoaderViewInput(t *testing.T) {
+	vc := testVC()
+	m := newVersionLoaderModel("rails", vc, "")
+	m.Init()
+
+	model, _ := m.Update(versionDetectedMsg{version: "3.2.1"})
+	m = mustVL(t, model)
+	model, _ = m.Update(versionsListedMsg{})
+	m = mustVL(t, model)
+
+	if m.phase != phaseInput {
+		t.Fatalf("expected phaseInput, got %d", m.phase)
+	}
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view in input phase")
+	}
+	if !strings.Contains(content, "version") {
+		t.Error("expected 'version' text in input view")
+	}
+}
+
+func TestVersionLoaderViewVerifying(t *testing.T) {
+	vc := testVC()
+	vc.CustomVersionVerify = "test-verify"
+	m := newVersionLoaderModel("rails", vc, "")
+	m.Init()
+
+	model, _ := m.Update(versionDetectedMsg{version: "3.2.1"})
+	m = mustVL(t, model)
+	model, _ = m.Update(versionsListedMsg{})
+	m = mustVL(t, model)
+
+	for _, c := range "2.7.0" {
+		model, _ = m.Update(key(c))
+		m = mustVL(t, model)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustVL(t, model)
+	if m.phase != phaseVerifying {
+		t.Fatalf("expected phaseVerifying, got %d", m.phase)
+	}
+
+	m.showSpinner = true
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view in verifying phase")
+	}
+	if !strings.Contains(content, "verifying") {
+		t.Error("expected 'verifying' text in verifying view")
+	}
+}
+
+func TestVersionLoaderViewDone(t *testing.T) {
+	vc := testVC()
+	m := newVersionLoaderModel("rails", vc, "")
+	m.done = true
+
+	v := m.View()
+	if v.Content != "" {
+		t.Errorf("expected empty content when done, got %q", v.Content)
 	}
 }

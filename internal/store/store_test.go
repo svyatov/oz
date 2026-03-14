@@ -1,6 +1,9 @@
 package store
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/svyatov/oz/internal/config"
@@ -289,5 +292,183 @@ func TestListPresetsEmpty(t *testing.T) {
 	}
 	if len(names) != 0 {
 		t.Errorf("expected empty list, got %v", names)
+	}
+}
+
+func TestRemoveWizardData(t *testing.T) {
+	t.Run("removes state and presets", func(t *testing.T) {
+		s := New(t.TempDir())
+
+		// Save state and a preset.
+		entry := &StateEntry{LastUsed: config.Values{"a": config.StringVal("1")}}
+		if err := s.SaveState("wiz", "", entry); err != nil {
+			t.Fatalf("SaveState: %v", err)
+		}
+		if err := s.SavePreset("wiz", "p1", config.Values{"b": config.StringVal("2")}); err != nil {
+			t.Fatalf("SavePreset: %v", err)
+		}
+
+		if err := s.RemoveWizardData("wiz"); err != nil {
+			t.Fatalf("RemoveWizardData: %v", err)
+		}
+
+		// State file should be gone — LoadState returns empty entry (file missing).
+		got, err := s.LoadState("wiz", "")
+		if err != nil {
+			t.Fatalf("LoadState after remove: %v", err)
+		}
+		if len(got.LastUsed) != 0 {
+			t.Errorf("expected empty state, got %v", got.LastUsed)
+		}
+
+		// Presets directory should be gone.
+		names, err := s.ListPresets("wiz")
+		if err != nil {
+			t.Fatalf("ListPresets after remove: %v", err)
+		}
+		if len(names) != 0 {
+			t.Errorf("expected no presets, got %v", names)
+		}
+	})
+
+	t.Run("no files is not an error", func(t *testing.T) {
+		s := New(t.TempDir())
+		if err := s.RemoveWizardData("nonexistent"); err != nil {
+			t.Errorf("RemoveWizardData on empty store: %v", err)
+		}
+	})
+}
+
+func TestPresetExists(t *testing.T) {
+	s := New(t.TempDir())
+
+	if s.PresetExists("wiz", "nope") {
+		t.Error("PresetExists returned true for missing preset")
+	}
+
+	if err := s.SavePreset("wiz", "yes", config.Values{"k": config.StringVal("v")}); err != nil {
+		t.Fatalf("SavePreset: %v", err)
+	}
+
+	if !s.PresetExists("wiz", "yes") {
+		t.Error("PresetExists returned false for existing preset")
+	}
+}
+
+func TestLoadStateVersionNilVersionsMap(t *testing.T) {
+	// Write a VersionedState file that has pins but no versions map.
+	dir := t.TempDir()
+	s := New(dir)
+
+	if err := s.SavePins("wiz", config.Values{"db": config.StringVal("pg")}); err != nil {
+		t.Fatalf("SavePins: %v", err)
+	}
+
+	// LoadState with a version should return empty entry because
+	// the Versions map is nil.
+	got, err := s.LoadState("wiz", "3.0")
+	if err != nil {
+		t.Fatalf("LoadState: %v", err)
+	}
+	if len(got.LastUsed) != 0 || len(got.Pins) != 0 {
+		t.Errorf("expected empty StateEntry, got LastUsed=%v Pins=%v", got.LastUsed, got.Pins)
+	}
+}
+
+func TestLoadStateVersionMismatch(t *testing.T) {
+	s := New(t.TempDir())
+
+	entry := &StateEntry{LastUsed: config.Values{"x": config.StringVal("y")}}
+	if err := s.SaveState("wiz", "1.0", entry); err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	// Load a different version that was never saved.
+	got, err := s.LoadState("wiz", "2.0")
+	if err != nil {
+		t.Fatalf("LoadState: %v", err)
+	}
+	if len(got.LastUsed) != 0 || len(got.Pins) != 0 {
+		t.Errorf("expected empty StateEntry for missing version, got LastUsed=%v Pins=%v",
+			got.LastUsed, got.Pins)
+	}
+}
+
+func TestListPresetsSkipsDirectories(t *testing.T) {
+	s := New(t.TempDir())
+
+	// Save a real preset.
+	if err := s.SavePreset("wiz", "real", config.Values{"k": config.StringVal("v")}); err != nil {
+		t.Fatalf("SavePreset: %v", err)
+	}
+
+	// Create a subdirectory inside the presets dir.
+	subdir := filepath.Join(s.presetsDir("wiz"), "not-a-preset")
+	if err := os.Mkdir(subdir, 0o755); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	// Create a non-.yml file to exercise the suffix filter.
+	junk := filepath.Join(s.presetsDir("wiz"), "notes.txt")
+	if err := os.WriteFile(junk, []byte("hi"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	names, err := s.ListPresets("wiz")
+	if err != nil {
+		t.Fatalf("ListPresets: %v", err)
+	}
+	if len(names) != 1 || names[0] != "real" {
+		t.Errorf("ListPresets = %v, want [real]", names)
+	}
+}
+
+func TestModifyVersionedStateCorruptYAML(t *testing.T) {
+	dir := t.TempDir()
+	s := New(dir)
+
+	// Write corrupt YAML to the state file.
+	stateDir := filepath.Join(dir, "state")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	statePath := filepath.Join(stateDir, "wiz.yml")
+	if err := os.WriteFile(statePath, []byte(":\n\t{[bad yaml"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Capture stderr to verify the warning.
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	os.Stderr = w
+
+	// SavePins calls modifyVersionedState internally.
+	saveErr := s.SavePins("wiz", config.Values{"db": config.StringVal("pg")})
+
+	_ = w.Close()
+	os.Stderr = origStderr
+
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	stderr := string(buf[:n])
+	_ = r.Close()
+
+	if saveErr != nil {
+		t.Fatalf("SavePins: %v", saveErr)
+	}
+	if !strings.Contains(stderr, "Warning: corrupt state file") {
+		t.Errorf("expected warning on stderr, got %q", stderr)
+	}
+
+	// Verify the pins were saved despite the corrupt file.
+	pins, err := s.LoadPins("wiz")
+	if err != nil {
+		t.Fatalf("LoadPins: %v", err)
+	}
+	if pins["db"].String() != "pg" {
+		t.Errorf("pins[db] = %v, want pg", pins["db"])
 	}
 }

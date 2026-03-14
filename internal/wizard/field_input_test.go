@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/svyatov/oz/internal/config"
@@ -77,4 +78,44 @@ func containsStr(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+func TestInputFieldView(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		f := NewInputField(config.Option{
+			Label:       "Port",
+			Description: "The server port",
+		})
+		view := stripANSI(f.View())
+		if view == "" {
+			t.Fatal("expected non-empty view")
+		}
+		if !strings.Contains(view, "Port") {
+			t.Error("expected label 'Port' in view")
+		}
+	})
+
+	t.Run("with_value", func(t *testing.T) {
+		f := NewInputField(config.Option{Label: "Name"})
+		f.SetValue(config.StringVal("hello"))
+		view := stripANSI(f.View())
+		if !strings.Contains(view, "hello") {
+			t.Error("expected value 'hello' in view")
+		}
+	})
+
+	t.Run("with_error", func(t *testing.T) {
+		f := NewInputField(config.Option{
+			Label:    "Port",
+			Required: true,
+			Validate: &config.InputRule{Pattern: `^\d+$`, Message: "numbers only"},
+		})
+		f.ti.SetValue("abc")
+		f.validate() // populate errMsg
+		f.errMsg = "numbers only"
+		view := stripANSI(f.View())
+		if !strings.Contains(view, "numbers only") {
+			t.Error("expected error message in view")
+		}
+	})
 }

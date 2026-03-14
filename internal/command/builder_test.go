@@ -1,6 +1,10 @@
 package command
 
 import (
+	"bytes"
+	"errors"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/svyatov/oz/internal/config"
@@ -186,4 +190,124 @@ func assertStringSlice(t *testing.T, got, want []string) {
 			t.Errorf("[%d] got %q, want %q", i, got[i], want[i])
 		}
 	}
+}
+
+// stripANSI removes ANSI escape codes from a string.
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRe.ReplaceAllString(s, "")
+}
+
+func TestRun(t *testing.T) {
+	t.Run("empty_parts", func(t *testing.T) {
+		err := Run(nil)
+		if err == nil || !strings.Contains(err.Error(), "empty command") {
+			t.Errorf("got %v, want error containing %q", err, "empty command")
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		orig := ExecCommand
+		t.Cleanup(func() { ExecCommand = orig })
+
+		ExecCommand = func(parts []string) error { return nil }
+
+		if err := Run([]string{"echo", "hello"}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("failure", func(t *testing.T) {
+		orig := ExecCommand
+		t.Cleanup(func() { ExecCommand = orig })
+
+		ExecCommand = func(parts []string) error {
+			return errors.New("exit status 1")
+		}
+
+		err := Run([]string{"false"})
+		if err == nil || !strings.Contains(err.Error(), "command failed") {
+			t.Errorf("got %v, want error containing %q", err, "command failed")
+		}
+	})
+}
+
+func TestPrintCommand(t *testing.T) {
+	var buf bytes.Buffer
+	parts := []Part{
+		{Text: "docker", Kind: PartCommand},
+		{Text: "run", Kind: PartCommand},
+		{Text: "--rm", Kind: PartFlag},
+	}
+
+	PrintCommand(&buf, parts)
+	out := buf.String()
+
+	// Verify newline padding: starts with \n and ends with \n\n.
+	if !strings.HasPrefix(out, "\n") {
+		t.Errorf("output should start with newline, got %q", out)
+	}
+	if !strings.HasSuffix(out, "\n\n") {
+		t.Errorf("output should end with double newline, got %q", out)
+	}
+
+	plain := stripANSI(out)
+	if !strings.Contains(plain, "docker") || !strings.Contains(plain, "--rm") {
+		t.Errorf("output missing command text, got %q", plain)
+	}
+}
+
+func TestFormatCommandColored(t *testing.T) {
+	parts := []Part{
+		{Text: "git", Kind: PartCommand},
+		{Text: "main", Kind: PartArg},
+		{Text: "--force", Kind: PartFlag},
+		{Text: "--branch=dev", Kind: PartFlag},
+	}
+
+	got := stripANSI(formatCommandColored(parts))
+
+	for _, want := range []string{"git", "main", "--force", "--branch=", "dev"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %q", want, got)
+		}
+	}
+}
+
+func TestBuildOptionFlags_unknown_type(t *testing.T) {
+	opt := config.Option{
+		Name: "bad",
+		Type: config.OptionType("bogus"),
+		Flag: "--bad",
+	}
+	got := buildOptionFlags(opt, config.StringVal("x"), config.FlagStyleEquals)
+	if got != nil {
+		t.Errorf("got %v, want nil for unknown type", got)
+	}
+}
+
+func TestBuild_skip_missing_answer(t *testing.T) {
+	w := &config.Wizard{
+		Command: "echo",
+		Options: []config.Option{
+			{Name: "missing", Type: config.OptionInput, Flag: "--flag"},
+		},
+	}
+	parts := Build(w, config.Values{})
+	assertStringSlice(t, PlainParts(parts), []string{"echo"})
+}
+
+func TestBuild_positional_none_value(t *testing.T) {
+	w := &config.Wizard{
+		Command: "task",
+		Options: []config.Option{{
+			Name:       "target",
+			Type:       config.OptionSelect,
+			Positional: true,
+			Choices:    config.FlexChoices{{Value: "build"}},
+		}},
+	}
+	parts := Build(w, config.Values{"target": config.StringVal(config.NoneValue)})
+	assertStringSlice(t, PlainParts(parts), []string{"task"})
 }

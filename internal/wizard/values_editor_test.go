@@ -220,6 +220,83 @@ func TestViewOptionRowUnpinned(t *testing.T) {
 	}
 }
 
+func TestValuesEditorViewEdit(t *testing.T) {
+	e := NewValuesEditor(editorOptions(), nil, nil, nil)
+	e.EnterEdit(0) // select field
+	if !e.Editing() {
+		t.Fatal("expected editing=true")
+	}
+
+	output := stripANSI(e.ViewEdit("PIN"))
+	if output == "" {
+		t.Fatal("expected non-empty ViewEdit output")
+	}
+	if !strings.Contains(output, "PIN") {
+		t.Error("expected indicator 'PIN' in ViewEdit output")
+	}
+}
+
+func TestValuesEditorEditNavHint(t *testing.T) {
+	tests := []struct {
+		name    string
+		optIdx  int
+		options []config.Option
+		want    string
+	}{
+		{
+			"select_field",
+			0,
+			editorOptions(), // index 0 = select
+			"enter",
+		},
+		{
+			"confirm_field",
+			1,
+			editorOptions(), // index 1 = confirm
+			"enter",
+		},
+		{
+			"input_field",
+			2,
+			editorOptions(), // index 2 = input
+			"enter",
+		},
+		{
+			"multi_select_field",
+			0,
+			[]config.Option{{
+				Name:  "tags",
+				Type:  config.OptionMultiSelect,
+				Label: "Tags",
+				Choices: []config.Choice{
+					{Value: "a", Label: "A"},
+				},
+			}},
+			"toggle",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := NewValuesEditor(tt.options, nil, nil, nil)
+			e.EnterEdit(tt.optIdx)
+			hint := stripANSI(e.editNavHint())
+			if !strings.Contains(hint, tt.want) {
+				t.Errorf("editNavHint() = %q, want substring %q", hint, tt.want)
+			}
+		})
+	}
+}
+
+func TestRenderFieldWithIndicator(t *testing.T) {
+	f := NewInputField(config.Option{Label: "Test", Description: "A test field"})
+	view := f.View()
+	result := renderFieldWithIndicator(view, "CUSTOM")
+	stripped := stripANSI(result)
+	if !strings.Contains(stripped, "CUSTOM") {
+		t.Error("expected 'CUSTOM' indicator in rendered output")
+	}
+}
+
 func TestCycleValueSelectAllowNone(t *testing.T) {
 	opts := []config.Option{
 		{

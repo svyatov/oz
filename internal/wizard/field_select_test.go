@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/svyatov/oz/internal/config"
 )
 
@@ -56,6 +58,100 @@ func TestSelectFieldDefaultTag(t *testing.T) {
 				t.Errorf("View() contains (default) = %v, want %v\nview:\n%s", hasDefault, tt.wantDefault, view)
 			}
 		})
+	}
+}
+
+func TestSelectFieldSubmitTab(t *testing.T) {
+	f := newTestSelectField(testChoices())
+	submitted, _ := f.Update(specialKey(tea.KeyTab))
+	if !submitted {
+		t.Fatal("expected submitted via tab")
+	}
+	if f.value != "python3" {
+		t.Errorf("expected value python3, got %s", f.value)
+	}
+}
+
+func TestSelectFieldNumberKeyZero(t *testing.T) {
+	// Key '0' is not in 1-9 range, numberKeyIndex should return -1.
+	idx := numberKeyIndex('0', 3)
+	if idx != -1 {
+		t.Errorf("expected -1 for key '0', got %d", idx)
+	}
+}
+
+func TestSelectFieldNumberKeyBeyondRange(t *testing.T) {
+	f := newTestSelectField(testChoices()) // 3 choices
+	submitted, _ := f.Update(key('5'))
+	if submitted {
+		t.Error("should not submit with out-of-range number key")
+	}
+	// Cursor should remain at 0.
+	if f.cursor != 0 {
+		t.Errorf("expected cursor=0, got %d", f.cursor)
+	}
+}
+
+func TestSelectFieldAllowNoneMaxDisplayWidth(t *testing.T) {
+	choices := []config.Choice{
+		{Value: "ab", Label: "AB"},
+	}
+	f := NewSelectField(config.Option{
+		Label:     "Test",
+		Choices:   choices,
+		Type:      config.OptionSelect,
+		AllowNone: true,
+	})
+	// "None" is 4 chars, "AB" is 2 chars — maxDisplayWidth should be at least 4.
+	w := f.maxDisplayWidth()
+	if w < 4 {
+		t.Errorf("expected maxDisplayWidth >= 4 with allowNone, got %d", w)
+	}
+}
+
+func TestSelectFieldAllowNoneDefaultMaxDisplayWidth(t *testing.T) {
+	choices := []config.Choice{
+		{Value: "ab", Label: "AB"},
+	}
+	f := NewSelectField(config.Option{
+		Label:     "Test",
+		Choices:   choices,
+		Type:      config.OptionSelect,
+		AllowNone: true,
+	})
+	// Set default to NoneValue — should add " (default)" to "None" width.
+	f.SetDefault(config.StringVal(config.NoneValue))
+	w := f.maxDisplayWidth()
+	expectedMin := len("None") + len(defaultSuffix)
+	if w < expectedMin {
+		t.Errorf("expected maxDisplayWidth >= %d with allowNone default, got %d", expectedMin, w)
+	}
+}
+
+func TestBuildFieldUnknownType(t *testing.T) {
+	opt := &config.Option{
+		Name:  "test",
+		Type:  config.OptionType("unknown"),
+		Label: "Test",
+	}
+	f := buildField(opt)
+	if _, ok := f.(*InputField); !ok {
+		t.Errorf("expected InputField for unknown type, got %T", f)
+	}
+}
+
+func TestBuildFieldMultiSelect(t *testing.T) {
+	opt := &config.Option{
+		Name:  "features",
+		Type:  config.OptionMultiSelect,
+		Label: "Features",
+		Choices: []config.Choice{
+			{Value: "a", Label: "A"},
+		},
+	}
+	f := buildField(opt)
+	if _, ok := f.(*MultiSelectField); !ok {
+		t.Errorf("expected MultiSelectField, got %T", f)
 	}
 }
 

@@ -3,6 +3,7 @@ package wizard
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -641,6 +642,175 @@ func TestCyclePinWithHLKeys(t *testing.T) {
 	m = mustPins(t, model)
 	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db unpinned via 'h'")
+	}
+}
+
+func TestPinsViewListMode(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in list mode")
+	}
+	if !strings.Contains(content, "Database") {
+		t.Error("expected option label 'Database' in list view")
+	}
+	if !strings.Contains(content, "API mode?") {
+		t.Error("expected option label 'API mode?' in list view")
+	}
+	if !strings.Contains(content, "App name") {
+		t.Error("expected option label 'App name' in list view")
+	}
+}
+
+func TestPinsViewEditMode(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Enter edit mode for first option.
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = mustPins(t, model)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in edit mode")
+	}
+}
+
+func TestPinsViewVerifyingMode(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter version edit, type a value, submit to enter verifying.
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = mustPins(t, model)
+	for _, c := range "7.2" {
+		model, _ = m.Update(key(c))
+		m = mustPins(t, model)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustPins(t, model)
+	if m.mode != pinsVerifyingMode {
+		t.Fatalf("expected verifying mode, got %d", m.mode)
+	}
+
+	v := m.View()
+	content := stripANSI(v.Content)
+	if content == "" {
+		t.Fatal("expected non-empty view content in verifying mode")
+	}
+	if !strings.Contains(content, "Verifying") {
+		t.Error("expected 'Verifying' text in verifying view")
+	}
+}
+
+func TestPinsViewWhenDone(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+	m.done = true
+
+	v := m.View()
+	if v.Content != "" {
+		t.Errorf("expected empty content when done, got %q", v.Content)
+	}
+}
+
+func TestPinsViewVersionRow(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "3.2.1", "")
+	m.Init()
+
+	content := stripANSI(m.viewList())
+	if !strings.Contains(content, "Version") {
+		t.Error("expected 'Version' label in list view with custom version")
+	}
+	if !strings.Contains(content, "3.2.1") {
+		t.Error("expected pinned version '3.2.1' in list view")
+	}
+}
+
+func TestPinsUpdateVerifyingKeyPress(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m.Init()
+
+	// Enter version edit, type, submit.
+	model, _ := m.Update(specialKey(tea.KeyEnter))
+	m = mustPins(t, model)
+	for _, c := range "7.2" {
+		model, _ = m.Update(key(c))
+		m = mustPins(t, model)
+	}
+	model, _ = m.Update(specialKey(tea.KeyEnter))
+	m = mustPins(t, model)
+	if m.mode != pinsVerifyingMode {
+		t.Fatalf("expected verifying mode, got %d", m.mode)
+	}
+
+	// Pressing Esc during verifying returns to edit mode.
+	model, _ = m.Update(specialKey(tea.KeyEscape))
+	m = mustPins(t, model)
+	if m.mode != pinsEditMode {
+		t.Fatalf("expected edit mode after esc in verifying, got %d", m.mode)
+	}
+
+	// Pressing a random key during verifying is ignored.
+	m.mode = pinsVerifyingMode
+	model, _ = m.Update(key('x'))
+	m = mustPins(t, model)
+	if m.mode != pinsVerifyingMode {
+		t.Fatalf("expected still in verifying mode, got %d", m.mode)
+	}
+}
+
+func TestPinsHandleToggleVersionRow(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m.Init()
+
+	// Cursor should be at 0 (version row when hasCustomVersion=true).
+	if m.cursor != 0 {
+		t.Fatalf("expected cursor at 0, got %d", m.cursor)
+	}
+	if !m.isVersionIdx(m.cursor) {
+		t.Fatal("expected cursor to be on version index")
+	}
+
+	// Space toggles version pin.
+	model, _ := m.Update(specialKey(tea.KeySpace))
+	m = mustPins(t, model)
+	if m.versionPin != versionPinCurrent {
+		t.Errorf("expected version pin 'current', got %q", m.versionPin)
+	}
+
+	// Space again unpins.
+	model, _ = m.Update(specialKey(tea.KeySpace))
+	m = mustPins(t, model)
+	if m.versionPin != "" {
+		t.Errorf("expected version pin empty, got %q", m.versionPin)
+	}
+}
+
+func TestPinsVersionOffset(t *testing.T) {
+	tests := []struct {
+		name             string
+		hasCustomVersion bool
+		wantOffset       int
+	}{
+		{"with_custom_version", true, 1},
+		{"without_custom_version", false, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newPinsModel(testOptions(), nil, nil, nil, tt.hasCustomVersion, "", "")
+			got := m.versionOffset()
+			if got != tt.wantOffset {
+				t.Errorf("versionOffset() = %d, want %d", got, tt.wantOffset)
+			}
+		})
 	}
 }
 

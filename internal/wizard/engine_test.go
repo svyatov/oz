@@ -2,8 +2,10 @@ package wizard
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/svyatov/oz/internal/config"
@@ -534,3 +536,276 @@ func TestEngineSingleOption(t *testing.T) {
 }
 
 var errTest = errors.New("test error")
+
+func TestEngineUpdateSpinnerTickNotLoading(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e = initEngine(t, e)
+
+	// Engine is not loading, so spinner tick should be a no-op.
+	model, cmd := e.Update(spinner.TickMsg{})
+	e = mustEngine(t, model)
+	if cmd != nil {
+		t.Error("expected nil cmd when not loading")
+	}
+	if e.done {
+		t.Error("should not be done")
+	}
+}
+
+func TestEngineUpdateUnknownMessage(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e = initEngine(t, e)
+
+	// Send a message type the engine doesn't handle.
+	type customMsg struct{}
+	model, cmd := e.Update(customMsg{})
+	e = mustEngine(t, model)
+	if cmd != nil {
+		t.Error("expected nil cmd for unknown message type")
+	}
+	if e.done {
+		t.Error("should not be done")
+	}
+}
+
+func TestEngineViewWhenDone(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e = initEngine(t, e)
+
+	e = submitSelect(t, e)
+	e = submitConfirm(t, e)
+	e = typeAndSubmitInput(t, e, "app")
+
+	if !e.done {
+		t.Fatal("expected done")
+	}
+	view := e.View()
+	if view.Content == "" {
+		t.Error("expected non-empty view when done")
+	}
+}
+
+func TestEngineViewWhenLoading(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:        "tool",
+			Type:        config.OptionSelect,
+			Label:       "Tool",
+			ChoicesFrom: "echo test",
+		},
+	}
+	e := newTestEngine(opts)
+	e.Init()
+
+	if !e.loading {
+		t.Fatal("expected loading")
+	}
+	view := e.View()
+	plain := stripANSI(view.Content)
+	if !strings.Contains(plain, "Loading Tool...") {
+		t.Errorf("expected loading text in view, got:\n%s", plain)
+	}
+}
+
+func TestEngineViewWithLoadErr(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:        "tool",
+			Type:        config.OptionSelect,
+			Label:       "Tool",
+			ChoicesFrom: "echo test",
+		},
+	}
+	e := newTestEngine(opts)
+	e.Init()
+
+	// Inject error.
+	e.loadErr = errors.New("connection failed")
+
+	view := e.View()
+	plain := stripANSI(view.Content)
+	if !strings.Contains(plain, "connection failed") {
+		t.Errorf("expected error text in view, got:\n%s", plain)
+	}
+	if !strings.Contains(plain, "enter=retry") {
+		t.Errorf("expected retry hint in view, got:\n%s", plain)
+	}
+}
+
+func TestEngineViewWithPinnedCount(t *testing.T) {
+	e := NewEngine("test-wizard", "1.0.0", "", false, engineOptions(), 3, nil)
+	e = initEngine(t, e)
+
+	view := e.View()
+	plain := stripANSI(view.Content)
+	if !strings.Contains(plain, "3") {
+		t.Errorf("expected pinned count in view, got:\n%s", plain)
+	}
+}
+
+func TestEngineViewWithCompletedSteps(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e = initEngine(t, e)
+
+	e = submitSelect(t, e)
+	if !e.loading && e.currentField != nil {
+		view := e.View()
+		plain := stripANSI(view.Content)
+		if !strings.Contains(plain, "Database") {
+			t.Errorf("expected completed step label in view, got:\n%s", plain)
+		}
+		if !strings.Contains(plain, "PostgreSQL") {
+			t.Errorf("expected completed step answer in view, got:\n%s", plain)
+		}
+	}
+}
+
+func TestEngineHeaderLineOverridden(t *testing.T) {
+	e := NewEngine("test-wizard", "1.0.0", "", true, engineOptions(), 0, nil)
+	header := e.headerLine()
+	plain := stripANSI(header)
+	if !strings.Contains(plain, "override") {
+		t.Errorf("expected override tag in header, got: %s", plain)
+	}
+}
+
+func TestEngineShiftTabEmptyHistoryWithCanGoBack(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:  "db",
+			Type:  config.OptionSelect,
+			Label: "Database",
+			Choices: []config.Choice{
+				{Value: "pg", Label: "PostgreSQL"},
+			},
+		},
+		{
+			Name:  "name",
+			Type:  config.OptionInput,
+			Label: "Name",
+		},
+	}
+	e := newTestEngine(opts)
+	e.canGoBack = true
+	e = initEngine(t, e)
+
+	// Submit one step to have history, then go back.
+	e = submitSelect(t, e)
+
+	// Now go back — history has 2 entries, pops to first step.
+	model, _ := e.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	e = mustEngine(t, model)
+	if e.done {
+		t.Fatal("should not be done yet, should be at first step")
+	}
+
+	// Now go back again from first step — history has 1 entry, goBack returns false.
+	// canGoBack is true, so wentBack=true and done=true.
+	model, _ = e.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	e = mustEngine(t, model)
+	if !e.done {
+		t.Fatal("expected done")
+	}
+	if !e.wentBack {
+		t.Error("expected wentBack=true")
+	}
+	result := e.GetResult()
+	if !result.GoBack {
+		t.Error("expected GoBack in result")
+	}
+}
+
+func TestEngineKeyIgnoredDuringLoading(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:        "tool",
+			Type:        config.OptionSelect,
+			Label:       "Tool",
+			ChoicesFrom: "echo test",
+		},
+	}
+	e := newTestEngine(opts)
+	e.Init()
+
+	if !e.loading {
+		t.Fatal("expected loading")
+	}
+
+	// Non-enter, non-escape key should be ignored.
+	model, cmd := e.Update(key('z'))
+	e = mustEngine(t, model)
+	if cmd != nil {
+		t.Error("expected nil cmd for ignored key during loading")
+	}
+	if e.done {
+		t.Error("should not be done")
+	}
+}
+
+func TestEngineRetryOnLoadErrEnter(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:        "tool",
+			Type:        config.OptionSelect,
+			Label:       "Tool",
+			ChoicesFrom: "echo test",
+		},
+	}
+	e := newTestEngine(opts)
+	e.Init()
+
+	// Inject error.
+	model, _ := e.Update(choicesLoadedMsg{err: errTest})
+	e = mustEngine(t, model)
+	if e.loadErr == nil {
+		t.Fatal("expected loadErr set")
+	}
+
+	// Press enter to retry.
+	model, cmd := e.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	e = mustEngine(t, model)
+	if e.loadErr != nil {
+		t.Error("expected loadErr cleared after enter retry")
+	}
+	if !e.loading {
+		t.Error("expected loading state after retry")
+	}
+	if cmd == nil {
+		t.Error("expected non-nil cmd after retry (spinner + fetch)")
+	}
+}
+
+func TestEngineKeyPressNilCurrentField(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e = initEngine(t, e)
+
+	// Force nil currentField.
+	e.currentField = nil
+	e.loading = false
+
+	model, cmd := e.Update(key('a'))
+	e = mustEngine(t, model)
+	if cmd != nil {
+		t.Error("expected nil cmd when currentField is nil")
+	}
+	if e.done {
+		t.Error("should not be done")
+	}
+}
+
+func TestEngineFinalViewOnWentBack(t *testing.T) {
+	e := newTestEngine(engineOptions())
+	e.canGoBack = true
+	e = initEngine(t, e)
+
+	model, _ := e.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
+	e = mustEngine(t, model)
+
+	if !e.wentBack {
+		t.Fatal("expected wentBack")
+	}
+	view := e.finalView()
+	if view != "" {
+		t.Errorf("expected empty final view on wentBack, got %q", view)
+	}
+}

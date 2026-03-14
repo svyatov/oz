@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"regexp"
 	"strings"
 	"testing"
@@ -139,5 +140,166 @@ func TestWarningText(t *testing.T) {
 	got := stripANSI(WarningText("oops"))
 	if got != "oops" {
 		t.Errorf("WarningText('oops') = %q, want 'oops'", got)
+	}
+}
+
+func TestWidth(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{
+		{"empty string", "", 0},
+		{"plain text", "hello", 5},
+		{"styled text", GreenStyle.Render("hi"), 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Width(tt.input)
+			if got != tt.want {
+				t.Errorf("Width(%q) = %d, want %d", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSuccessMsgf(t *testing.T) {
+	var buf bytes.Buffer
+	Output = &buf
+	t.Cleanup(func() { Output = nil })
+
+	SuccessMsgf("done %d items", 3)
+
+	got := buf.String()
+	plain := stripANSI(got)
+	if !strings.Contains(plain, "done 3 items") {
+		t.Errorf("SuccessMsgf output = %q, want to contain 'done 3 items'", plain)
+	}
+}
+
+func TestInfoMsgf(t *testing.T) {
+	var buf bytes.Buffer
+	Output = &buf
+	t.Cleanup(func() { Output = nil })
+
+	InfoMsgf("found %s", "nothing")
+
+	got := buf.String()
+	plain := stripANSI(got)
+	if !strings.Contains(plain, "found nothing") {
+		t.Errorf("InfoMsgf output = %q, want to contain 'found nothing'", plain)
+	}
+}
+
+func TestCompletedStepAnswer(t *testing.T) {
+	tests := []struct {
+		name, answer string
+	}{
+		{"simple", "yes"},
+		{"with spaces", "hello world"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripANSI(CompletedStepAnswer(tt.answer))
+			if !strings.Contains(got, tt.answer) {
+				t.Errorf("CompletedStepAnswer(%q) = %q, want to contain %q", tt.answer, got, tt.answer)
+			}
+		})
+	}
+}
+
+func TestFieldTitle(t *testing.T) {
+	got := stripANSI(FieldTitle("Project Name"))
+	if !strings.Contains(got, "Project Name") {
+		t.Errorf("FieldTitle = %q, want to contain 'Project Name'", got)
+	}
+}
+
+func TestFieldDesc(t *testing.T) {
+	got := stripANSI(FieldDesc("Enter your name"))
+	if !strings.Contains(got, "Enter your name") {
+		t.Errorf("FieldDesc = %q, want to contain 'Enter your name'", got)
+	}
+}
+
+func TestChoiceDesc(t *testing.T) {
+	got := stripANSI(ChoiceDesc("a fine choice"))
+	if !strings.Contains(got, "a fine choice") {
+		t.Errorf("ChoiceDesc = %q, want to contain 'a fine choice'", got)
+	}
+}
+
+func TestCursor(t *testing.T) {
+	got := stripANSI(Cursor())
+	if !strings.Contains(got, "\u203a") {
+		t.Errorf("Cursor() = %q, want to contain '\u203a'", got)
+	}
+}
+
+func TestChoiceLabel(t *testing.T) {
+	tests := []struct {
+		name   string
+		label  string
+		active bool
+	}{
+		{"active", "Option A", true},
+		{"inactive", "Option A", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripANSI(ChoiceLabel(tt.label, tt.active))
+			if !strings.Contains(got, tt.label) {
+				t.Errorf("ChoiceLabel(%q, %v) = %q, want to contain %q", tt.label, tt.active, got, tt.label)
+			}
+		})
+	}
+
+	// Raw output should differ between active and inactive.
+	rawActive := ChoiceLabel("X", true)
+	rawInactive := ChoiceLabel("X", false)
+	if rawActive == rawInactive {
+		t.Error("ChoiceLabel active and inactive should have different ANSI styles")
+	}
+}
+
+func TestVersionVerifyingTag(t *testing.T) {
+	got := stripANSI(VersionVerifyingTag("\u2807"))
+	if !strings.Contains(got, "verifying") {
+		t.Errorf("VersionVerifyingTag = %q, want to contain 'verifying'", got)
+	}
+}
+
+func TestVersionOverrideTag(t *testing.T) {
+	got := stripANSI(VersionOverrideTag())
+	if !strings.Contains(got, "override") {
+		t.Errorf("VersionOverrideTag = %q, want to contain 'override'", got)
+	}
+}
+
+func TestPinIcon(t *testing.T) {
+	got := stripANSI(PinIcon())
+	if !strings.Contains(got, "\u25cf") {
+		t.Errorf("PinIcon() = %q, want to contain '\u25cf'", got)
+	}
+}
+
+func TestPinEditIndicator(t *testing.T) {
+	got := stripANSI(PinEditIndicator())
+	if !strings.Contains(got, "pin") {
+		t.Errorf("PinEditIndicator() = %q, want to contain 'pin'", got)
+	}
+}
+
+func TestPresetEditIndicator(t *testing.T) {
+	got := stripANSI(PresetEditIndicator())
+	if !strings.Contains(got, "preset") {
+		t.Errorf("PresetEditIndicator() = %q, want to contain 'preset'", got)
+	}
+}
+
+func TestNavHintText(t *testing.T) {
+	got := stripANSI(NavHintText("press enter"))
+	if !strings.Contains(got, "press enter") {
+		t.Errorf("NavHintText = %q, want to contain 'press enter'", got)
 	}
 }

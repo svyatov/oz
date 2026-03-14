@@ -426,7 +426,7 @@ Use --verbose to include labels, descriptions, and choice annotations.`,
 			}
 
 			parts := command.Build(w, values)
-			command.PrintCommand(parts)
+			command.PrintCommand(os.Stdout, parts)
 			return nil
 		},
 	}

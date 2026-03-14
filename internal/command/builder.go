@@ -3,6 +3,7 @@ package command
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/svyatov/oz/internal/config"
@@ -81,8 +82,8 @@ func FormatCommand(parts []Part) string {
 }
 
 // PrintCommand prints the colored command with consistent spacing (blank line above and below).
-func PrintCommand(parts []Part) {
-	fmt.Printf("\n  %s\n\n", formatCommandColored(parts))
+func PrintCommand(w io.Writer, parts []Part) {
+	_, _ = fmt.Fprintf(w, "\n  %s\n\n", formatCommandColored(parts))
 }
 
 // formatCommandColored returns the command with color-coded segments.
