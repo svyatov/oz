@@ -243,11 +243,11 @@ func (e *ValuesEditor) ViewEdit(indicator string) string {
 func (e *ValuesEditor) editNavHint() string {
 	switch e.editField.(type) {
 	case *SelectField, *ConfirmField:
-		return ui.PinsSelectEditNavHint()
+		return ui.NavHints(ui.HintUp, ui.HintDown, ui.HintEnter, ui.HintEsc)
 	case *MultiSelectField:
-		return ui.PinsMultiSelectEditNavHint()
+		return ui.NavHints(ui.HintUp, ui.HintDown, ui.Hint{Key: "space", Desc: "toggle"}, ui.HintEnter, ui.HintEsc)
 	default:
-		return ui.PinsEditNavHint()
+		return ui.NavHints(ui.HintEnter, ui.HintEsc)
 	}
 }
 

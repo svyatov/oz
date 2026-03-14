@@ -428,7 +428,7 @@ func (m *PresetsModel) viewList() string {
 
 	if len(m.presetNames) == 0 {
 		b.WriteString("  " + ui.MutedStyle.Render("No presets yet. Press n to create one.") + "\n")
-		b.WriteString("\n" + ui.PresetsEmptyHint() + "\n")
+		b.WriteString("\n" + ui.NavHints(ui.Hint{Key: "n", Desc: "new"}, ui.HintEscDone) + "\n")
 		return b.String()
 	}
 
@@ -439,7 +439,11 @@ func (m *PresetsModel) viewList() string {
 		b.WriteString(m.viewPresetRow(i, name, active, gutterWidth))
 	}
 
-	b.WriteString("\n" + ui.PresetsListNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(
+		ui.HintUp, ui.HintDown, ui.HintEdit,
+		ui.Hint{Key: "n", Desc: "new"}, ui.Hint{Key: "r", Desc: "rename"},
+		ui.Hint{Key: "d", Desc: "delete"}, ui.HintEscDone,
+	) + "\n")
 	return b.String()
 }
 
@@ -477,7 +481,10 @@ func (m *PresetsModel) viewValues() string {
 	if m.valuesWarning != "" {
 		b.WriteString("\n  " + ui.WarningText(m.valuesWarning) + "\n")
 	}
-	b.WriteString("\n" + ui.PresetsValuesNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(
+		ui.HintUp, ui.HintDown, ui.HintCycle,
+		ui.HintEdit, ui.HintSpace, ui.HintEscBack,
+	) + "\n")
 	return b.String()
 }
 
@@ -492,7 +499,7 @@ func (m *PresetsModel) viewName() string {
 	if m.nameErr != "" {
 		b.WriteString("  " + ui.WarningText(m.nameErr) + "\n")
 	}
-	b.WriteString("\n" + ui.PresetsNameNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(ui.HintEnter, ui.HintEsc) + "\n")
 	return b.String()
 }
 
@@ -514,7 +521,7 @@ func (m *PresetsModel) viewSource() string {
 		fmt.Fprintf(&b, "   %s%s  %s\n", cursor, num, label)
 	}
 
-	b.WriteString("\n" + ui.PresetsSourceNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(ui.HintNav, ui.HintSelect, ui.HintEsc) + "\n")
 	return b.String()
 }
 

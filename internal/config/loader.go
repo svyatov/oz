@@ -6,16 +6,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v3"
 )
 
 // DefaultConfigDir returns the default oz config directory.
+// Respects $OZ_CONFIG_DIR, then $XDG_CONFIG_HOME/oz, then ~/.config/oz.
 func DefaultConfigDir() string {
 	if dir, ok := os.LookupEnv("OZ_CONFIG_DIR"); ok {
 		return dir
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "oz")
+	return filepath.Join(xdg.ConfigHome, "oz")
 }
 
 // WizardsDir returns the wizards subdirectory.

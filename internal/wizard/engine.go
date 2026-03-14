@@ -211,7 +211,7 @@ func (m *Engine) View() tea.View {
 	}
 
 	// Nav hint
-	b.WriteString("\n" + ui.NavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(ui.HintUp, ui.HintDown, ui.HintBack, ui.HintNext, ui.HintEscQuit) + "\n")
 
 	return tea.NewView(b.String())
 }

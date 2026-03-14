@@ -1,31 +1,21 @@
 package main
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-)
+import "charm.land/huh/v2"
 
 func confirmPrompt(msg string) bool {
-	fmt.Printf("%s [Y/n] ", msg)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimSpace(strings.ToLower(line))
-	return line == "" || line == "y" || line == "yes"
+	confirm := true
+	_ = huh.NewConfirm().Title(msg).Affirmative("Yes").Negative("No").Value(&confirm).Run()
+	return confirm
 }
 
 func confirmDangerousPrompt(msg string) bool {
-	fmt.Printf("%s [y/N] ", msg)
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	line = strings.TrimSpace(strings.ToLower(line))
-	return line == "y" || line == "yes"
+	var confirm bool
+	_ = huh.NewConfirm().Title(msg).Affirmative("Yes").Negative("No").Value(&confirm).Run()
+	return confirm
 }
 
 func promptPresetSave() string {
-	fmt.Print("  Save as preset? (name or Enter to skip): ")
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
-	return strings.TrimSpace(line)
+	var name string
+	_ = huh.NewInput().Title("Save as preset?").Placeholder("name or Enter to skip").Value(&name).Run()
+	return name
 }

@@ -17,7 +17,7 @@ func validateName(name string) error {
 	if name == "" {
 		return errors.New("invalid name: must not be empty")
 	}
-	if strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+	if !filepath.IsLocal(name) {
 		return fmt.Errorf("invalid name %q: must not contain path separators or '..'", name)
 	}
 	return nil

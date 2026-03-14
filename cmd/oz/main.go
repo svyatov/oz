@@ -8,6 +8,8 @@ import (
 	"strings"
 	"syscall"
 
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/table"
 	"github.com/spf13/cobra"
 
 	"github.com/svyatov/oz/internal/config"
@@ -240,48 +242,42 @@ func listRemote() error {
 		installed[w.Name] = true
 	}
 
-	maxLen := 0
+	t := newListTable()
 	for _, e := range idx.Wizards {
-		if len(e.Name) > maxLen {
-			maxLen = len(e.Name)
-		}
-	}
-
-	fmt.Println()
-	for _, e := range idx.Wizards {
-		name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, e.Name))
-		desc := ""
-		if e.Description != "" {
-			desc = "  " + ui.MutedStyle.Render(e.Description)
-		}
 		tag := ""
 		if installed[e.Name] {
-			tag = "  " + ui.GreenStyle.Render("(installed)")
+			tag = ui.GreenStyle.Render("(installed)")
 		}
-		fmt.Println(name + desc + tag)
+		t.Row(e.Name, e.Description, tag)
 	}
-	fmt.Println()
+	fmt.Println("\n" + t.Render())
 	return nil
 }
 
 func printWizardList(wizards []*config.Wizard) {
-	maxLen := 0
+	t := newListTable()
 	for _, w := range wizards {
-		if len(w.Name) > maxLen {
-			maxLen = len(w.Name)
-		}
+		t.Row(w.Name, w.Description)
 	}
+	fmt.Println("\n" + t.Render())
+}
 
-	fmt.Println()
-	for _, w := range wizards {
-		name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, w.Name))
-		desc := ""
-		if w.Description != "" {
-			desc = "  " + ui.MutedStyle.Render(w.Description)
-		}
-		fmt.Println(name + desc)
-	}
-	fmt.Println()
+func newListTable() *table.Table {
+	return table.New().
+		Border(lipgloss.HiddenBorder()).
+		BorderTop(false).
+		BorderBottom(false).
+		BorderLeft(false).
+		BorderRight(false).
+		BorderColumn(false).
+		StyleFunc(func(_, col int) lipgloss.Style {
+			switch col {
+			case 0:
+				return lipgloss.NewStyle().Foreground(ui.Accent).PaddingLeft(1)
+			default:
+				return lipgloss.NewStyle().Foreground(ui.Muted)
+			}
+		})
 }
 
 func removeCmd() *cobra.Command {

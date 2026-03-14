@@ -467,7 +467,7 @@ func (m *VersionLoaderModel) viewSelect() string {
 		fmt.Fprintf(&b, "   %s%s  %s%s\n", cursor, num, label, suffix)
 	}
 
-	b.WriteString("\n" + ui.NavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(ui.HintUp, ui.HintDown, ui.HintBack, ui.HintNext, ui.HintEscQuit) + "\n")
 	return b.String()
 }
 

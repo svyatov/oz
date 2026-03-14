@@ -221,8 +221,8 @@ func TestPathTraversalRejected(t *testing.T) {
 	}{
 		{"dot-dot escape", "../escape", true},
 		{"nested slash", "foo/bar", true},
-		{"backslash", `foo\bar`, true},
-		{"double dot in middle", "foo..bar", true},
+		{"backslash", `foo\bar`, false},
+		{"double dot in middle", "foo..bar", false},
 		{"empty name", "", true},
 		{"valid name", "my-preset", false},
 		{"valid with dots", "v1.2.3", false},

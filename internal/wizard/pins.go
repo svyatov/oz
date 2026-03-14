@@ -259,7 +259,10 @@ func (m *PinsModel) viewList() string {
 		}
 	}
 
-	b.WriteString("\n" + ui.PinsListNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(
+			ui.HintUp, ui.HintDown, ui.HintCycle, ui.HintEdit,
+			ui.Hint{Key: "space", Desc: "toggle pin"}, ui.HintEscDone,
+		) + "\n")
 	return b.String()
 }
 
@@ -296,7 +299,7 @@ func (m *PinsModel) viewEdit() string {
 	if m.verifyErr != "" {
 		b.WriteString("\n  " + ui.WarningText(m.verifyErr))
 	}
-	b.WriteString("\n" + ui.PinsEditNavHint() + "\n")
+	b.WriteString("\n" + ui.NavHints(ui.HintEnter, ui.HintEsc) + "\n")
 	return b.String()
 }
 

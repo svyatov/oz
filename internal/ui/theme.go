@@ -4,6 +4,7 @@ package ui
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/term"
@@ -118,15 +119,35 @@ func hintKey(key, desc string) string {
 
 func hintSep() string { return hintStyle.Render(" \u00b7 ") }
 
-// NavHint renders the navigation hint line (dimmest text).
-func NavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("shift+tab", "back") + hintSep() +
-		hintKey("tab/enter", "next") + hintSep() +
-		hintKey("esc", "quit")
+// Hint is a key-description pair for navigation hints.
+type Hint struct{ Key, Desc string }
+
+// NavHints renders a hint bar from key-description pairs.
+func NavHints(hints ...Hint) string {
+	parts := make([]string, len(hints))
+	for i, h := range hints {
+		parts[i] = hintKey(h.Key, h.Desc)
+	}
+	return "  " + strings.Join(parts, hintSep())
 }
+
+// Common hint building blocks.
+var (
+	HintUp       = Hint{Key: "\u2191/k", Desc: "up"}
+	HintDown     = Hint{Key: "\u2193/j", Desc: "down"}
+	HintNav      = Hint{Key: "\u2191\u2193/jk", Desc: "navigate"}
+	HintCycle    = Hint{Key: "\u2190/h \u2192/l", Desc: "cycle"}
+	HintBack     = Hint{Key: "shift+tab", Desc: "back"}
+	HintNext     = Hint{Key: "tab/enter", Desc: "next"}
+	HintEdit     = Hint{Key: "enter", Desc: "edit"}
+	HintEnter    = Hint{Key: "enter", Desc: "confirm"}
+	HintSelect   = Hint{Key: "enter", Desc: "select"}
+	HintSpace    = Hint{Key: "space", Desc: "toggle"}
+	HintEsc      = Hint{Key: "esc", Desc: "cancel"}
+	HintEscDone  = Hint{Key: "esc", Desc: "done"}
+	HintEscBack  = Hint{Key: "esc", Desc: "back"}
+	HintEscQuit  = Hint{Key: "esc", Desc: "quit"}
+)
 
 // StepCounter returns a formatted step counter like "01/05" in accent color.
 func StepCounter(current, total int) string {
@@ -182,91 +203,9 @@ func PinEditIndicator() string {
 	return lipgloss.NewStyle().Foreground(Accent).Bold(true).Render("pin")
 }
 
-// PinsListNavHint renders the nav hint for pin list mode.
-func PinsListNavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("\u2190/h \u2192/l", "cycle") + hintSep() +
-		hintKey("enter", "edit") + hintSep() +
-		hintKey("space", "toggle pin") + hintSep() +
-		hintKey("esc", "done")
-}
-
-// PinsEditNavHint renders the nav hint for pin edit mode.
-func PinsEditNavHint() string {
-	return "  " +
-		hintKey("enter", "confirm") + hintSep() +
-		hintKey("esc", "cancel")
-}
-
-// PinsSelectEditNavHint renders the nav hint for pin edit mode on select fields.
-func PinsSelectEditNavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("enter", "confirm") + hintSep() +
-		hintKey("esc", "cancel")
-}
-
-// PinsMultiSelectEditNavHint renders the nav hint for pin edit mode on multi-select fields.
-func PinsMultiSelectEditNavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("space", "toggle") + hintSep() +
-		hintKey("enter", "confirm") + hintSep() +
-		hintKey("esc", "cancel")
-}
-
 // PresetEditIndicator renders the "preset" label for edit mode headers.
 func PresetEditIndicator() string {
 	return lipgloss.NewStyle().Foreground(Accent).Bold(true).Render("preset")
-}
-
-// PresetsListNavHint renders the nav hint for preset list mode.
-func PresetsListNavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("enter", "edit") + hintSep() +
-		hintKey("n", "new") + hintSep() +
-		hintKey("r", "rename") + hintSep() +
-		hintKey("d", "delete") + hintSep() +
-		hintKey("esc", "done")
-}
-
-// PresetsEmptyHint renders the nav hint for empty preset list.
-func PresetsEmptyHint() string {
-	return "  " +
-		hintKey("n", "new") + hintSep() +
-		hintKey("esc", "done")
-}
-
-// PresetsValuesNavHint renders the nav hint for preset value editing list mode.
-func PresetsValuesNavHint() string {
-	return "  " +
-		hintKey("\u2191/k", "up") + hintSep() +
-		hintKey("\u2193/j", "down") + hintSep() +
-		hintKey("\u2190/h \u2192/l", "cycle") + hintSep() +
-		hintKey("enter", "edit") + hintSep() +
-		hintKey("space", "toggle") + hintSep() +
-		hintKey("esc", "back")
-}
-
-// PresetsNameNavHint renders the nav hint for preset name input mode.
-func PresetsNameNavHint() string {
-	return "  " +
-		hintKey("enter", "confirm") + hintSep() +
-		hintKey("esc", "cancel")
-}
-
-// PresetsSourceNavHint renders the nav hint for preset source selection mode.
-func PresetsSourceNavHint() string {
-	return "  " +
-		hintKey("\u2191\u2193/jk", "navigate") + hintSep() +
-		hintKey("enter", "select") + hintSep() +
-		hintKey("esc", "cancel")
 }
 
 // WarningText renders a warning message in the warning color.
