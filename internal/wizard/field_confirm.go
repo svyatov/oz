@@ -29,9 +29,9 @@ func (f *ConfirmField) Init() tea.Cmd { return nil }
 func (f *ConfirmField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch msg.String() {
 	case keyUp, "k":
-		f.cursor = 0
+		f.cursor = cursorUp(f.cursor, 2)
 	case keyDown, "j":
-		f.cursor = 1
+		f.cursor = cursorDown(f.cursor, 2)
 	case keyEnter, keyTab:
 		f.value = f.cursor == 0
 		return true, nil
@@ -67,19 +67,12 @@ func (f *ConfirmField) View() string {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, 1, active)
 
-		var cursor string
-		if active {
-			cursor = " " + ui.Cursor() + " "
-		} else {
-			cursor = cursorBlank
-		}
-
 		styledLabel := ui.ChoiceLabel(item, active)
 		tag := ""
 		if f.defaultValue != nil && (i == 0) == *f.defaultValue {
 			tag = " " + ui.DefaultTag()
 		}
-		fmt.Fprintf(&b, "   %s%s  %s%s\n", cursor, num, styledLabel, tag)
+		fmt.Fprintf(&b, "   %s%s  %s%s\n", choiceCursor(active), num, styledLabel, tag)
 	}
 
 	return b.String()

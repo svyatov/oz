@@ -41,22 +41,19 @@ func (f *SelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 
 	switch msg.String() {
 	case keyUp, "k":
-		f.cursor = (f.cursor - 1 + n) % n
+		f.cursor = cursorUp(f.cursor, n)
 	case keyDown, "j":
-		f.cursor = (f.cursor + 1) % n
+		f.cursor = cursorDown(f.cursor, n)
 	case keyEnter, keyTab:
 		f.value = f.valueAt(f.cursor)
 		return true, nil
 	}
 
-	// Number keys 1–9: select and submit
-	if msg.Code >= '1' && msg.Code <= '9' {
-		idx := int(msg.Code-'0') - 1
-		if idx < n {
-			f.cursor = idx
-			f.value = f.valueAt(idx)
-			return true, nil
-		}
+	// Number keys 1–9: select and submit.
+	if idx := numberKeyIndex(msg.Code, n); idx >= 0 {
+		f.cursor = idx
+		f.value = f.valueAt(idx)
+		return true, nil
 	}
 
 	return false, nil
@@ -75,11 +72,6 @@ func (f *SelectField) View() string {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, gutterWidth, active)
 
-		cursor := cursorBlank
-		if active {
-			cursor = " " + ui.Cursor() + " "
-		}
-
 		label, desc := f.itemAt(i)
 		styledLabel := ui.ChoiceLabel(label, active)
 
@@ -91,7 +83,7 @@ func (f *SelectField) View() string {
 		}
 		pad := strings.Repeat(" ", maxDisplay-displayLen)
 
-		line := fmt.Sprintf("   %s%s  %s%s%s", cursor, num, styledLabel, tag, pad)
+		line := fmt.Sprintf("   %s%s  %s%s%s", choiceCursor(active), num, styledLabel, tag, pad)
 		if desc != "" {
 			line += "   " + ui.ChoiceDesc(desc)
 		}

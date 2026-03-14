@@ -307,7 +307,7 @@ func pinsClearCmd(wizardName string) *cobra.Command {
 				return err
 			}
 
-			if !force && !confirmDangerousPrompt("Clear all pins?") {
+			if !force && !confirmPrompt("Clear all pins?", false) {
 				ui.InfoMsgf("Cancelled")
 				return nil
 			}
@@ -492,7 +492,7 @@ unless --force is set.`,
 			}
 
 			if !force && st.PresetExists(wizardName, args[0]) {
-				if !confirmDangerousPrompt(fmt.Sprintf("Overwrite preset %q?", args[0])) {
+				if !confirmPrompt(fmt.Sprintf("Overwrite preset %q?", args[0]), false) {
 					ui.InfoMsgf("Cancelled")
 					return nil
 				}
@@ -524,7 +524,7 @@ func presetsRemoveCmd(wizardName string) *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completePresetNames(wizardName),
 		RunE: func(_ *cobra.Command, args []string) error {
-			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove preset %q?", args[0])) {
+			if !force && !confirmPrompt(fmt.Sprintf("Remove preset %q?", args[0]), false) {
 				ui.InfoMsgf("Cancelled")
 				return nil
 			}

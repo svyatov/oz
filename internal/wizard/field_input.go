@@ -34,6 +34,7 @@ func NewInputField(opt config.Option) *InputField {
 		required:    opt.Required,
 	}
 	if opt.Validate != nil && opt.Validate.Pattern != "" {
+		// Pattern already validated by config.Validate; compile error is impossible here.
 		f.compiledPattern, _ = regexp.Compile(opt.Validate.Pattern)
 	}
 	return f

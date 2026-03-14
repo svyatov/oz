@@ -64,3 +64,28 @@ func fieldHeader(label, description string) string {
 	b.WriteString("\n")
 	return b.String()
 }
+
+// choiceCursor renders the cursor indicator — active arrow or blank padding.
+func choiceCursor(active bool) string {
+	if active {
+		return " " + ui.Cursor() + " "
+	}
+	return cursorBlank
+}
+
+// cursorUp moves the cursor up with wrap-around.
+func cursorUp(cursor, n int) int { return (cursor - 1 + n) % n }
+
+// cursorDown moves the cursor down with wrap-around.
+func cursorDown(cursor, n int) int { return (cursor + 1) % n }
+
+// numberKeyIndex converts a number key press (1-9) to a zero-based index.
+// Returns -1 if the key is not a number or the index exceeds n.
+func numberKeyIndex(code rune, n int) int {
+	if code >= '1' && code <= '9' {
+		if idx := int(code-'0') - 1; idx < n {
+			return idx
+		}
+	}
+	return -1
+}

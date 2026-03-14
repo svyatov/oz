@@ -304,7 +304,7 @@ reinstalled later.`,
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("wizard config not found: %s", path)
 			}
-			if !force && !confirmDangerousPrompt(fmt.Sprintf("Remove wizard %q?", args[0])) {
+			if !force && !confirmPrompt(fmt.Sprintf("Remove wizard %q?", args[0]), false) {
 				ui.InfoMsgf("Cancelled")
 				return nil
 			}

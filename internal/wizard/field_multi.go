@@ -37,9 +37,9 @@ func (f *MultiSelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 
 	switch msg.String() {
 	case keyUp, "k":
-		f.cursor = (f.cursor - 1 + n) % n
+		f.cursor = cursorUp(f.cursor, n)
 	case keyDown, "j":
-		f.cursor = (f.cursor + 1) % n
+		f.cursor = cursorDown(f.cursor, n)
 	case keySpace, "x":
 		f.selected[f.cursor] = !f.selected[f.cursor]
 	case "a":
@@ -57,13 +57,10 @@ func (f *MultiSelectField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, nil
 	}
 
-	// Number keys 1–9: toggle selection
-	if msg.Code >= '1' && msg.Code <= '9' {
-		idx := int(msg.Code-'0') - 1
-		if idx < n {
-			f.cursor = idx
-			f.selected[idx] = !f.selected[idx]
-		}
+	// Number keys 1–9: toggle selection.
+	if idx := numberKeyIndex(msg.Code, n); idx >= 0 {
+		f.cursor = idx
+		f.selected[idx] = !f.selected[idx]
 	}
 
 	return false, nil
@@ -86,13 +83,6 @@ func (f *MultiSelectField) View() string {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, gutterWidth, active)
 
-		var cursor string
-		if active {
-			cursor = " " + ui.Cursor() + " "
-		} else {
-			cursor = cursorBlank
-		}
-
 		check := "[ ]"
 		if f.selected[i] {
 			check = "[x]"
@@ -101,7 +91,7 @@ func (f *MultiSelectField) View() string {
 		styledLabel := ui.ChoiceLabel(c.Label, active)
 		pad := strings.Repeat(" ", maxLabel-len(c.Label))
 
-		line := fmt.Sprintf("   %s%s  %s %s%s", cursor, num, check, styledLabel, pad)
+		line := fmt.Sprintf("   %s%s  %s %s%s", choiceCursor(active), num, check, styledLabel, pad)
 		if c.Description != "" {
 			line += "   " + ui.ChoiceDesc(c.Description)
 		}
