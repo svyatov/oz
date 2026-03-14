@@ -48,6 +48,11 @@ cmd/oz/
   wizard.go            Wizard runner wiring
   prompt.go            Post-run confirmation prompts
   template.go          Wizard YAML template for create
+  generate.go          Generate wizard YAML from --help output
+  → generate/
+      parse.go         Parse --help text into []Flag (GNU, Cobra, kubectl, Clap, argparse, Thor, man page)
+      emit.go          Convert []Flag to scaffold YAML string
+      testdata/        60 real-world --help fixtures for regression testing
   → config/
       schema.go        Type definitions (Wizard, Option, OptionType, FlagStyle)
       value.go         FieldValue sum type (string | bool | []string)
@@ -75,6 +80,7 @@ oz list (l, ls)              list available wizards
 oz validate <wizard>         validate wizard config
 oz edit (e) <wizard>         open wizard YAML in $EDITOR
 oz create (c, new) <wizard>  scaffold new wizard from template
+oz generate (g, gen) <tool>  generate wizard YAML from --help output
 oz remove (rm) <wizard>      delete wizard config (--force to skip confirm)
 oz run (r) <wizard>
 ├── -n, --dry-run
@@ -100,6 +106,10 @@ oz run (r) <wizard>
 - Config structs use `yaml` struct tags, parsed via `gopkg.in/yaml.v3`
 - Version constraints use `github.com/Masterminds/semver/v3` — supports `>=`, `<=`, `>`, `<`, `=`, `!=`,
   tilde (`~1.2`), caret (`^2.0`), wildcards (`1.2.x`), hyphen ranges (`1.2 - 1.4`), and OR (`||`)
+- `generate.Parse()` — multi-format help parser with ANSI stripping, section detection, GNU/kubectl/Thor
+  preprocessing, best-of-both (section-aware vs full-scan) strategy, and enum/default extraction
+- `generate.Emit()` — converts `[]Flag` to valid scaffold YAML with type inference, name dedup, and
+  clean descriptions. 60 fixture regression tests across 59 CLI tools
 
 ## Go Conventions
 

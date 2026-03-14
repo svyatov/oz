@@ -68,11 +68,12 @@ options:
 | `oz add <name>` | Install a wizard from registry or local file |
 | `oz update <wizard>` | Re-fetch a wizard from the registry |
 | `oz create <name>` | Create a new wizard from template |
+| `oz generate <tool> [subcmd...]` | Generate wizard YAML from `--help` output |
 | `oz edit <wizard>` | Open wizard config in `$EDITOR` |
 | `oz remove <wizard>` | Remove a wizard config |
 | `oz validate <path>` | Validate a wizard YAML file |
 
-**Aliases:** `r` (run), `c`/`new` (create), `e` (edit), `rm` (remove), `l`/`ls` (list), `u` (update).
+**Aliases:** `r` (run), `c`/`new` (create), `g`/`gen` (generate), `e` (edit), `rm` (remove), `l`/`ls` (list), `u` (update).
 
 ### Per-Wizard Subcommands
 
@@ -168,3 +169,25 @@ Load choices from a shell command at runtime:
   label: Branch
   choices_from: git branch --format='%(refname:short)'
 ```
+
+## Generate Wizards from `--help`
+
+Instead of writing YAML from scratch, scaffold a wizard from any CLI tool's help output:
+
+```bash
+oz generate docker run           # parse docker run --help → wizard YAML
+oz generate kubectl apply        # subcommand support
+oz generate rails new --install  # generate + install to config dir + open editor
+oz generate --stdin --name curl < <(curl --help all)  # pipe help text
+```
+
+The parser auto-detects help format and handles GNU, Cobra, kubectl/pflag, Clap (Rust), argparse (Python), Thor (Ruby), dry-cli (Hanami), npm, man pages, Homebrew, and headerless formats. Tested against 59 real-world CLI tools across Ruby, Python, Node, Go, Rust, Docker, Kubernetes, AWS, GCP, Azure, and more.
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `-n, --name` | Override wizard name |
+| `-o, --output` | Write to file instead of stdout |
+| `-i, --install` | Install to config dir and open in editor |
+| `--stdin` | Read help text from stdin (requires `--name`) |
