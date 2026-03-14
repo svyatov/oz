@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/svyatov/oz/internal/config"
+	"github.com/svyatov/oz/internal/registry"
 	"github.com/svyatov/oz/internal/ui"
 )
 
@@ -50,6 +51,8 @@ func newRootCmd(args []string) *cobra.Command {
 	root.AddCommand(editCmd())
 	root.AddCommand(removeCmd())
 	root.AddCommand(createCmd())
+	root.AddCommand(addCmd())
+	root.AddCommand(updateCmd())
 
 	if name := detectWizardName(args); name != "" {
 		run.AddCommand(wizardCmd(name))
@@ -179,41 +182,106 @@ func findEditor() (string, error) {
 }
 
 func listCmd() *cobra.Command {
-	return &cobra.Command{
+	var remote bool
+
+	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
 		Short:   "List available wizards",
-		Long:    "List all wizard configs found in the config directory.",
-		Example: "  oz list",
-		RunE: func(_ *cobra.Command, _ []string) error {
-			wizards, err := config.ListWizards(configDir)
-			if err != nil {
-				return fmt.Errorf("listing wizards: %w", err)
-			}
-			if len(wizards) == 0 {
-				ui.InfoMsgf("No wizards found in %s", config.WizardsDir(configDir))
-				return nil
-			}
-			maxLen := 0
-			for _, w := range wizards {
-				if len(w.Name) > maxLen {
-					maxLen = len(w.Name)
-				}
-			}
+		Long: `List all wizard configs found in the config directory.
 
-			fmt.Println()
-			for _, w := range wizards {
-				name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, w.Name))
-				desc := ""
-				if w.Description != "" {
-					desc = "  " + ui.MutedStyle.Render(w.Description)
-				}
-				fmt.Println(name + desc)
+Use --remote to list wizards available in the remote registry.`,
+		Example: "  oz list\n  oz list --remote",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if remote {
+				return listRemote()
 			}
-			fmt.Println()
-			return nil
+			return listLocal()
 		},
 	}
+
+	cmd.Flags().BoolVar(&remote, "remote", false, "list wizards from the remote registry")
+
+	return cmd
+}
+
+func listLocal() error {
+	wizards, err := config.ListWizards(configDir)
+	if err != nil {
+		return fmt.Errorf("listing wizards: %w", err)
+	}
+	if len(wizards) == 0 {
+		ui.InfoMsgf("No wizards found in %s", config.WizardsDir(configDir))
+		return nil
+	}
+	printWizardList(wizards)
+	return nil
+}
+
+func listRemote() error {
+	client := registry.New(registry.DefaultBaseURL())
+
+	idx, err := client.FetchIndex()
+	if err != nil {
+		return fmt.Errorf("fetching registry: %w", err)
+	}
+
+	if len(idx.Wizards) == 0 {
+		ui.InfoMsgf("No wizards found in registry")
+		return nil
+	}
+
+	local, err := config.ListWizards(configDir)
+	if err != nil {
+		return fmt.Errorf("listing local wizards: %w", err)
+	}
+	installed := make(map[string]bool, len(local))
+	for _, w := range local {
+		installed[w.Name] = true
+	}
+
+	maxLen := 0
+	for _, e := range idx.Wizards {
+		if len(e.Name) > maxLen {
+			maxLen = len(e.Name)
+		}
+	}
+
+	fmt.Println()
+	for _, e := range idx.Wizards {
+		name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, e.Name))
+		desc := ""
+		if e.Description != "" {
+			desc = "  " + ui.MutedStyle.Render(e.Description)
+		}
+		tag := ""
+		if installed[e.Name] {
+			tag = "  " + ui.GreenStyle.Render("(installed)")
+		}
+		fmt.Println(name + desc + tag)
+	}
+	fmt.Println()
+	return nil
+}
+
+func printWizardList(wizards []*config.Wizard) {
+	maxLen := 0
+	for _, w := range wizards {
+		if len(w.Name) > maxLen {
+			maxLen = len(w.Name)
+		}
+	}
+
+	fmt.Println()
+	for _, w := range wizards {
+		name := ui.AccentStyle.Render(fmt.Sprintf("  %-*s", maxLen, w.Name))
+		desc := ""
+		if w.Description != "" {
+			desc = "  " + ui.MutedStyle.Render(w.Description)
+		}
+		fmt.Println(name + desc)
+	}
+	fmt.Println()
 }
 
 func removeCmd() *cobra.Command {
