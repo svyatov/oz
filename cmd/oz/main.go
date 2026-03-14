@@ -59,6 +59,7 @@ Respects NO_COLOR environment variable to disable colored output.`,
 	root.AddCommand(createCmd())
 	root.AddCommand(addCmd())
 	root.AddCommand(updateCmd())
+	root.AddCommand(generateCmd())
 
 	if name := detectWizardName(args); name != "" {
 		run.AddCommand(wizardCmd(name))

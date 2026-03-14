@@ -1,0 +1,17 @@
+Usage: bun init [flags] [<folder>]
+  Initialize a Bun project in the current directory.
+  Creates a package.json, tsconfig.json, and bunfig.toml if they don't exist.
+
+Flags:
+      --help             Print this menu
+  -y, --yes              Accept all default options
+  -m, --minimal          Only initialize type definitions
+  -r, --react            Initialize a React project
+      --react=tailwind   Initialize a React project with TailwindCSS
+      --react=shadcn     Initialize a React project with @shadcn/ui and TailwindCSS
+
+Examples:
+  bun init
+  bun init --yes
+  bun init --react
+  bun init --react=tailwind my-app

@@ -1,0 +1,1423 @@
+[m[1mNAME[m
+    gcloud compute instances create - create Compute Engine virtual machine
+        instances
+
+[m[1mSYNOPSIS[m
+    [1mgcloud compute instances create[m [4mINSTANCE_NAMES[m [[4mINSTANCE_NAMES[m ...]
+        [[1m--accelerator[m=[[4mcount[m=[4mCOUNT[m],[[4mtype[m=[4mTYPE[m]] [[1m--async[m]
+        [[1m--availability-domain[m=[4mAVAILABILITY_DOMAIN[m]
+        [[1m--no-boot-disk-auto-delete[m]
+        [[1m--boot-disk-device-name[m=[4mBOOT_DISK_DEVICE_NAME[m]
+        [[1m--boot-disk-interface[m=[4mBOOT_DISK_INTERFACE[m]
+        [[1m--boot-disk-provisioned-iops[m=[4mBOOT_DISK_PROVISIONED_IOPS[m]
+        [[1m--boot-disk-provisioned-throughput[m=[4mBOOT_DISK_PROVISIONED_THROUGHPUT[m]
+        [[1m--boot-disk-size[m=[4mBOOT_DISK_SIZE[m] [[1m--boot-disk-type[m=[4mBOOT_DISK_TYPE[m]
+        [[1m--can-ip-forward[m] [[1m--create-disk[m=[[4mPROPERTY[m=[4mVALUE[m,...]]
+        [[1m--csek-key-file[m=[4mFILE[m] [[1m--deletion-protection[m]
+        [[1m--description[m=[4mDESCRIPTION[m]
+        [[1m--discard-local-ssds-at-termination-timestamp[m=[4mDISCARD_LOCAL_SSDS_AT_TERMINATION_TIMESTAMP[m]
+        [[1m--disk[m=[[4mauto-delete[m=[4mAUTO-DELETE[m],[[4mboot[m=[4mBOOT[m],[[4mdevice-name[m=[4mDEVICE-NAME[m],
+          [[4mforce-attach[m=[4mFORCE-ATTACH[m],
+          [[4minterface[m=[4mINTERFACE[m],[[4mmode[m=[4mMODE[m],[[4mname[m=[4mNAME[m],[[4mscope[m=[4mSCOPE[m]]
+        [[1m--enable-display-device[m] [[1m--[no-]enable-nested-virtualization[m]
+        [[1m--[no-]enable-uefi-networking[m] [[1m--erase-windows-vss-signature[m]
+        [[1m--external-ipv6-address[m=[4mEXTERNAL_IPV6_ADDRESS[m]
+        [[1m--external-ipv6-prefix-length[m=[4mEXTERNAL_IPV6_PREFIX_LENGTH[m]
+        [[1m--host-error-timeout-seconds[m=[4mHOST_ERROR_TIMEOUT_SECONDS[m]
+        [[1m--hostname[m=[4mHOSTNAME[m]
+        [[1m--instance-termination-action[m=[4mINSTANCE_TERMINATION_ACTION[m]
+        [[1m--internal-ipv6-address[m=[4mINTERNAL_IPV6_ADDRESS[m]
+        [[1m--internal-ipv6-prefix-length[m=[4mINTERNAL_IPV6_PREFIX_LENGTH[m]
+        [[1m--ipv6-network-tier[m=[4mIPV6_NETWORK_TIER[m]
+        [[1m--ipv6-public-ptr-domain[m=[4mIPV6_PUBLIC_PTR_DOMAIN[m]
+        [[1m--key-revocation-action-type[m=[4mPOLICY[m] [[1m--labels[m=[[4mKEY[m=[4mVALUE[m,...]]
+        [[1m--local-ssd[m=[[4mdevice-name[m=[4mDEVICE-NAME[m],
+          [[4minterface[m=[4mINTERFACE[m],[[4msize[m=[4mSIZE[m]]
+        [[1m--local-ssd-recovery-timeout[m=[4mLOCAL_SSD_RECOVERY_TIMEOUT[m]
+        [[1m--machine-type[m=[4mMACHINE_TYPE[m] [[1m--maintenance-policy[m=[4mMAINTENANCE_POLICY[m]
+        [[1m--max-run-duration[m=[4mMAX_RUN_DURATION[m]
+        [[1m--metadata[m=[4mKEY[m=[4mVALUE[m,[[4mKEY[m=[4mVALUE[m,...]]
+        [[1m--metadata-from-file[m=[4mKEY[m=[4mLOCAL_FILE_PATH[m,[...]]
+        [[1m--min-cpu-platform[m=[4mPLATFORM[m] [[1m--min-node-cpu[m=[4mMIN_NODE_CPU[m]
+        [[1m--network[m=[4mNETWORK[m] [[1m--network-interface[m=[[4mPROPERTY[m=[4mVALUE[m,...]]
+        [[1m--network-performance-configs[m=[[4mPROPERTY[m=[4mVALUE[m,...]]
+        [[1m--network-tier[m=[4mNETWORK_TIER[m] [[1m--node-project[m=[4mNODE_PROJECT[m]
+        [[1m--performance-monitoring-unit[m=[4mPERFORMANCE_MONITORING_UNIT[m]
+        [[1m--preemptible[m]
+        [[1m--private-ipv6-google-access-type[m=[4mPRIVATE_IPV6_GOOGLE_ACCESS_TYPE[m]
+        [[1m--private-network-ip[m=[4mPRIVATE_NETWORK_IP[m]
+        [[1m--provisioning-model[m=[4mPROVISIONING_MODEL[m]
+        [[1m--request-valid-for-duration[m=[4mREQUEST_VALID_FOR_DURATION[m]
+        [[1m--no-require-csek-key-create[m]
+        [[1m--resource-manager-tags[m=[[4mKEY[m=[4mVALUE[m,...]]
+        [[1m--resource-policies[m=[[4mRESOURCE_POLICY[m,...]] [[1m--no-restart-on-failure[m]
+        [[1m--shielded-integrity-monitoring[m] [[1m--shielded-secure-boot[m]
+        [[1m--shielded-vtpm[m] [[1m--[no-]skip-guest-os-shutdown[m]
+        [[1m--source-instance-template[m=[4mSOURCE_INSTANCE_TEMPLATE[m]
+        [[1m--source-machine-image[m=[4mSOURCE_MACHINE_IMAGE[m]
+        [[1m--source-machine-image-csek-key-file[m=[4mFILE[m] [[1m--stack-type[m=[4mSTACK_TYPE[m]
+        [[1m--subnet[m=[4mSUBNET[m] [[1m--tags[m=[4mTAG[m,[[4mTAG[m,...]]
+        [[1m--termination-time[m=[4mTERMINATION_TIME[m]
+        [[1m--threads-per-core[m=[4mTHREADS_PER_CORE[m] [[1m--turbo-mode[m=[4mTURBO_MODE[m]
+        [[1m--visible-core-count[m=[4mVISIBLE_CORE_COUNT[m] [[1m--zone[m=[4mZONE[m]
+        [[1m--address[m=[4mADDRESS[m | [1m--no-address[m]
+        [[1m--boot-disk-kms-key[m=[4mBOOT_DISK_KMS_KEY[m
+          : [1m--boot-disk-kms-keyring[m=[4mBOOT_DISK_KMS_KEYRING[m
+          [1m--boot-disk-kms-location[m=[4mBOOT_DISK_KMS_LOCATION[m
+          [1m--boot-disk-kms-project[m=[4mBOOT_DISK_KMS_PROJECT[m]
+        [[1m--confidential-compute[m
+          | [1m--confidential-compute-type[m=[4mCONFIDENTIAL_COMPUTE_TYPE[m]
+        [[1m--custom-cpu[m=[4mCUSTOM_CPU[m [1m--custom-memory[m=[4mCUSTOM_MEMORY[m
+          : [1m--custom-extensions[m [1m--custom-vm-type[m=[4mCUSTOM_VM_TYPE[m]
+        [[1m--image-family-scope[m=[4mIMAGE_FAMILY_SCOPE[m
+          [1m--image-project[m=[4mIMAGE_PROJECT[m [1m--image[m=[4mIMAGE[m
+          | [1m--image-family[m=[4mIMAGE_FAMILY[m | [1m--source-snapshot[m=[4mSOURCE_SNAPSHOT[m]
+        [[1m--instance-kms-key[m=[4mINSTANCE_KMS_KEY[m
+          : [1m--instance-kms-keyring[m=[4mINSTANCE_KMS_KEYRING[m
+          [1m--instance-kms-location[m=[4mINSTANCE_KMS_LOCATION[m
+          [1m--instance-kms-project[m=[4mINSTANCE_KMS_PROJECT[m]
+        [[1m--node[m=[4mNODE[m | [1m--node-affinity-file[m=[4mPATH_TO_FILE[m
+          | [1m--node-group[m=[4mNODE_GROUP[m] [[1m--public-ptr[m | [1m--no-public-ptr[m]
+        [[1m--public-ptr-domain[m=[4mPUBLIC_PTR_DOMAIN[m | [1m--no-public-ptr-domain[m]
+        [[1m--reservation[m=[4mRESERVATION[m
+          [1m--reservation-affinity[m=[4mRESERVATION_AFFINITY[m; default="any"]
+        [[1m--scopes[m=[[4mSCOPE[m,...] | [1m--no-scopes[m]
+        [[1m--service-account[m=[4mSERVICE_ACCOUNT[m | [1m--no-service-account[m]
+        [[4mGCLOUD_WIDE_FLAG ...[m]
+
+[m[1mDESCRIPTION[m
+    [1mgcloud compute instances create[m facilitates the creation of Compute Engine
+    virtual machines.
+
+    When an instance is in RUNNING state and the system begins to boot, the
+    instance creation is considered finished, and the command returns with a
+    list of new virtual machines. Note that you usually cannot log into a new
+    instance until it finishes booting. Check the progress of an instance using
+    [1mgcloud compute instances get-serial-port-output[m.
+
+    For more examples, refer to the [1mEXAMPLES[m section below.
+
+[m[1mEXAMPLES[m
+    To create an instance with the latest 'Red Hat Enterprise Linux 8' image
+    available, run:
+
+        $ gcloud compute instances create example-instance \
+            --image-family=rhel-8 --image-project=rhel-cloud \
+            --zone=us-central1-a
+
+    To create instances called 'example-instance-1', 'example-instance-2', and
+    'example-instance-3' in the 'us-central1-a' zone, run:
+
+        $ gcloud compute instances create example-instance-1 \
+            example-instance-2 example-instance-3 --zone=us-central1-a
+
+    To create an instance called 'instance-1' from a source snapshot called
+    'instance-snapshot' in zone 'us-central1-a' and attached regional disk
+    'disk-1', run:
+
+        $ gcloud compute instances create instance-1 \
+            --source-snapshot=https://compute.googleapis.com/compute/v1/\
+        projects/myproject/global/snapshots/instance-snapshot \
+            --zone=us-central1-a --disk=name=disk1,scope=regional
+
+    To create an instance called instance-1 as a Shielded VM instance with
+    Secure Boot, virtual trusted platform module (vTPM) enabled and integrity
+    monitoring, run:
+
+        $ gcloud compute instances create instance-1 --zone=us-central1-a \
+            --shielded-secure-boot --shielded-vtpm \
+            --shielded-integrity-monitoring
+
+    To create a preemptible instance called 'instance-1', run:
+
+        $ gcloud compute instances create instance-1 \
+            --machine-type=n1-standard-1 --zone=us-central1-b \
+            --preemptible --no-restart-on-failure \
+            --maintenance-policy=terminate
+
+[m[1mPOSITIONAL ARGUMENTS[m
+     [4mINSTANCE_NAMES[m [[4mINSTANCE_NAMES[m ...]
+        Names of the instances to create. For details on valid instance names,
+        refer to the criteria documented under the field 'name' at:
+        https://cloud.google.com/compute/docs/reference/rest/v1/instances
+
+[m[1mFLAGS[m
+     [1m--accelerator[m=[[4mcount[m=[4mCOUNT[m],[[4mtype[m=[4mTYPE[m]
+        Attaches accelerators (e.g. GPUs) to the instances.
+
+         [1mtype[m
+            The specific type (e.g. nvidia-tesla-t4 for NVIDIA T4) of
+            accelerator to attach to the instances. Use 'gcloud compute
+            accelerator-types list' to learn about all available accelerator
+            types.
+
+         [1mcount[m
+            Number of accelerators to attach to each instance. The default
+            value is 1.
+
+     [1m--async[m
+        Return immediately, without waiting for the operation in progress to
+        complete.
+
+     [1m--availability-domain[m=[4mAVAILABILITY_DOMAIN[m
+        Specifies the availability domain that this VM instance should be
+        scheduled on. The number of availability domains that a VM can be
+        scheduled on is specified when you create the spread placement policy.
+
+        Specify a value from 1 to the number of domains that are available in
+        your placement policy.
+
+     [1m--boot-disk-auto-delete[m
+        Automatically delete boot disks when their instances are deleted.
+        Enabled by default, use [1m--no-boot-disk-auto-delete[m to disable.
+
+     [1m--boot-disk-device-name[m=[4mBOOT_DISK_DEVICE_NAME[m
+        The name the guest operating system will see for the boot disk. This
+        option can only be specified if a new boot disk is being created (as
+        opposed to mounting an existing persistent disk).
+
+     [1m--boot-disk-interface[m=[4mBOOT_DISK_INTERFACE[m
+        Indicates the interface to use for the boot disk. The value must be one
+        of the following:
+        ◆ SCSI
+        ◆ NVME
+
+     [1m--boot-disk-provisioned-iops[m=[4mBOOT_DISK_PROVISIONED_IOPS[m
+        Indicates how many IOPS to provision for the disk. This sets the number
+        of I/O operations per second that the disk can handle.
+
+     [1m--boot-disk-provisioned-throughput[m=[4mBOOT_DISK_PROVISIONED_THROUGHPUT[m
+        Indicates how much throughput to provision for the disk. This sets the
+        number of throughput mb per second that the disk can handle.
+
+     [1m--boot-disk-size[m=[4mBOOT_DISK_SIZE[m
+        The size of the boot disk. This option can only be specified if a new
+        boot disk is being created (as opposed to mounting an existing
+        persistent disk). The value must be a whole number followed by a size
+        unit of [1m[1;4mKB[1m[m for kilobyte, [1m[1;4mMB[1m[m for megabyte, [1m[1;4mGB[1m[m for gigabyte, or [1m[1;4mTB[1m[m for
+        terabyte. For example, [1m[1;4m10GB[1m[m will produce a 10 gigabyte disk. Disk size
+        must be a multiple of 1 GB. Default size unit is [1m[1;4mGB[1m[m.
+
+     [1m--boot-disk-type[m=[4mBOOT_DISK_TYPE[m
+        The type of the boot disk. This option can only be specified if a new
+        boot disk is being created (as opposed to mounting an existing
+        persistent disk). To get a list of available disk types, run [1m$ gcloud
+        compute disk-types list[m.
+
+     [1m--can-ip-forward[m
+        If provided, allows the instances to send and receive packets with
+        non-matching destination or source IP addresses.
+
+     [1m--create-disk[m=[[4mPROPERTY[m=[4mVALUE[m,...]
+        Creates and attaches persistent disks to the instances.
+
+         [1mname[m
+            Specifies the name of the disk. This option cannot be specified if
+            more than one instance is being created.
+
+         [1mdescription[m
+            Optional textual description for the disk being created.
+
+         [1mmode[m
+            Specifies the mode of the disk. Supported options are [1m[1;4mro[1m[m for
+            read-only and [1m[1;4mrw[1m[m for read-write. If omitted, [1m[1;4mrw[1m[m is used as a
+            default.
+
+         [1mimage[m
+            Specifies the name of the image that the disk will be initialized
+            with. A new disk will be created based on the given image. To view
+            a list of public images and projects, run [1m$ gcloud compute images
+            list[m. It is best practice to use image when a specific version of
+            an image is needed. If both image and image-family flags are
+            omitted a blank disk will be created.
+
+         [1mimage-family[m
+            The image family for the operating system that the boot disk will
+            be initialized with. Compute Engine offers multiple Linux
+            distributions, some of which are available as both regular and
+            Shielded VM images. When a family is specified instead of an image,
+            the latest non-deprecated image associated with that family is
+            used. It is best practice to use --image-family when the latest
+            version of an image is needed.
+
+         [1mimage-project[m
+            The Google Cloud project against which all image and image family
+            references will be resolved. It is best practice to define
+            image-project. A full list of available image projects can be
+            generated by running [1mgcloud compute images list[m.
+
+            ▸ If specifying one of our public images, image-project must be
+              provided.
+            ▸ If there are several of the same image-family value in multiple
+              projects, image-project must be specified to clarify the image to
+              be used.
+            ▸ If not specified and either image or image-family is provided,
+              the current default project is used.
+
+         [1msize[m
+            The size of the disk. The value must be a whole number followed by
+            a size unit of [1m[1;4mKB[1m[m for kilobyte, [1m[1;4mMB[1m[m for megabyte, [1m[1;4mGB[1m[m for gigabyte,
+            or [1m[1;4mTB[1m[m for terabyte. For example, [1m[1;4m10GB[1m[m will produce a 10 gigabyte
+            disk. Disk size must be a multiple of 1 GB. If not specified, the
+            default image size will be used for the new disk.
+
+         [1mtype[m
+            The type of the disk. To get a list of available disk types, run $
+            gcloud compute disk-types list. The default disk type is
+            [1m[1;4mpd-standard[1m[m.
+
+         [1mdevice-name[m
+            An optional name to display the disk name in the guest operating
+            system. If omitted, a device name of the form [1mpersistent-disk-N[m is
+            used.
+
+         [1mprovisioned-iops[m
+            Indicates how many IOPS to provision for the disk. This sets the
+            number of I/O operations per second that the disk can handle. Value
+            must be between 10,000 and 120,000.
+
+         [1mprovisioned-throughput[m
+            Indicates how much throughput to provision for the disk. This sets
+            the number of throughput mb per second that the disk can handle.
+
+         [1mdisk-resource-policy[m
+            Resource policy to apply to the disk. Specify a full or partial
+            URL. For example:
+            ▸ [1m[1;4mhttps://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/resourcePolicies/my-resource-policy[1m[m
+            ▸ [1m[1;4mprojects/my-project/regions/us-central1/resourcePolicies/my-resource-policy[1m[m
+
+            For more information, see the following docs:
+            ▸ https://cloud.google.com/sdk/gcloud/reference/beta/compute/resource-policies/
+            ▸ https://cloud.google.com/compute/docs/disks/scheduled-snapshots
+
+         [1mauto-delete[m
+            If [1m[1;4myes[1m[m, this persistent disk will be automatically deleted when the
+            instance is deleted. However, if the disk is later detached from
+            the instance, this option won't apply. The default value for this
+            is [1m[1;4myes[1m[m.
+
+         [1marchitecture[m
+            Specifies the architecture or processor type that this disk can
+            support. For available processor types on Compute Engine, see
+            https://cloud.google.com/compute/docs/cpu-platforms.
+
+         [1mstorage-pool[m
+            The name of the storage pool in which the new disk is created. The
+            new disk and the storage pool must be in the same location.
+
+         [1minterface[m
+            The interface to use with the disk. The value must be one of the
+            following:
+            ▸ SCSI
+            ▸ NVME
+
+         [1mboot[m
+            If [1m[1;4myes[1m[m, indicates that this is a boot disk. The instance will use
+            the first partition of the disk for its root file system. The
+            default value for this is [1m[1;4mno[1m[m.
+
+         [1mkms-key[m
+            Fully qualified Cloud KMS cryptokey name that will protect the
+            disk.
+
+            This can either be the fully qualified path or the name.
+
+            The fully qualified Cloud KMS cryptokey name format is:
+            [1m[1;4mprojects/<kms-project>/locations/<kms-location>/keyRings/<kms-keyring>/
+            cryptoKeys/<key-name>[1m[m.
+
+            If the value is not fully qualified then kms-location, kms-keyring,
+            and optionally kms-project are required.
+
+            See
+            https://cloud.google.com/compute/docs/disks/customer-managed-encryption
+            for more details.
+
+         [1mkms-project[m
+            Project that contains the Cloud KMS cryptokey that will protect the
+            disk.
+
+            If the project is not specified then the project where the disk is
+            being created will be used.
+
+            If this flag is set then key-location, kms-keyring, and kms-key are
+            required.
+
+            See
+            https://cloud.google.com/compute/docs/disks/customer-managed-encryption
+            for more details.
+
+         [1mkms-location[m
+            Location of the Cloud KMS cryptokey to be used for protecting the
+            disk.
+
+            All Cloud KMS cryptokeys are reside in a 'location'. To get a list
+            of possible locations run 'gcloud kms locations list'. If this flag
+            is set then kms-keyring and kms-key are required. See
+            https://cloud.google.com/compute/docs/disks/customer-managed-encryption
+            for more details.
+
+         [1mkms-keyring[m
+            The keyring which contains the Cloud KMS cryptokey that will
+            protect the disk.
+
+            If this flag is set then kms-location and kms-key are required.
+
+            See
+            https://cloud.google.com/compute/docs/disks/customer-managed-encryption
+            for more details.
+
+         [1msource-snapshot[m
+            The source disk snapshot that will be used to create the disk. You
+            can provide this as a full URL to the snapshot or just the snapshot
+            name. For example, the following are valid values:
+
+            ▸ https://compute.googleapis.com/compute/v1/projects/myproject/global/snapshots/snapshot
+            ▸ snapshot
+
+         [1mconfidential-compute[m
+            If [1m[1;4myes[1m[m, the disk is created in confidential mode. The default value
+            is [1m[1;4mno[1m[m. Encryption with a Cloud KMS key is required to enable this
+            option.
+
+         [1mreplica-zones[m
+            Required for each regional disk associated with the instance.
+            Specify the URLs of the zones where the disk should be replicated
+            to. You must provide exactly two replica zones, and one zone must
+            be the same as the instance zone.
+
+     [1m--csek-key-file[m=[4mFILE[m
+        Path to a Customer-Supplied Encryption Key (CSEK) key file that maps
+        Compute Engine resources to user managed keys to be used when creating,
+        mounting, or taking snapshots of disks.
+
+        If you pass [1m-[m as value of the flag, the CSEK is read from stdin. See
+        https://cloud.google.com/compute/docs/disks/customer-supplied-encryption
+        for more details.
+
+     [1m--deletion-protection[m
+        Enables deletion protection for the instance.
+
+     [1m--description[m=[4mDESCRIPTION[m
+        Specifies a textual description of the instances.
+
+     [1m--discard-local-ssds-at-termination-timestamp[m=[4mDISCARD_LOCAL_SSDS_AT_TERMINATION_TIMESTAMP[m
+        Required to be set to [1mtrue[m and only allowed for VMs that have one or
+        more local SSDs, use --instance-termination-action=STOP, and use either
+        --max-run-duration or --termination-time.
+
+        This flag indicates the value that you want Compute Engine to use for
+        the [1m--discard-local-ssd[m flag in the automatic [1mgcloud compute instances
+        stop[m command. This flag only supports the [1mtrue[m value, which discards
+        local SSD data when automatically stopping this VM during its
+        [1mterminationTimestamp[m.
+
+        For more information about the [1m--discard-local-ssd[m flag, see
+        https://cloud.google.com/compute/docs/disks/local-ssd#stop_instance.
+
+     [1m--disk[m=[[4mauto-delete[m=[4mAUTO-DELETE[m],[[4mboot[m=[4mBOOT[m],[[4mdevice-name[m=[4mDEVICE-NAME[m],[[4mforce-attach[m=[4mFORCE-ATTACH[m],[[4minterface[m=[4mINTERFACE[m],[[4mmode[m=[4mMODE[m],[[4mname[m=[4mNAME[m],[[4mscope[m=[4mSCOPE[m]
+        Attaches an existing disk to the instances.
+
+         [1mname[m
+            The disk to attach to the instances. If you create more than one
+            instance, you can only attach a disk in read-only mode. By default,
+            you attach a zonal disk located in the same zone of the instance.
+            If you want to attach a regional disk, you must specify the disk
+            using its URI; for example,
+            [1m[1;4mprojects/myproject/regions/us-central1/disks/my-regional-disk[1m[m.
+
+         [1mmode[m
+            The mode of the disk. Supported options are [1m[1;4mro[1m[m for read-only mode
+            and [1m[1;4mrw[1m[m for read-write mode. If omitted, [1m[1;4mrw[1m[m is used as a default
+            value. If you use [1m[1;4mrw[1m[m when creating more than one instance, you
+            encounter errors.
+
+         [1mboot[m
+            If set to [1m[1;4myes[1m[m, you attach a boot disk. The virtual machine then
+            uses the first partition of the disk for the root file systems. The
+            default value for this is [1m[1;4mno[1m[m.
+
+         [1mdevice-name[m
+            An optional name to display the disk name in the guest operating
+            system. If omitted, a device name of the form [1mpersistent-disk-N[m is
+            used.
+
+         [1mauto-delete[m
+            If set to [1m[1;4myes[1m[m, the persistent disk is automatically deleted when
+            the instance is deleted. However, if you detach the disk from the
+            instance, deleting the instance doesn't delete the disk. The
+            default value is [1m[1;4myes[1m[m.
+
+         [1minterface[m
+            The interface to use for the disk. The value must be one of the
+            following:
+            ▸ SCSI
+            ▸ NVME
+
+         [1mscope[m
+            Can be [1mzonal[m or [1mregional[m. If [1m[1;4mzonal[1m[m, the disk is interpreted as a
+            zonal disk in the same zone as the instance (default). If [1m[1;4mregional[1m[m,
+            the disk is interpreted as a regional disk in the same region as
+            the instance. The default value for this is [1m[1;4mzonal[1m[m.
+         [1mforce-attach[m
+            If [1m[1;4myes[1m[m, this persistent disk will force-attached to the instance
+            even it is already attached to another instance. The default value
+            is 'no'.
+
+     [1m--enable-display-device[m
+        Enable a display device on VM instances. Disabled by default.
+
+     [1m--[no-]enable-nested-virtualization[m
+        If set to true, enables nested virtualization for the instance. Use
+        [1m--enable-nested-virtualization[m to enable and
+        [1m--no-enable-nested-virtualization[m to disable.
+
+     [1m--[no-]enable-uefi-networking[m
+        If set to true, enables UEFI networking for the instance creation. Use
+        [1m--enable-uefi-networking[m to enable and [1m--no-enable-uefi-networking[m to
+        disable.
+
+     [1m--erase-windows-vss-signature[m
+        Specifies whether the disk restored from source snapshots or source
+        machine image should erase Windows specific VSS signature. See
+        https://cloud.google.com/sdk/gcloud/reference/compute/disks/snapshot#--guest-flush
+
+     [1m--external-ipv6-address[m=[4mEXTERNAL_IPV6_ADDRESS[m
+        Assigns the given external IPv6 address to the instance that is
+        created. The address must be the first IP address in the range. This
+        option can be used only when creating a single instance.
+
+     [1m--external-ipv6-prefix-length[m=[4mEXTERNAL_IPV6_PREFIX_LENGTH[m
+        The prefix length of the external IPv6 address range. This field should
+        be used together with [1m--external-ipv6-address[m. Only the /96 IP address
+        range is supported, and the default value is 96.
+
+     [1m--host-error-timeout-seconds[m=[4mHOST_ERROR_TIMEOUT_SECONDS[m
+        The timeout in seconds for host error detection. The value must be set
+        with 30 second increments, with a range of 90 to 330 seconds. If unset,
+        the default behavior of the host error recovery is used.
+
+     [1m--hostname[m=[4mHOSTNAME[m
+        Specify the hostname of the instance to be created. The specified
+        hostname must be RFC1035 compliant. If hostname is not specified, the
+        default hostname is [INSTANCE_NAME].c.[PROJECT_ID].internal when using
+        the global DNS, and [INSTANCE_NAME].[ZONE].c.[PROJECT_ID].internal when
+        using zonal DNS.
+
+     [1m--instance-termination-action[m=[4mINSTANCE_TERMINATION_ACTION[m
+        Specifies the termination action that will be taken upon VM preemption
+        (--provisioning-model=SPOT) or automatic instance termination
+        (--max-run-duration or --termination-time).
+
+        [4mINSTANCE_TERMINATION_ACTION[m must be one of:
+
+         [1mDELETE[m
+            Permanently delete the VM.
+         [1mSTOP[m
+            Default only for Spot VMs. Stop the VM without preserving memory.
+            The VM can be restarted later.
+
+     [1m--internal-ipv6-address[m=[4mINTERNAL_IPV6_ADDRESS[m
+        Assigns the given internal IPv6 address or range to the instance that
+        is created. The address must be the first IP address in the range or
+        from a /96 IP address range. This option can be used only when creating
+        a single instance.
+
+     [1m--internal-ipv6-prefix-length[m=[4mINTERNAL_IPV6_PREFIX_LENGTH[m
+        Optional field that indicates the prefix length of the internal IPv6
+        address range. It should be used together with --internal-ipv6-address.
+        Only /96 IP address range is supported and the default value is 96. If
+        not set, either the prefix length from --internal-ipv6-address will be
+        used or the default value of 96 will be assigned.
+
+     [1m--ipv6-network-tier[m=[4mIPV6_NETWORK_TIER[m
+        Specifies the IPv6 network tier that will be used to configure the
+        instance network interface IPv6 access config. [4mIPV6_NETWORK_TIER[m must
+        be (only one value is supported):
+
+         [1mPREMIUM[m
+            High quality, Google-grade network tier.
+
+     [1m--ipv6-public-ptr-domain[m=[4mIPV6_PUBLIC_PTR_DOMAIN[m
+        Assigns a custom PTR domain for the external IPv6 in the IPv6 access
+        configuration of instance. If unspecified or specified to be an empty
+        string, the default PTR record will be used. This option can only be
+        specified for the default network interface, [1m[1;4mnic0[1m[m.
+
+     [1m--key-revocation-action-type[m=[4mPOLICY[m
+        Specifies the behavior of the instance when the KMS key of one of its
+        attached disks is revoked. The default is none. [4mPOLICY[m must be one of:
+
+         [1mnone[m
+            No operation is performed.
+         [1mstop[m
+            The instance is stopped when the KMS key of one of its attached
+            disks is revoked.
+
+     [1m--labels[m=[[4mKEY[m=[4mVALUE[m,...]
+        List of label KEY=VALUE pairs to add.
+
+        Keys must start with a lowercase character and contain only hyphens
+        ([1m-[m), underscores ([1m_[m), lowercase characters, and numbers. Values must
+        contain only hyphens ([1m-[m), underscores ([1m_[m), lowercase characters, and
+        numbers.
+
+     [1m--local-ssd[m=[[4mdevice-name[m=[4mDEVICE-NAME[m],[[4minterface[m=[4mINTERFACE[m],[[4msize[m=[4mSIZE[m]
+        Attaches a local SSD to the instances.
+
+         [1mdevice-name[m
+            Optional. A name that indicates the disk name the guest operating
+            system will see. Can only be specified if [1minterface[m is [1mSCSI[m. If
+            omitted, a device name of the form [1m[1;4mlocal-ssd-N[1m[m will be used.
+
+         [1minterface[m
+            Optional. The kind of disk interface exposed to the VM for this
+            SSD. Valid values are [1m[1;4mSCSI[1m[m and [1m[1;4mNVME[1m[m. SCSI is the default and is
+            supported by more guest operating systems. NVME might provide
+            higher performance.
+
+         [1msize[m
+            Optional. The only valid value is [1m[1;4m375GB[1m[m. Specify the [1m[1;4m--local-ssd[1m[m
+            flag multiple times if you need multiple [1m[1;4m375GB[1m[m local SSD
+            partitions. You can specify a maximum of 24 local SSDs for a
+            maximum of [1m[1;4m9TB[1m[m attached to an instance.
+
+     [1m--local-ssd-recovery-timeout[m=[4mLOCAL_SSD_RECOVERY_TIMEOUT[m
+        Specifies the maximum amount of time a Local Ssd Vm should wait while
+        recovery of the Local Ssd state is attempted. Its value should be in
+        between 0 and 168 hours with hour granularity and the default value
+        being 1 hour.
+
+     [1m--machine-type[m=[4mMACHINE_TYPE[m
+        Specifies the machine type used for the instances. To get a list of
+        available machine types, run 'gcloud compute machine-types list'. If
+        unspecified, the default type is n1-standard-1.
+
+     [1m--maintenance-policy[m=[4mMAINTENANCE_POLICY[m
+        Specifies the behavior of the VMs when their host machines undergo
+        maintenance. The default is MIGRATE. For more information, see
+        https://cloud.google.com/compute/docs/instances/host-maintenance-options.
+        [4mMAINTENANCE_POLICY[m must be one of:
+
+         [1mMIGRATE[m
+            The instances should be migrated to a new host. This will
+            temporarily impact the performance of instances during a migration
+            event.
+         [1mTERMINATE[m
+            The instances should be terminated.
+
+     [1m--max-run-duration[m=[4mMAX_RUN_DURATION[m
+        Limits how long this VM instance can run, specified as a duration
+        relative to the last time when the VM began running. Format the
+        duration, MAX_RUN_DURATION, as the number of days, hours, minutes, and
+        seconds followed by d, h, m, and s respectively. For example, specify
+        [1m30m[m for a duration of 30 minutes or specify [1m1d2h3m4s[m for a duration of
+        1 day, 2 hours, 3 minutes, and 4 seconds. Alternatively, to specify a
+        timestamp, use --termination-time instead.
+
+        If neither --max-run-duration nor --termination-time is specified
+        (default), the VM instance runs until prompted by a user action or
+        system event. If either is specified, the VM instance is scheduled to
+        be automatically terminated at the VM's termination timestamp
+        ([1mterminationTimestamp[m) using the action specified by
+        --instance-termination-action.
+
+        Note: The [1mterminationTimestamp[m is removed whenever the VM is stopped or
+        suspended and redefined whenever the VM is rerun. For
+        --max-run-duration specifically, the [1mterminationTimestamp[m is the sum of
+        MAX_RUN_DURATION and the time when the VM last entered the [1mRUNNING[m
+        state, which changes whenever the VM is rerun.
+
+     [1m--metadata[m=[4mKEY[m=[4mVALUE[m,[[4mKEY[m=[4mVALUE[m,...]
+        Metadata to be made available to the guest operating system running on
+        the instances. Each metadata entry is a key/value pair separated by an
+        equals sign. Each metadata key must be unique and have a max of 128
+        bytes in length. Each value must have a max of 256 KB in length.
+        Multiple arguments can be passed to this flag, e.g., [1m[1;4m--metadata
+        key-1=value-1,key-2=value-2,key-3=value-3[1m[m. The combined total size for
+        all metadata entries is 512 KB.
+
+        In images that have Compute Engine tools installed on them, such as the
+        official images (https://cloud.google.com/compute/docs/images), the
+        following metadata keys have special meanings:
+
+         [1mstartup-script[m
+            Specifies a script that will be executed by the instances once they
+            start running. For convenience, [1m[1;4m--metadata-from-file[1m[m can be used to
+            pull the value from a file.
+
+         [1mstartup-script-url[m
+            Same as [1m[1;4mstartup-script[1m[m except that the script contents are pulled
+            from a publicly-accessible location on the web.
+
+            For startup scripts on Windows instances, the following metadata
+            keys have special meanings: [1m[1;4mwindows-startup-script-url[1m[m,
+            [1m[1;4mwindows-startup-script-cmd[1m[m, [1m[1;4mwindows-startup-script-bat[1m[m,
+            [1m[1;4mwindows-startup-script-ps1[1m[m, [1m[1;4msysprep-specialize-script-url[1m[m,
+            [1m[1;4msysprep-specialize-script-cmd[1m[m, [1m[1;4msysprep-specialize-script-bat[1m[m, and
+            [1m[1;4msysprep-specialize-script-ps1[1m[m. For more information, see Running
+            startup scripts
+            (https://cloud.google.com/compute/docs/startupscript).
+
+     [1m--metadata-from-file[m=[4mKEY[m=[4mLOCAL_FILE_PATH[m,[...]
+        Same as [1m[1;4m--metadata[1m[m except that the value for the entry will be read
+        from a local file. This is useful for values that are too large such as
+        [1m[1;4mstartup-script[1m[m contents.
+
+     [1m--min-cpu-platform[m=[4mPLATFORM[m
+        When specified, the VM will be scheduled on host with specified CPU
+        architecture or a newer one. To list available CPU platforms in given
+        zone, run:
+
+            $ gcloud compute zones describe ZONE \
+              --format="value(availableCpuPlatforms)"
+
+        Default setting is "AUTOMATIC".
+
+        CPU platform selection is available only in selected zones.
+
+        You can find more information on-line:
+        https://cloud.google.com/compute/docs/instances/specify-min-cpu-platform
+
+     [1m--min-node-cpu[m=[4mMIN_NODE_CPU[m
+        Minimum number of virtual CPUs this instance will consume when running
+        on a sole-tenant node.
+
+     [1m--network[m=[4mNETWORK[m
+        Specifies the network that the VM instances are a part of. If [1m--subnet[m
+        is also specified, subnet must be a subnetwork of the network specified
+        by this [1m--network[m flag. If neither is specified, the default network is
+        used.
+
+     [1m--network-interface[m=[[4mPROPERTY[m=[4mVALUE[m,...]
+        Adds a network interface to the instance. Mutually exclusive with any
+        of these flags: [1m--address[m, [1m--network[m, [1m--network-tier[m, [1m--subnet[m,
+        [1m--private-network-ip[m, [1m--stack-type[m, [1m--ipv6-network-tier[m,
+        [1m--internal-ipv6-address[m, [1m--internal-ipv6-prefix-length[m, [1m--ipv6-address[m,
+        [1m--ipv6-prefix-length[m, [1m--external-ipv6-address[m,
+        [1m--external-ipv6-prefix-length[m, [1m--ipv6-public-ptr-domain[m. This flag can
+        be repeated to specify multiple network interfaces.
+
+        The following keys are allowed:
+         [1maddress[m
+            Assigns the given external address to the instance that is created.
+            Specifying an empty string will assign an ephemeral IP. Mutually
+            exclusive with no-address. If neither key is present the instance
+            will get an ephemeral IP.
+
+         [1mnetwork[m
+            Specifies the network that the interface will be part of. If subnet
+            is also specified it must be subnetwork of this network. If neither
+            is specified, this defaults to the "default" network.
+
+         [1mno-address[m
+            If specified the interface will have no external IP. Mutually
+            exclusive with address. If neither key is present the instance will
+            get an ephemeral IP.
+
+         [1mnetwork-tier[m
+            Specifies the network tier of the interface. [1m[1;4mNETWORK_TIER[1m[m must be
+            one of: [1mPREMIUM[m, [1mSTANDARD[m. The default value is [1mPREMIUM[m.
+
+         [1mprivate-network-ip[m
+            Assigns the given RFC1918 IP address to the interface.
+
+         [1msubnet[m
+            Specifies the subnet that the interface will be part of. If network
+            key is also specified this must be a subnetwork of the specified
+            network.
+
+         [1mnic-type[m
+            Specifies the Network Interface Controller (NIC) type for the
+            interface. [1m[1;4mNIC_TYPE[1m[m must be one of: [1mGVNIC[m, [1mVIRTIO_NET[m.
+
+         [1mqueue-count[m
+            Specifies the networking queue count for this interface. Both Rx
+            and Tx queues will be set to this number. If it's not specified, a
+            default queue count will be assigned. See
+            https://cloud.google.com/compute/docs/network-bandwidth#rx-tx for
+            more details.
+
+         [1mstack-type[m
+            Specifies whether IPv6 is enabled on the interface. [1m[1;4mSTACK_TYPE[1m[m must
+            be one of: [1mIPV4_ONLY[m, [1mIPV4_IPV6[m, [1mIPV6_ONLY[m. The default value is
+            [1mIPV4_ONLY[m.
+
+         [1mipv6-network-tier[m
+            Specifies the IPv6 network tier that will be used to configure the
+            instance network interface IPv6 access config. [1m[1;4mIPV6_NETWORK_TIER[1m[m
+            must be [1mPREMIUM[m (currently only one value is supported).
+
+         [1minternal-ipv6-address[m
+            Assigns the given internal IPv6 address or range to the instance
+            that is created. The address must be the first IP address in the
+            range or from a /96 IP address range. This option can be used only
+            when creating a single instance.
+
+         [1minternal-ipv6-prefix-length[m
+            Optional field that indicates the prefix length of the internal
+            IPv6 address range. It should be used together with
+            internal-ipv6-address. Only /96 IP address range is supported and
+            the default value is 96. If not set, either the prefix length from
+            --internal-ipv6-address will be used or the default value of 96
+            will be assigned.
+
+         [1mexternal-ipv6-address[m
+            Assigns the given external IPv6 address to the instance that is
+            created. The address must be the first IP address in the range.
+            This option can be used only when creating a single instance.
+
+         [1mexternal-ipv6-prefix-length[m
+            The prefix length of the external IPv6 address range. This field
+            should be used together with external-ipv6-address. Only the /96 IP
+            address range is supported, and the default value is 96.
+
+         [1mipv6-public-ptr-domain[m
+            Assigns a custom PTR domain for the external IPv6 in the IPv6
+            access configuration of instance. If its value is not specified,
+            the default PTR record will be used. This option can only be
+            specified for the default network interface, [1mnic0[m.
+
+         [1maliases[m
+            Specifies the IP alias ranges to allocate for this interface. If
+            there are multiple IP alias ranges, they are separated by
+            semicolons.
+
+            For example:
+
+                --aliases="10.128.1.0/24;range1:/32"
+
+            Each IP alias range consists of a range name and an IP range
+            separated by a colon, or just the IP range. The range name is the
+            name of the range within the network interface's subnet from which
+            to allocate an IP alias range. If unspecified, it defaults to the
+            primary IP range of the subnet. The IP range can be a CIDR range
+            (e.g. [1m192.168.100.0/24[m), a single IP address (e.g. [1m192.168.100.1[m),
+            or a netmask in CIDR format (e.g. [1m/24[m). If the IP range is
+            specified by CIDR range or single IP address, it must belong to the
+            CIDR range specified by the range name on the subnet. If the IP
+            range is specified by netmask, the IP allocator will pick an
+            available range with the specified netmask and allocate it to this
+            network interface.
+
+         [1mnetwork-attachment[m
+            Specifies the network attachment that this interface should connect
+            to. Mutually exclusive with [1m--network[m and [1m--subnet[m flags.
+
+         [1mvlan[m
+            VLAN ID of a Dynamic Network Interface, must be an integer in the
+            range from 2 to 255 inclusively.
+
+         [1migmp-query[m
+            Determines if the Compute Engine Instance can receive and respond
+            to IGMP query packets on the specified network interface.
+            [1m[1;4mIGMP_QUERY[1m[m must be one of: [1mIGMP_QUERY_V2[m, [1mIGMP_QUERY_DISABLED[m. It
+            is disabled by default.
+
+     [1m--network-performance-configs[m=[[4mPROPERTY[m=[4mVALUE[m,...]
+        Configures network performance settings for the instance. If this flag
+        is not specified, the instance will be created with its default network
+        performance configuration.
+
+         [1mtotal-egress-bandwidth-tier[m
+            Total egress bandwidth is the available outbound bandwidth from a
+            VM, regardless of whether the traffic is going to internal IP or
+            external IP destinations. The following tier values are allowed:
+            [DEFAULT,TIER_1]
+
+     [1m--network-tier[m=[4mNETWORK_TIER[m
+        Specifies the network tier that will be used to configure the instance.
+        [1m[1;4mNETWORK_TIER[1m[m must be one of: [1mPREMIUM[m, [1mSTANDARD[m. The default value is
+        [1mPREMIUM[m.
+
+     [1m--node-project[m=[4mNODE_PROJECT[m
+        The name of the project with shared sole tenant node groups to create
+        an instance in.
+
+     [1m--performance-monitoring-unit[m=[4mPERFORMANCE_MONITORING_UNIT[m
+        The type of performance monitoring counters (PMCs) to enable in the
+        instance. [4mPERFORMANCE_MONITORING_UNIT[m must be one of:
+
+         [1marchitectural[m
+            This enables architecturally defined non-last level cache (LLC)
+            events.
+         [1menhanced[m
+            This enables most documented core/L2 and LLC events.
+         [1mstandard[m
+            This enables most documented core/L2 events.
+
+     [1m--preemptible[m
+        If provided, instances will be preemptible and time-limited. Instances
+        might be preempted to free up resources for standard VM instances, and
+        will only be able to run for a limited amount of time. Preemptible
+        instances can not be restarted and will not migrate.
+
+     [1m--private-ipv6-google-access-type[m=[4mPRIVATE_IPV6_GOOGLE_ACCESS_TYPE[m
+        The private IPv6 Google access type for the VM.
+        [4mPRIVATE_IPV6_GOOGLE_ACCESS_TYPE[m must be one of:
+        [1menable-bidirectional-access[m, [1menable-outbound-vm-access[m,
+        [1minherit-subnetwork[m.
+
+     [1m--private-network-ip[m=[4mPRIVATE_NETWORK_IP[m
+        Specifies the RFC1918 IP to assign to the instance. The IP should be in
+        the subnet or legacy network IP range.
+
+     [1m--provisioning-model[m=[4mPROVISIONING_MODEL[m
+        Specifies the provisioning model for your VM instances. This choice
+        affects the price, availability, and how long your VM instances can
+        run. [4mPROVISIONING_MODEL[m must be one of:
+
+         [1mFLEX_START[m
+            The VM instance is provisioned using the Flex Start provisioning
+            model and has a limited runtime.
+         [1mRESERVATION_BOUND[m
+            The VM instances run for the entire duration of their associated
+            reservation. You can only specify this provisioning model if you
+            want your VM instances to consume a specific reservation with
+            either a calendar reservation mode or a dense deployment type.
+         [1mSPOT[m
+            Compute Engine may stop a Spot VM instance whenever it needs
+            capacity. Because Spot VM instances don't have a guaranteed
+            runtime, they come at a discounted price.
+         [1mSTANDARD[m
+            The default option. The STANDARD provisioning model gives you full
+            control over your VM instances' runtime.
+
+     [1m--request-valid-for-duration[m=[4mREQUEST_VALID_FOR_DURATION[m
+        When you create an instance by using the FLEX_START provisioning model,
+        you can specify the duration to wait for available resources. If the
+        instance creation request is still pending after this duration, then
+        the request fails. You specify a duration by using numbers followed by
+        [1mh[m, [1mm[m, and [1ms[m for hours, minutes, and seconds, respectively. For example,
+        specify [1m30m[m for a duration of 30 minutes, or [1m1h2m3s[m for 1 hour, 2
+        minutes, and 3 seconds. Longer durations give you higher chances that
+        your instance creation request succeeds when resources are in high
+        demand.
+
+     [1m--require-csek-key-create[m
+        Refuse to create resources not protected by a user managed key in the
+        key file when --csek-key-file is given. This behavior is enabled by
+        default to prevent incorrect gcloud invocations from accidentally
+        creating resources with no user managed key. Disabling the check allows
+        creation of some resources without a matching Customer-Supplied
+        Encryption Key in the supplied --csek-key-file. See
+        https://cloud.google.com/compute/docs/disks/customer-supplied-encryption
+        for more details. Enabled by default, use [1m--no-require-csek-key-create[m
+        to disable.
+
+     [1m--resource-manager-tags[m=[[4mKEY[m=[4mVALUE[m,...]
+        Specifies a list of resource manager tags to apply to the instance.
+
+     [1m--resource-policies[m=[[4mRESOURCE_POLICY[m,...]
+        A list of resource policy names to be added to the instance. The
+        policies must exist in the same region as the instance.
+
+     [1m--restart-on-failure[m
+        The instances will be restarted if they are terminated by Compute
+        Engine. This does not affect terminations performed by the user.
+        Enabled by default, use [1m--no-restart-on-failure[m to disable.
+
+     [1m--shielded-integrity-monitoring[m
+        Enables monitoring and attestation of the boot integrity of the
+        instance. The attestation is performed against the integrity policy
+        baseline. This baseline is initially derived from the implicitly
+        trusted boot image when the instance is created. This baseline can be
+        updated by using [1mgcloud compute instances update
+        --shielded-learn-integrity-policy[m. On Shielded VM instances, integrity
+        monitoring is enabled by default. For information about how to modify
+        Shielded VM options, see
+        https://cloud.google.com/compute/docs/instances/modifying-shielded-vm.
+        For information about monitoring integrity on Shielded VM instances,
+        see
+        https://cloud.google.com/compute/docs/instances/integrity-monitoring."
+
+     [1m--shielded-secure-boot[m
+        The instance boots with secure boot enabled. On Shielded VM instances,
+        Secure Boot is not enabled by default. For information about how to
+        modify Shielded VM options, see
+        https://cloud.google.com/compute/docs/instances/modifying-shielded-vm.
+
+     [1m--shielded-vtpm[m
+        The instance boots with the TPM (Trusted Platform Module) enabled. A
+        TPM is a hardware module that can be used for different security
+        operations such as remote attestation, encryption, and sealing of keys.
+        On Shielded VM instances, vTPM is enabled by default. For information
+        about how to modify Shielded VM options, see
+        https://cloud.google.com/compute/docs/instances/modifying-shielded-vm.
+
+     [1m--[no-]skip-guest-os-shutdown[m
+        If enabled, then, when the instance is stopped or deleted, the instance
+        is immediately stopped without giving time to the guest OS to cleanly
+        shut down. Use [1m--skip-guest-os-shutdown[m to enable and
+        [1m--no-skip-guest-os-shutdown[m to disable.
+
+     [1m--source-instance-template[m=[4mSOURCE_INSTANCE_TEMPLATE[m
+        The name of the instance template that the instance will be created
+        from. An instance template can be a global/regional resource.
+
+        Users can override instance properties using other flags.
+
+     [1m--source-machine-image[m=[4mSOURCE_MACHINE_IMAGE[m
+        The name of the machine image that the instance will be created from.
+
+     [1m--source-machine-image-csek-key-file[m=[4mFILE[m
+        Path to a Customer-Supplied Encryption Key (CSEK) key file, mapping
+        resources to user managed keys which were used to encrypt the source
+        machine-image. See
+        https://cloud.google.com/compute/docs/disks/customer-supplied-encryption
+        for more details.
+
+     [1m--stack-type[m=[4mSTACK_TYPE[m
+        Specifies whether IPv6 is enabled on the default network interface. If
+        not specified, IPV4_ONLY will be used. [4mSTACK_TYPE[m must be one of:
+
+         [1mIPV4_IPV6[m
+            The network interface can have both IPv4 and IPv6 addresses
+         [1mIPV4_ONLY[m
+            The network interface will be assigned IPv4 addresses
+         [1mIPV6_ONLY[m
+            The network interface will be assigned IPv6 addresses
+
+     [1m--subnet[m=[4mSUBNET[m
+        Specifies the subnet that the VM instances are a part of. If [1m--network[m
+        is also specified, subnet must be a subnetwork of the network specified
+        by the [1m--network[m flag.
+
+     [1m--tags[m=[4mTAG[m,[[4mTAG[m,...]
+        Specifies a list of tags to apply to the instance. These tags allow
+        network firewall rules and routes to be applied to specified VM
+        instances. See [1mgcloud compute firewall-rules create[m(1) for more
+        details.
+
+        To read more about configuring network tags, read this guide:
+        https://cloud.google.com/vpc/docs/add-remove-network-tags
+
+        To list instances with their respective status and tags, run:
+
+            $ gcloud compute instances list \
+                --format='table(name,status,tags.list())'
+
+        To list instances tagged with a specific tag, [1mtag1[m, run:
+
+            $ gcloud compute instances list --filter='tags:tag1'
+
+     [1m--termination-time[m=[4mTERMINATION_TIME[m
+        Limits how long this VM instance can run, specified as a time. Format
+        the time, TERMINATION_TIME, as a RFC 3339 timestamp. For more
+        information, see https://tools.ietf.org/html/rfc3339. Alternatively, to
+        specify a duration, use --max-run-duration instead.
+
+        If neither --termination-time nor --max-run-duration is specified
+        (default), the VM instance runs until prompted by a user action or
+        system event. If either is specified, the VM instance is scheduled to
+        be automatically terminated at the VM's termination timestamp
+        ([1mterminationTimestamp[m) using the action specified by
+        --instance-termination-action.
+
+        Note: The [1mterminationTimestamp[m is removed whenever the VM is stopped or
+        suspended and redefined whenever the VM is rerun. For
+        --termination-time specifically, the [1mterminationTimestamp[m remains the
+        same whenever the VM is rerun, but any requests to rerun the VM fail if
+        the specified timestamp is in the past.
+
+     [1m--threads-per-core[m=[4mTHREADS_PER_CORE[m
+        The number of visible threads per physical core. To disable
+        simultaneous multithreading (SMT) set this to 1. Valid values are: 1 or
+        2.
+
+        For more information about configuring SMT, see:
+        https://cloud.google.com/compute/docs/instances/configuring-simultaneous-multithreading.
+
+     [1m--turbo-mode[m=[4mTURBO_MODE[m
+        Turbo mode to use for the instance. Supported modes include:
+        ◆ ALL_CORE_MAX
+
+        To achieve all-core-turbo frequency for more consistent CPU
+        performance, set the field to ALL_CORE_MAX. The field is unset by
+        default, which results in maximum performance single-core boosting.
+
+     [1m--visible-core-count[m=[4mVISIBLE_CORE_COUNT[m
+        The number of physical cores to expose to the instance's guest
+        operating system. The number of virtual CPUs visible to the instance's
+        guest operating system is this number of cores multiplied by the
+        instance's count of visible threads per physical core.
+
+     [1m--zone[m=[4mZONE[m
+        Zone of the instances to create. If not specified and the [1m[1;4mcompute/zone[1m[m
+        property isn't set, you might be prompted to select a zone (interactive
+        mode only).
+
+        To avoid prompting when this flag is omitted, you can set the
+        [1m[1;4mcompute/zone[1m[m property:
+
+            $ gcloud config set compute/zone ZONE
+
+        A list of zones can be fetched by running:
+
+            $ gcloud compute zones list
+
+        To unset the property, run:
+
+            $ gcloud config unset compute/zone
+
+        Alternatively, the zone can be stored in the environment variable
+        [1m[1;4mCLOUDSDK_COMPUTE_ZONE[1m[m.
+
+     At most one of these can be specified:
+
+       [1m--address[m=[4mADDRESS[m
+          Assigns the given external address to the instance that is created.
+          The address might be an IP address or the name or URI of an address
+          resource. This option can only be used when creating a single
+          instance.
+
+       [1m--no-address[m
+          If provided, the instances are not assigned external IP addresses. To
+          pull container images, you must configure private Google access if
+          using Container Registry or configure Cloud NAT for instances to
+          access container images directly. For more information, see:
+          ▸ https://cloud.google.com/vpc/docs/configure-private-google-access
+          ▸ https://cloud.google.com/nat/docs/using-nat
+
+     Key resource - The Cloud KMS (Key Management Service) cryptokey that will
+     be used to protect the disk. The 'Compute Engine Service Agent' service
+     account must hold permission 'Cloud KMS CryptoKey Encrypter/Decrypter'.
+     The arguments in this group can be used to specify the attributes of this
+     resource.
+
+     [1m--boot-disk-kms-key[m=[4mBOOT_DISK_KMS_KEY[m
+        ID of the key or fully qualified identifier for the key.
+
+        To set the [1mkms-key[m attribute:
+        ◆ provide the argument [1m--boot-disk-kms-key[m on the command line.
+
+        This flag argument must be specified if any of the other arguments in
+        this group are specified.
+
+     [1m--boot-disk-kms-keyring[m=[4mBOOT_DISK_KMS_KEYRING[m
+        The KMS keyring of the key.
+
+        To set the [1mkms-keyring[m attribute:
+        ◆ provide the argument [1m--boot-disk-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--boot-disk-kms-keyring[m on the command line.
+
+     [1m--boot-disk-kms-location[m=[4mBOOT_DISK_KMS_LOCATION[m
+        The Google Cloud location for the key.
+
+        To set the [1mkms-location[m attribute:
+        ◆ provide the argument [1m--boot-disk-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--boot-disk-kms-location[m on the command line.
+
+     [1m--boot-disk-kms-project[m=[4mBOOT_DISK_KMS_PROJECT[m
+        The Google Cloud project for the key.
+
+        To set the [1mkms-project[m attribute:
+        ◆ provide the argument [1m--boot-disk-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--boot-disk-kms-project[m on the command line;
+        ◆ set the property [1mcore/project[m.
+
+     At most one of these can be specified:
+
+       [1m--confidential-compute[m
+          (DEPRECATED) The instance boots with Confidential Computing enabled.
+          Confidential Computing is based on Secure Encrypted Virtualization
+          (SEV), an AMD virtualization feature for running confidential
+          instances.
+
+          The --confidential-compute flag will soon be deprecated. Please use
+          [1m--confidential-compute-type=SEV[m instead
+
+       [1m--confidential-compute-type[m=[4mCONFIDENTIAL_COMPUTE_TYPE[m
+          The instance boots with Confidential Computing enabled. Confidential
+          Computing can be based on Secure Encrypted Virtualization (SEV) or
+          Secure Encrypted Virtualization - Secure Nested Paging (SEV-SNP),
+          both of which are AMD virtualization features for running
+          confidential instances. Trust Domain eXtension based on Intel
+          virtualization features for running confidential instances is also
+          supported. [4mCONFIDENTIAL_COMPUTE_TYPE[m must be one of:
+
+           [1mSEV[m
+              Secure Encrypted Virtualization
+           [1mSEV_SNP[m
+              Secure Encrypted Virtualization - Secure Nested Paging
+           [1mTDX[m
+              Trust Domain eXtension
+
+     Custom machine type extensions.
+
+     [1m--custom-cpu[m=[4mCUSTOM_CPU[m
+        A whole number value specifying the number of cores that are needed in
+        the custom machine type.
+
+        For some machine types, shared-core values can also be used. For
+        example, for E2 machine types, you can specify [1mmicro[m, [1msmall[m, or [1mmedium[m.
+
+        This flag argument must be specified if any of the other arguments in
+        this group are specified.
+
+     [1m--custom-memory[m=[4mCUSTOM_MEMORY[m
+        A whole number value indicating how much memory is desired in the
+        custom machine type. A size unit should be provided (eg. 3072MB or 9GB)
+        - if no units are specified, GB is assumed.
+
+        This flag argument must be specified if any of the other arguments in
+        this group are specified.
+
+     [1m--custom-extensions[m
+        Use the extended custom machine type.
+
+     [1m--custom-vm-type[m=[4mCUSTOM_VM_TYPE[m
+        Specifies a custom machine type. The default is [1mn1[m. For more
+        information about custom machine types, see:
+        https://cloud.google.com/compute/docs/general-purpose-machines#custom_machine_types
+
+     [1m--image-family-scope[m=[4mIMAGE_FAMILY_SCOPE[m
+        Sets the scope for the [1m--image-family[m flag. By default, when specifying
+        an image family in a public image project, the zonal image family scope
+        is used. All other projects default to the global image. Use this flag
+        to override this behavior. [4mIMAGE_FAMILY_SCOPE[m must be one of: [1mzonal[m,
+        [1mglobal[m.
+
+     [1m--image-project[m=[4mIMAGE_PROJECT[m
+        The Google Cloud project against which all image and image family
+        references will be resolved. It is best practice to define
+        image-project. A full list of available projects can be generated by
+        running [1mgcloud projects list[m.
+        ◆ If specifying one of our public images, image-project must be
+          provided.
+        ◆ If there are several of the same image-family value in multiple
+          projects, image-project must be specified to clarify the image to be
+          used.
+        ◆ If not specified and either image or image-family is provided, the
+          current default project is used.
+
+     At most one of these can be specified:
+
+       [1m--image[m=[4mIMAGE[m
+          Specifies the boot image for the instances. For each instance, a new
+          boot disk will be created from the given image. Each boot disk will
+          have the same name as the instance. To view a list of public images
+          and projects, run [1m$ gcloud compute images list[m. It is best practice
+          to use [1m--image[m when a specific version of an image is needed.
+
+          When using this option, [1m[1;4m--boot-disk-device-name[1m[m and [1m[1;4m--boot-disk-size[1m[m
+          can be used to override the boot disk's device name and size,
+          respectively.
+
+       [1m--image-family[m=[4mIMAGE_FAMILY[m
+          The image family for the operating system that the boot disk will be
+          initialized with. Compute Engine offers multiple Linux distributions,
+          some of which are available as both regular and Shielded VM images.
+          When a family is specified instead of an image, the latest
+          non-deprecated image associated with that family is used. It is best
+          practice to use [1m--image-family[m when the latest version of an image is
+          needed.
+
+          By default, [1m[1;4mdebian-12[1m[m is assumed for this flag.
+
+       [1m--source-snapshot[m=[4mSOURCE_SNAPSHOT[m
+          The name of the source disk snapshot that the instance boot disk will
+          be created from. You can provide this as a full URL to the snapshot
+          or just the snapshot name. For example, the following are valid
+          values:
+
+          ▸ https://compute.googleapis.com/compute/v1/projects/myproject/global/snapshots/snapshot
+          ▸ snapshot
+
+     Key resource - The Cloud KMS (Key Management Service) cryptokey that will
+     be used to protect the instance. The 'Compute Engine Service Agent'
+     service account must hold permission 'Cloud KMS CryptoKey
+     Encrypter/Decrypter'. The arguments in this group can be used to specify
+     the attributes of this resource.
+
+     [1m--instance-kms-key[m=[4mINSTANCE_KMS_KEY[m
+        ID of the key or fully qualified identifier for the key.
+
+        To set the [1mkms-key[m attribute:
+        ◆ provide the argument [1m--instance-kms-key[m on the command line.
+
+        This flag argument must be specified if any of the other arguments in
+        this group are specified.
+
+     [1m--instance-kms-keyring[m=[4mINSTANCE_KMS_KEYRING[m
+        The KMS keyring of the key.
+
+        To set the [1mkms-keyring[m attribute:
+        ◆ provide the argument [1m--instance-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--instance-kms-keyring[m on the command line.
+
+     [1m--instance-kms-location[m=[4mINSTANCE_KMS_LOCATION[m
+        The Google Cloud location for the key.
+
+        To set the [1mkms-location[m attribute:
+        ◆ provide the argument [1m--instance-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--instance-kms-location[m on the command line.
+
+     [1m--instance-kms-project[m=[4mINSTANCE_KMS_PROJECT[m
+        The Google Cloud project for the key.
+
+        To set the [1mkms-project[m attribute:
+        ◆ provide the argument [1m--instance-kms-key[m on the command line with a
+          fully specified name;
+        ◆ provide the argument [1m--instance-kms-project[m on the command line;
+        ◆ set the property [1mcore/project[m.
+
+     Sole Tenancy.
+
+     At most one of these can be specified:
+
+       [1m--node[m=[4mNODE[m
+          The name of the node to schedule this instance on.
+
+       [1m--node-affinity-file[m=[4mPATH_TO_FILE[m
+          The JSON/YAML file containing the configuration of desired nodes onto
+          which this instance could be scheduled. These rules filter the nodes
+          according to their node affinity labels. A node's affinity labels
+          come from the node template of the group the node is in.
+
+          The file should contain a list of a JSON/YAML objects. For an
+          example, see
+          https://cloud.google.com/compute/docs/nodes/provisioning-sole-tenant-vms#configure_node_affinity_labels.
+          The following list describes the fields:
+
+           [1mkey[m
+              Corresponds to the node affinity label keys of the Node resource.
+           [1moperator[m
+              Specifies the node selection type. Must be one of: [1mIN[m: Requires
+              Compute Engine to seek for matched nodes. [1mNOT_IN[m: Requires
+              Compute Engine to avoid certain nodes.
+           [1mvalues[m
+              Optional. A list of values which correspond to the node affinity
+              label values of the Node resource.
+
+              Use a full or relative path to a local file containing the value
+              of node_affinity_file.
+
+       [1m--node-group[m=[4mNODE_GROUP[m
+          The name of the node group to schedule this instance on.
+
+     At most one of these can be specified:
+
+       [1m--public-ptr[m
+          Creates a DNS PTR record for the external IP of the instance.
+
+       [1m--no-public-ptr[m
+          If provided, no DNS PTR record is created for the external IP of the
+          instance. Mutually exclusive with public-ptr-domain.
+
+     At most one of these can be specified:
+
+       [1m--public-ptr-domain[m=[4mPUBLIC_PTR_DOMAIN[m
+          Assigns a custom PTR domain for the external IP of the instance.
+          Mutually exclusive with no-public-ptr.
+
+       [1m--no-public-ptr-domain[m
+          If both this flag and --public-ptr are specified, creates a DNS PTR
+          record for the external IP of the instance with the PTR domain name
+          being the DNS name of the instance.
+
+     Specifies the reservation for the instance.
+
+     [1m--reservation[m=[4mRESERVATION[m
+        The name of the reservation, required when
+        [1m--reservation-affinity=specific[m.
+
+     [1m--reservation-affinity[m=[4mRESERVATION_AFFINITY[m; default="any"
+        The type of reservation for the instance. [4mRESERVATION_AFFINITY[m must be
+        one of:
+
+         [1many[m
+            Consume any available, matching reservation.
+         [1mnone[m
+            Do not consume from any reserved capacity.
+         [1mspecific[m
+            Must consume from a specific reservation.
+
+     At most one of these can be specified:
+
+       [1m--scopes[m=[[4mSCOPE[m,...]
+          If not provided, the instance will be assigned the default scopes,
+          described below. However, if neither [1m--scopes[m nor [1m--no-scopes[m are
+          specified and the project has no default service account, then the
+          instance will be created with no scopes. Note that the level of
+          access that a service account has is determined by a combination of
+          access scopes and IAM roles so you must configure both access scopes
+          and IAM roles for the service account to work properly.
+
+          SCOPE can be either the full URI of the scope or an alias. [1mDefault[m
+          scopes are assigned to all instances. Available aliases are:
+
+            Alias                  URI
+            bigquery               https://www.googleapis.com/auth/bigquery
+            cloud-platform         https://www.googleapis.com/auth/cloud-platform
+            cloud-source-repos     https://www.googleapis.com/auth/source.full_control
+            cloud-source-repos-ro  https://www.googleapis.com/auth/source.read_only
+            compute-ro             https://www.googleapis.com/auth/compute.readonly
+            compute-rw             https://www.googleapis.com/auth/compute
+            datastore              https://www.googleapis.com/auth/datastore
+            default                https://www.googleapis.com/auth/devstorage.read_only
+                                   https://www.googleapis.com/auth/logging.write
+                                   https://www.googleapis.com/auth/monitoring.write
+                                   https://www.googleapis.com/auth/pubsub
+                                   https://www.googleapis.com/auth/service.management.readonly
+                                   https://www.googleapis.com/auth/servicecontrol
+                                   https://www.googleapis.com/auth/trace.append
+            gke-default            https://www.googleapis.com/auth/devstorage.read_only
+                                   https://www.googleapis.com/auth/logging.write
+                                   https://www.googleapis.com/auth/monitoring
+                                   https://www.googleapis.com/auth/service.management.readonly
+                                   https://www.googleapis.com/auth/servicecontrol
+                                   https://www.googleapis.com/auth/trace.append
+            logging-write          https://www.googleapis.com/auth/logging.write
+            monitoring             https://www.googleapis.com/auth/monitoring
+            monitoring-read        https://www.googleapis.com/auth/monitoring.read
+            monitoring-write       https://www.googleapis.com/auth/monitoring.write
+            pubsub                 https://www.googleapis.com/auth/pubsub
+            service-control        https://www.googleapis.com/auth/servicecontrol
+            service-management     https://www.googleapis.com/auth/service.management.readonly
+            sql (deprecated)       https://www.googleapis.com/auth/sqlservice
+            sql-admin              https://www.googleapis.com/auth/sqlservice.admin
+            storage-full           https://www.googleapis.com/auth/devstorage.full_control
+            storage-ro             https://www.googleapis.com/auth/devstorage.read_only
+            storage-rw             https://www.googleapis.com/auth/devstorage.read_write
+            taskqueue              https://www.googleapis.com/auth/taskqueue
+            trace                  https://www.googleapis.com/auth/trace.append
+            userinfo-email         https://www.googleapis.com/auth/userinfo.email
+
+          DEPRECATION WARNING: https://www.googleapis.com/auth/sqlservice
+          account scope and [1msql[m alias do not provide SQL instance management
+          capabilities and have been deprecated. Please, use
+          https://www.googleapis.com/auth/sqlservice.admin or [1msql-admin[m to
+          manage your Google SQL Service instances.
+
+       [1m--no-scopes[m
+          Create instance without scopes
+
+     At most one of these can be specified:
+
+       [1m--service-account[m=[4mSERVICE_ACCOUNT[m
+          A service account is an identity attached to the instance. Its access
+          tokens can be accessed through the instance metadata server and are
+          used to authenticate applications on the instance. The account can be
+          set using an email address corresponding to the required service
+          account.
+
+          If not provided, the instance will use the project's default service
+          account.
+
+       [1m--no-service-account[m
+          Create instance without service account
+
+[m[1mGCLOUD WIDE FLAGS[m
+    These flags are available to all commands: --access-token-file, --account,
+    --billing-project, --configuration, --flags-file, --flatten, --format,
+    --help, --impersonate-service-account, --log-http, --project, --quiet,
+    --trace-token, --user-output-enabled, --verbosity.
+
+    Run [1m$ gcloud help[m for details.
+[m

@@ -1,0 +1,31 @@
+Command:
+  hanami new
+
+Usage:
+  hanami new APP
+
+Description:
+  Generate a new Hanami app
+
+Arguments:
+  APP                               # REQUIRED App name
+
+Options:
+  --head                            # Use Hanami HEAD version (from GitHub `main` branches), default: false
+  --gem-source=VALUE                # Where to source Ruby gems from, default: "rubygems.org"
+  --skip-install                    # Skip app installation (Bundler, third-party Hanami plugins), default: false
+  --skip-assets                     # Skip including hanami-assets, default: false
+  --skip-db                         # Skip including hanami-db, default: false
+  --skip-view                       # Skip including hanami-view, default: false
+  --database=VALUE                  # Database adapter (supported: sqlite, mysql, postgres), default: "sqlite"
+  --help, -h                        # Print this help
+
+Examples:
+  hanami new bookshelf                                    # Generate a new Hanami app in `bookshelf/' directory, using `Bookshelf' namespace
+  hanami new bookshelf --head                             # Generate a new Hanami app, using Hanami HEAD version from GitHub `main' branches
+  hanami new bookshelf --gem-source=gem.coop              # Generate a new Hanami app, using https://gem.coop as Ruby gem source
+  hanami new bookshelf --skip-install                     # Generate a new Hanami app, but it skips Hanami installation
+  hanami new bookshelf --skip-assets                      # Generate a new Hanami app without hanami-assets
+  hanami new bookshelf --skip-db                          # Generate a new Hanami app without hanami-db
+  hanami new bookshelf --skip-view                        # Generate a new Hanami app without hanami-view
+  hanami new bookshelf --database={sqlite|postgres|mysql} # Generate a new Hanami app with a specified database (default: sqlite)

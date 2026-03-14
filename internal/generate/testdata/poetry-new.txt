@@ -1,0 +1,37 @@
+
+Description:
+  Creates a new Python project at <path>.
+
+Usage:
+  new [options] [--] <path>
+
+Arguments:
+  path                                 The path to create the project at.
+
+Options:
+  -i, --interactive                    Allow interactive specification of project configuration.
+      --name=NAME                      Set the resulting package name.
+      --src                            Use the src layout for the project. Deprecated: This is the default option now.
+      --flat                           Use the flat layout for the project.
+      --readme=README                  Specify the readme file format. Default is md.
+      --description=DESCRIPTION        Description of the package.
+      --author=AUTHOR                  Author name of the package.
+      --python=PYTHON                  Compatible Python versions.
+      --dependency=DEPENDENCY          Package to require, with an optional version constraint, e.g. requests:^2.10.0 or requests=2.11.1. (multiple values allowed)
+      --dev-dependency=DEV-DEPENDENCY  Package to require for development, with an optional version constraint, e.g. requests:^2.10.0 or requests=2.11.1. (multiple values allowed)
+  -l, --license=LICENSE                License of the package.
+  -h, --help                           Display help for the given command. When no command is given display help for the list command.
+  -q, --quiet                          Do not output any message.
+  -V, --version                        Display this application version.
+      --ansi                           Force ANSI output.
+      --no-ansi                        Disable ANSI output.
+  -n, --no-interaction                 Do not ask any interactive question.
+      --no-plugins                     Disables plugins.
+      --no-cache                       Disables Poetry source caches.
+  -P, --project=PROJECT                Specify another path as the project root. All command-line arguments will be resolved relative to the current working directory.
+  -C, --directory=DIRECTORY            The working directory for the Poetry command (defaults to the current working directory). All command-line arguments will be resolved relative to the given directory.
+  -v|vv|vvv, --verbose                 Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug.
+
+Help:
+  The init command creates a basic pyproject.toml file in the current directory.
+  

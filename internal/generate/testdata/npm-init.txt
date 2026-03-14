@@ -1,0 +1,59 @@
+Create a package.json file
+
+Usage:
+npm init <package-spec> (same as `npx create-<package-spec>`)
+npm init <@scope> (same as `npx <@scope>/create`)
+
+Options:
+[--init-author-name <name>] [--init-author-url <url>] [--init-license <license>]
+[--init-module <module>] [--init-type <type>] [--init-version <version>]
+[--init-private] [-y|--yes] [-f|--force] [--scope <@scope>]
+[-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+[--workspaces] [--no-workspaces-update] [--include-workspace-root]
+
+  --init-author-name
+    The value `npm init` should use by default for the package author's name.
+
+  --init-author-url
+    The value `npm init` should use by default for the package author's homepage.
+
+  --init-license
+    The value `npm init` should use by default for the package license.
+
+  --init-module
+    A module that will be loaded by the `npm init` command.  See the
+
+  --init-type
+    The value that `npm init` should use by default for the package.json type field.
+
+  --init-version
+    The value that `npm init` should use by default for the package
+
+  --init-private
+    The value `npm init` should use by default for the package's private flag.
+
+  -y|--yes
+    Automatically answer "yes" to any prompts that npm might print on
+
+  -f|--force
+    Removes various protections against unfortunate side effects, common
+
+  --scope
+    Associate an operation with a scope for a scoped registry.
+
+  -w|--workspace
+    Enable running a command in the context of the configured workspaces of the
+
+  --workspaces
+    Set to true to run the command in the context of **all** configured
+
+  --workspaces-update
+    If set to true, the npm cli will run an update after operations that may
+
+  --include-workspace-root
+    Include the workspace root when workspaces are enabled for a command.
+
+
+aliases: create, innit
+
+Run "npm help init" for more info

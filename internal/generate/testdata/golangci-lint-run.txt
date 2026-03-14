@@ -1,0 +1,61 @@
+Lint the code.
+
+Usage:
+  golangci-lint run [flags]
+
+Flags:
+  -c, --config PATH                       Read config from file path PATH
+      --no-config                         Don't read config file
+      --default string                    Default set of linters to enable (default "standard")
+  -D, --disable strings                   Disable specific linter
+  -E, --enable strings                    Enable specific linter
+      --enable-only strings               Override linters configuration section to only run the specific linter(s)
+      --fast-only                         Filter enabled linters to run only fast linters
+  -j, --concurrency int                   Number of CPUs to use (Default: Automatically set to match Linux container CPU quota and fall back to the number of logical CPUs in the machine)
+      --modules-download-mode string      Modules download mode. If not empty, passed as -mod=<mode> to go tools
+      --issues-exit-code int              Exit code when issues were found (default 1)
+      --build-tags strings                Build tags
+      --timeout duration                  Timeout for total work. Disabled by default
+      --tests                             Analyze tests (*_test.go) (default true)
+      --allow-parallel-runners            Allow multiple parallel golangci-lint instances running.
+                                          If false (default) - golangci-lint acquires file lock on start.
+      --allow-serial-runners              Allow multiple golangci-lint instances running, but serialize them around a lock.
+                                          If false (default) - golangci-lint exits with an error if it fails to acquire file lock on start.
+      --path-prefix string                Path prefix to add to output
+      --path-mode string                  Path mode to use (empty, or 'abs')
+      --show-stats                        Show statistics per linter (default true)
+      --output.text.path stdout           Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.text.print-linter-name     Print linter name in the end of issue text. (default true)
+      --output.text.print-issued-lines    Print lines of code with issue. (default true)
+      --output.text.colors                Use colors. (default true)
+      --output.json.path stdout           Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.tab.path stdout            Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.tab.print-linter-name      Print linter name in the end of issue text. (default true)
+      --output.tab.colors                 Use colors. (default true)
+      --output.html.path stdout           Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.checkstyle.path stdout     Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.code-climate.path stdout   Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.junit-xml.path stdout      Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.junit-xml.extended         Support extra JUnit XML fields.
+      --output.teamcity.path stdout       Output path can be either stdout, `stderr` or path to the file to write to.
+      --output.sarif.path stdout          Output path can be either stdout, `stderr` or path to the file to write to.
+      --max-issues-per-linter int         Maximum issues count per one linter. Set to 0 to disable (default 50)
+      --max-same-issues int               Maximum count of issues with the same text. Set to 0 to disable (default 3)
+      --uniq-by-line                      Make issues output unique by line (default true)
+  -n, --new                               Show only new issues: if there are unstaged changes or untracked files, only those changes are analyzed, else only changes in HEAD~ are analyzed.
+                                          It's a super-useful option for integration of golangci-lint into existing large codebase.
+                                          It's not practical to fix all existing issues at the moment of integration: much better to not allow issues in new code.
+                                          For CI setups, prefer --new-from-rev=HEAD~, as --new can skip linting the current patch if any scripts generate unstaged files before golangci-lint runs.
+      --new-from-rev REV                  Show only new issues created after git revision REV
+      --new-from-patch PATH               Show only new issues created in git patch with file path PATH
+      --new-from-merge-base string        Show only new issues created after the best common ancestor (merge-base against HEAD)
+      --whole-files                       Show issues in any part of update files (requires new-from-rev or new-from-patch)
+      --fix                               Apply the fixes detected by the linters and formatters (if it's supported by the linter)
+      --cpu-profile-path string           Path to CPU profile output file
+      --mem-profile-path string           Path to memory profile output file
+      --trace-path string                 Path to trace output file
+
+Global Flags:
+      --color string   Use color when printing; can be 'always', 'auto', or 'never' (default "auto")
+  -h, --help           Help for a command
+  -v, --verbose        Verbose output

@@ -1,0 +1,56 @@
+Creates a new Droplet on your account. The command requires values for the `--size`, and `--image` flags.
+
+To retrieve a list of size slugs, use the `doctl compute size list` command. To retrieve a list of image slugs, use the `doctl compute image list` command.
+
+If you do not specify a region, the Droplet is created in the default region for your account. If you do not specify any SSH keys, we email a temporary password to your account's email address.
+
+Usage:
+  doctl compute droplet create <droplet-name>... [flags]
+
+Aliases:
+  create, c
+
+Examples:
+The following example creates a Droplet named `example-droplet` with a two vCPUs, two GiB of RAM, and 20 GBs of disk space. The Droplet is created in the `nyc1` region and is based on the `ubuntu-20-04-x64` image. Additionally, the command uses the `--user-data` flag to run a Bash script the first time the Droplet boots up:
+
+doctl compute droplet create example-droplet --size s-2vcpu-2gb --image ubuntu-20-04-x64 --region nyc1 --user-data $'#!/bin/bash\n touch /root/example.txt; sudo apt update;sudo snap install doctl'
+
+Please note: In Windows Powershell, the example command would be the following instead: 
+
+doctl compute droplet create example-droplet --size s-2vcpu-2gb --image ubuntu-20-04-x64 --region nyc1  --user-data "#!/bin/bash`n touch /root/example.txt; sudo apt update;sudo snap install doctl"
+
+Flags:
+      --backup-policy-hour int                Backup policy hour.
+      --backup-policy-plan string             Backup policy frequency plan.
+      --backup-policy-weekday string          Backup policy weekday.
+      --droplet-agent --droplet-agent=false   Specifies whether or not the Droplet monitoring agent should be installed. By default, the agent is installed on new Droplets but installation errors are ignored. Set --droplet-agent=false to prevent installation. Set to `true` to make installation errors fatal.
+      --enable-backups                        Enables backups for the Droplet. By default, backups are created on a daily basis.
+      --enable-ipv6                           Enables IPv6 support and assigns an IPv6 address to the Droplet
+      --enable-monitoring                     Installs the DigitalOcean agent for additional monitoring
+      --enable-private-networking             Enables private networking for the Droplet by provisioning it inside of your account's default VPC for the region
+      --format ID                             Columns for output in a comma-separated list. Possible values: ID, `Name`, `PublicIPv4`, `PrivateIPv4`, `PublicIPv6`, `Memory`, `VCPUs`, `Disk`, `Region`, `Image`, `VPCUUID`, `Status`, `Tags`, `Features`, `Volumes`.
+  -h, --help                                  help for create
+      --image ubuntu-20-04-x64                An ID or slug specifying the image to use to create the Droplet, such as ubuntu-20-04-x64. Use the commands under `doctl compute image` to find additional images. (required)
+      --no-header                             Return raw data with no headers
+      --project-id string                     The UUID of the project to assign the Droplet to
+      --region slug                           A slug specifying the region to create the Droplet in, such as `nyc1`. Use the `doctl compute region list` command for a list of valid regions.
+      --size slug                             A slug indicating the Droplet's number of vCPUs, RAM, and disk size. For example, `s-1vcpu-1gb` specifies a Droplet with one vCPU and 1 GiB of RAM. The disk size is defined by the slug's plan. Run `doctl compute size list` for a list of valid size slugs and their disk sizes. (required)
+      --ssh-keys strings                      A list of SSH key IDs or fingerprints to embed in the Droplet's root account upon creation
+      --tag-name string                       Applies a tag to the Droplet
+      --tag-names strings                     Applies a list of tags to the Droplet
+      --user-data string                      A shell script to run on the Droplet's first boot
+      --user-data-file path/to/file.yaml      The path to a file containing a shell script or Cloud-init YAML file to run on the Droplet's first boot. Example: path/to/file.yaml
+      --volumes strings                       A list of block storage volume IDs to attach to the Droplet
+      --vpc-uuid string                       The UUID of a non-default VPC to create the Droplet in
+      --wait                                  Instructs the terminal to wait for the action to complete before returning access to the user
+
+Global Flags:
+  -t, --access-token string   API V2 access token
+  -u, --api-url string        Override default API endpoint
+  -c, --config string         Specify a custom config file (default "/Users/leonid/Library/Application Support/doctl/config.yaml")
+      --context string        Specify a custom authentication context name
+      --http-retry-max int    Set maximum number of retries for requests that fail with a 429 or 500-level error (default 5)
+      --interactive           Enable interactive behavior. Defaults to true if the terminal supports it (default false)
+  -o, --output string         Desired output format [text|json] (default "text")
+      --trace                 Show a log of network activity while performing a command
+  -v, --verbose               Enable verbose output

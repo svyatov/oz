@@ -1,0 +1,502 @@
+GIT-CLONE(1)                      Git Manual                      GIT-CLONE(1)
+
+NNAAMMEE
+       git-clone - Clone a repository into a new directory
+
+SSYYNNOOPPSSIISS
+       ggiitt cclloonnee [----tteemmppllaattee==_<_t_e_m_p_l_a_t_e_-_d_i_r_e_c_t_o_r_y_>]
+              [--ll] [--ss] [----nnoo--hhaarrddlliinnkkss] [--qq] [--nn] [----bbaarree] [----mmiirrrroorr]
+              [--oo _<_n_a_m_e_>] [--bb _<_n_a_m_e_>] [--uu _<_u_p_l_o_a_d_-_p_a_c_k_>] [----rreeffeerreennccee _<_r_e_p_o_s_i_t_o_r_y_>]
+              [----ddiissssoocciiaattee] [----sseeppaarraattee--ggiitt--ddiirr _<_g_i_t_-_d_i_r_>]
+              [----ddeepptthh _<_d_e_p_t_h_>] [----[nnoo--]ssiinnggllee--bbrraanncchh] [----[nnoo--]ttaaggss]
+              [----rreeccuurrssee--ssuubbmmoodduulleess[==_<_p_a_t_h_s_p_e_c_>]] [----[nnoo--]sshhaallllooww--ssuubbmmoodduulleess]
+              [----[nnoo--]rreemmoottee--ssuubbmmoodduulleess] [----jjoobbss _<_n_>] [----ssppaarrssee] [----[nnoo--]rreejjeecctt--sshhaallllooww]
+              [----ffiilltteerr==_<_f_i_l_t_e_r_-_s_p_e_c_>] [----aallssoo--ffiilltteerr--ssuubbmmoodduulleess]] [----] _<_r_e_p_o_s_i_t_o_r_y_>
+              [_<_d_i_r_e_c_t_o_r_y_>]
+
+DDEESSCCRRIIPPTTIIOONN
+       Clones a repository into a newly created directory, creates
+       remote-tracking branches for each branch in the cloned repository
+       (visible using ggiitt bbrraanncchh ----rreemmootteess), and creates and checks out an
+       initial branch that is forked from the cloned repository’s currently
+       active branch.
+
+       After the clone, a plain ggiitt ffeettcchh without arguments will update all
+       the remote-tracking branches, and a ggiitt ppuullll without arguments will in
+       addition merge the remote master branch into the current master branch,
+       if any (this is untrue when ----ssiinnggllee--bbrraanncchh is given; see below).
+
+       This default configuration is achieved by creating references to the
+       remote branch heads under rreeffss//rreemmootteess//oorriiggiinn and by initializing
+       rreemmoottee..oorriiggiinn..uurrll and rreemmoottee..oorriiggiinn..ffeettcchh configuration variables.
+
+OOPPTTIIOONNSS
+       --ll, ----llooccaall
+           When the repository to clone from is on a local machine, this flag
+           bypasses the normal "Git aware" transport mechanism and clones the
+           repository by making a copy of HHEEAADD and everything under objects
+           and refs directories. The files under .ggiitt//oobbjjeeccttss// directory are
+           hardlinked to save space when possible.
+
+           If the repository is specified as a local path (e.g.,
+           //ppaatthh//ttoo//rreeppoo), this is the default, and ----llooccaall is essentially a
+           no-op. If the repository is specified as a URL, then this flag is
+           ignored (and we never use the local optimizations). Specifying
+           ----nnoo--llooccaall will override the default when //ppaatthh//ttoo//rreeppoo is given,
+           using the regular Git transport instead.
+
+           If the repository’s $$GGIITT__DDIIRR//oobbjjeeccttss has symbolic links or is a
+           symbolic link, the clone will fail. This is a security measure to
+           prevent the unintentional copying of files by dereferencing the
+           symbolic links.
+
+           This option does not work with repositories owned by other users
+           for security reasons, and ----nnoo--llooccaall must be specified for the
+           clone to succeed.
+
+           NNOOTTEE: this operation can race with concurrent modification to the
+           source repository, similar to running ccpp --rr _<_s_r_c_> _<_d_s_t_> while
+           modifying _<_s_r_c_>.
+
+       ----nnoo--hhaarrddlliinnkkss
+           Force the cloning process from a repository on a local filesystem
+           to copy the files under the .ggiitt//oobbjjeeccttss directory instead of using
+           hardlinks. This may be desirable if you are trying to make a
+           back-up of your repository.
+
+       --ss, ----sshhaarreedd
+           When the repository to clone is on the local machine, instead of
+           using hard links, automatically setup .ggiitt//oobbjjeeccttss//iinnffoo//aalltteerrnnaatteess
+           to share the objects with the source repository. The resulting
+           repository starts out without any object of its own.
+
+           NNOOTTEE: this is a possibly dangerous operation; do nnoott use it unless
+           you understand what it does. If you clone your repository using
+           this option and then delete branches (or use any other Git command
+           that makes any existing commit unreferenced) in the source
+           repository, some objects may become unreferenced (or dangling).
+           These objects may be removed by normal Git operations (such as ggiitt
+           ccoommmmiitt) which automatically call ggiitt mmaaiinntteennaannccee rruunn ----aauuttoo. (See
+           ggiitt--mmaaiinntteennaannccee(1).) If these objects are removed and were
+           referenced by the cloned repository, then the cloned repository
+           will become corrupt.
+
+           Note that running ggiitt rreeppaacckk without the ----llooccaall option in a
+           repository cloned with ----sshhaarreedd will copy objects from the source
+           repository into a pack in the cloned repository, removing the disk
+           space savings of cclloonnee ----sshhaarreedd. It is safe, however, to run ggiitt
+           ggcc, which uses the ----llooccaall option by default.
+
+           If you want to break the dependency of a repository cloned with
+           ----sshhaarreedd on its source repository, you can simply run ggiitt rreeppaacckk --aa
+           to copy all objects from the source repository into a pack in the
+           cloned repository.
+
+       ----rreeffeerreennccee[--iiff--aabbllee] _<_r_e_p_o_s_i_t_o_r_y_>
+           If the reference _<_r_e_p_o_s_i_t_o_r_y_> is on the local machine,
+           automatically setup .ggiitt//oobbjjeeccttss//iinnffoo//aalltteerrnnaatteess to obtain objects
+           from the reference _<_r_e_p_o_s_i_t_o_r_y_>. Using an already existing
+           repository as an alternate will require fewer objects to be copied
+           from the repository being cloned, reducing network and local
+           storage costs. When using the ----rreeffeerreennccee--iiff--aabbllee, a non existing
+           directory is skipped with a warning instead of aborting the clone.
+
+           NNOOTTEE: see the NOTE for the ----sshhaarreedd option, and also the
+           ----ddiissssoocciiaattee option.
+
+       ----ddiissssoocciiaattee
+           Borrow the objects from reference repositories specified with the
+           ----rreeffeerreennccee options only to reduce network transfer, and stop
+           borrowing from them after a clone is made by making necessary local
+           copies of borrowed objects. This option can also be used when
+           cloning locally from a repository that already borrows objects from
+           another repository—the new repository will borrow objects from the
+           same repository, and this option can be used to stop the borrowing.
+
+       --qq, ----qquuiieett
+           Operate quietly. Progress is not reported to the standard error
+           stream.
+
+       --vv, ----vveerrbboossee
+           Run verbosely. Does not affect the reporting of progress status to
+           the standard error stream.
+
+       ----pprrooggrreessss
+           Progress status is reported on the standard error stream by default
+           when it is attached to a terminal, unless ----qquuiieett is specified.
+           This flag forces progress status even if the standard error stream
+           is not directed to a terminal.
+
+       ----sseerrvveerr--ooppttiioonn==_<_o_p_t_i_o_n_>
+           Transmit the given string to the server when communicating using
+           protocol version 2. The given string must not contain a NUL or LF
+           character. The server’s handling of server options, including
+           unknown ones, is server-specific. When multiple
+           ----sseerrvveerr--ooppttiioonn==_<_o_p_t_i_o_n_> are given, they are all sent to the other
+           side in the order listed on the command line. When no
+           ----sseerrvveerr--ooppttiioonn==_<_o_p_t_i_o_n_> is given from the command line, the values
+           of configuration variable rreemmoottee.._<_n_a_m_e_>..sseerrvveerrOOppttiioonn are used
+           instead.
+
+       --nn, ----nnoo--cchheecckkoouutt
+           No checkout of HHEEAADD is performed after the clone is complete.
+
+       ----[nnoo--]rreejjeecctt--sshhaallllooww
+           Fail if the source repository is a shallow repository. The
+           cclloonnee..rreejjeeccttSShhaallllooww configuration variable can be used to specify
+           the default.
+
+       ----bbaarree
+           Make a _b_a_r_e Git repository. That is, instead of creating
+           _<_d_i_r_e_c_t_o_r_y_> and placing the administrative files in
+           _<_d_i_r_e_c_t_o_r_y_>//..ggiitt, make the _<_d_i_r_e_c_t_o_r_y_> itself the $$GGIITT__DDIIRR. This
+           obviously implies the ----nnoo--cchheecckkoouutt because there is nowhere to
+           check out the working tree. Also the branch heads at the remote are
+           copied directly to corresponding local branch heads, without
+           mapping them to rreeffss//rreemmootteess//oorriiggiinn//. When this option is used,
+           neither remote-tracking branches nor the related configuration
+           variables are created.
+
+       ----ssppaarrssee
+           Employ a sparse-checkout, with only files in the toplevel directory
+           initially being present. The ggiitt--ssppaarrssee--cchheecckkoouutt(1) command can be
+           used to grow the working directory as needed.
+
+       ----ffiilltteerr==_<_f_i_l_t_e_r_-_s_p_e_c_>
+           Use the partial clone feature and request that the server sends a
+           subset of reachable objects according to a given object filter.
+           When using ----ffiilltteerr, the supplied _<_f_i_l_t_e_r_-_s_p_e_c_> is used for the
+           partial clone filter. For example, ----ffiilltteerr==bblloobb::nnoonnee will filter
+           out all blobs (file contents) until needed by Git. Also,
+           ----ffiilltteerr==bblloobb::lliimmiitt==_<_s_i_z_e_> will filter out all blobs of size at
+           least _<_s_i_z_e_>. For more details on filter specifications, see the
+           ----ffiilltteerr option in ggiitt--rreevv--lliisstt(1).
+
+       ----aallssoo--ffiilltteerr--ssuubbmmoodduulleess
+           Also apply the partial clone filter to any submodules in the
+           repository. Requires ----ffiilltteerr and ----rreeccuurrssee--ssuubbmmoodduulleess. This can be
+           turned on by default by setting the cclloonnee..ffiilltteerrSSuubbmmoodduulleess config
+           option.
+
+       ----mmiirrrroorr
+           Set up a mirror of the source repository. This implies ----bbaarree.
+           Compared to ----bbaarree, ----mmiirrrroorr not only maps local branches of the
+           source to local branches of the target, it maps all refs (including
+           remote-tracking branches, notes etc.) and sets up a refspec
+           configuration such that all these refs are overwritten by a ggiitt
+           rreemmoottee uuppddaattee in the target repository.
+
+       --oo _<_n_a_m_e_>, ----oorriiggiinn _<_n_a_m_e_>
+           Instead of using the remote name oorriiggiinn to keep track of the
+           upstream repository, use _<_n_a_m_e_>. Overrides cclloonnee..ddeeffaauullttRReemmootteeNNaammee
+           from the config.
+
+       --bb _<_n_a_m_e_>, ----bbrraanncchh _<_n_a_m_e_>
+           Instead of pointing the newly created HHEEAADD to the branch pointed to
+           by the cloned repository’s HHEEAADD, point to _<_n_a_m_e_> branch instead. In
+           a non-bare repository, this is the branch that will be checked out.
+           ----bbrraanncchh can also take tags and detaches the HHEEAADD at that commit in
+           the resulting repository.
+
+       ----rreevviissiioonn==_<_r_e_v_>
+           Create a new repository, and fetch the history leading to the given
+           revision _<_r_e_v_> (and nothing else), without making any
+           remote-tracking branch, and without making any local branch, and
+           detach HHEEAADD to _<_r_e_v_>. The argument can be a ref name (e.g.
+           rreeffss//hheeaaddss//mmaaiinn or rreeffss//ttaaggss//vv11..00) that peels down to a commit, or
+           a hexadecimal object name. This option is incompatible with
+           ----bbrraanncchh and ----mmiirrrroorr.
+
+       --uu _<_u_p_l_o_a_d_-_p_a_c_k_>, ----uuppllooaadd--ppaacckk _<_u_p_l_o_a_d_-_p_a_c_k_>
+           When given, and the repository to clone from is accessed via ssh,
+           this specifies a non-default path for the command run on the other
+           end.
+
+       ----tteemmppllaattee==_<_t_e_m_p_l_a_t_e_-_d_i_r_e_c_t_o_r_y_>
+           Specify the directory from which templates will be used; (See the
+           "TEMPLATE DIRECTORY" section of ggiitt--iinniitt(1).)
+
+       --cc _<_k_e_y_>==_<_v_a_l_u_e_>, ----ccoonnffiigg _<_k_e_y_>==_<_v_a_l_u_e_>
+           Set a configuration variable in the newly-created repository; this
+           takes effect immediately after the repository is initialized, but
+           before the remote history is fetched or any files checked out. The
+           _<_k_e_y_> is in the same format as expected by ggiitt--ccoonnffiigg(1) (e.g.,
+           ccoorree..eeooll==ttrruuee). If multiple values are given for the same key, each
+           value will be written to the config file. This makes it safe, for
+           example, to add additional fetch refspecs to the origin remote.
+
+           Due to limitations of the current implementation, some
+           configuration variables do not take effect until after the initial
+           fetch and checkout. Configuration variables known to not take
+           effect are: rreemmoottee.._<_n_a_m_e_>..mmiirrrroorr and rreemmoottee.._<_n_a_m_e_>..ttaaggOOpptt. Use the
+           corresponding ----mmiirrrroorr and ----nnoo--ttaaggss options instead.
+
+       ----ddeepptthh _<_d_e_p_t_h_>
+           Create a _s_h_a_l_l_o_w clone with a history truncated to the specified
+           number of commits. Implies ----ssiinnggllee--bbrraanncchh unless
+           ----nnoo--ssiinnggllee--bbrraanncchh is given to fetch the histories near the tips of
+           all branches. If you want to clone submodules shallowly, also pass
+           ----sshhaallllooww--ssuubbmmoodduulleess.
+
+       ----sshhaallllooww--ssiinnccee==_<_d_a_t_e_>
+           Create a shallow clone with a history after the specified time.
+
+       ----sshhaallllooww--eexxcclluuddee==_<_r_e_f_>
+           Create a shallow clone with a history, excluding commits reachable
+           from a specified remote branch or tag. This option can be specified
+           multiple times.
+
+       ----[nnoo--]ssiinnggllee--bbrraanncchh
+           Clone only the history leading to the tip of a single branch,
+           either specified by the ----bbrraanncchh option or the primary branch
+           remote’s HHEEAADD points at. Further fetches into the resulting
+           repository will only update the remote-tracking branch for the
+           branch this option was used for the initial cloning. If the HHEEAADD at
+           the remote did not point at any branch when ----ssiinnggllee--bbrraanncchh clone
+           was made, no remote-tracking branch is created.
+
+       ----[nnoo--]ttaaggss
+           Control whether or not tags will be cloned. When ----nnoo--ttaaggss is
+           given, the option will be become permanent by setting the
+           rreemmoottee.._<_r_e_m_o_t_e_>..ttaaggOOpptt==----nnoo--ttaaggss configuration. This ensures that
+           future ggiitt ppuullll and ggiitt ffeettcchh won’t follow any tags. Subsequent
+           explicit tag fetches will still work (see ggiitt--ffeettcchh(1)).
+
+           By default, tags are cloned and passing ----ttaaggss is thus typically a
+           no-op, unless it cancels out a previous ----nnoo--ttaaggss.
+
+           Can be used in conjunction with ----ssiinnggllee--bbrraanncchh to clone and
+           maintain a branch with no references other than a single cloned
+           branch. This is useful e.g. to maintain minimal clones of the
+           default branch of some repository for search indexing.
+
+       ----rreeccuurrssee--ssuubbmmoodduulleess[==_<_p_a_t_h_s_p_e_c_>]
+           After the clone is created, initialize and clone submodules within
+           based on the provided _<_p_a_t_h_s_p_e_c_>. If no ==_<_p_a_t_h_s_p_e_c_> is provided,
+           all submodules are initialized and cloned. This option can be given
+           multiple times for pathspecs consisting of multiple entries. The
+           resulting clone has ssuubbmmoodduullee..aaccttiivvee set to the provided pathspec,
+           or "." (meaning all submodules) if no pathspec is provided.
+
+           Submodules are initialized and cloned using their default settings.
+           This is equivalent to running ggiitt ssuubbmmoodduullee uuppddaattee ----iinniitt
+           ----rreeccuurrssiivvee _<_p_a_t_h_s_p_e_c_> immediately after the clone is finished.
+           This option is ignored if the cloned repository does not have a
+           worktree/checkout (i.e. if any of ----nnoo--cchheecckkoouutt/--nn, ----bbaarree, or
+           ----mmiirrrroorr is given)
+
+       ----[nnoo--]sshhaallllooww--ssuubbmmoodduulleess
+           All submodules which are cloned will be shallow with a depth of 1.
+
+       ----[nnoo--]rreemmoottee--ssuubbmmoodduulleess
+           All submodules which are cloned will use the status of the
+           submodule’s remote-tracking branch to update the submodule, rather
+           than the superproject’s recorded SHA-1. Equivalent to passing
+           ----rreemmoottee to ggiitt ssuubbmmoodduullee uuppddaattee.
+
+       ----sseeppaarraattee--ggiitt--ddiirr==_<_g_i_t_-_d_i_r_>
+           Instead of placing the cloned repository where it is supposed to
+           be, place the cloned repository at the specified directory, then
+           make a filesystem-agnostic Git symbolic link to there. The result
+           is Git repository can be separated from working tree.
+
+       ----rreeff--ffoorrmmaatt==_<_r_e_f_-_f_o_r_m_a_t_>
+           Specify the given ref storage format for the repository. The valid
+           values are:
+
+           •   ffiilleess for loose files with packed-refs. This is the default.
+
+           •   rreeffttaabbllee for the reftable format. This format is experimental
+               and its internals are subject to change.
+
+       --jj _<_n_>, ----jjoobbss _<_n_>
+           The number of submodules fetched at the same time. Defaults to the
+           ssuubbmmoodduullee..ffeettcchhJJoobbss option.
+
+       _<_r_e_p_o_s_i_t_o_r_y_>
+           The (possibly remote) _<_r_e_p_o_s_i_t_o_r_y_> to clone from. See the GIT URLS
+           section below for more information on specifying repositories.
+
+       _<_d_i_r_e_c_t_o_r_y_>
+           The name of a new directory to clone into. The "humanish" part of
+           the source repository is used if no _<_d_i_r_e_c_t_o_r_y_> is explicitly given
+           (rreeppoo for //ppaatthh//ttoo//rreeppoo..ggiitt and ffoooo for hhoosstt..xxzz::ffoooo//..ggiitt). Cloning
+           into an existing directory is only allowed if the directory is
+           empty.
+
+       ----bbuunnddllee--uurrii==_<_u_r_i_>
+           Before fetching from the remote, fetch a bundle from the given
+           _<_u_r_i_> and unbundle the data into the local repository. The refs in
+           the bundle will be stored under the hidden rreeffss//bbuunnddllee//** namespace.
+           This option is incompatible with ----ddeepptthh, ----sshhaallllooww--ssiinnccee, and
+           ----sshhaallllooww--eexxcclluuddee.
+
+GGIITT UURRLLSS
+       In general, URLs contain information about the transport protocol, the
+       address of the remote server, and the path to the repository. Depending
+       on the transport protocol, some of this information may be absent.
+
+       Git supports ssh, git, http, and https protocols (in addition, ftp and
+       ftps can be used for fetching, but this is inefficient and deprecated;
+       do not use them).
+
+       The native transport (i.e. ggiitt:://// URL) does no authentication and
+       should be used with caution on unsecured networks.
+
+       The following syntaxes may be used with them:
+
+       •   sssshh::////[_<_u_s_e_r_>@@]_<_h_o_s_t_>[::_<_p_o_r_t_>]//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       •   ggiitt::////_<_h_o_s_t_>[::_<_p_o_r_t_>]//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       •   hhttttpp[ss]::////_<_h_o_s_t_>[::_<_p_o_r_t_>]//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       •   ffttpp[ss]::////_<_h_o_s_t_>[::_<_p_o_r_t_>]//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       An alternative scp-like syntax may also be used with the ssh protocol:
+
+       •   [_<_u_s_e_r_>@@]_<_h_o_s_t_>:://_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       This syntax is only recognized if there are no slashes before the first
+       colon. This helps differentiate a local path that contains a colon. For
+       example the local path ffoooo::bbaarr could be specified as an absolute path
+       or .//ffoooo::bbaarr to avoid being misinterpreted as an ssh url.
+
+       The ssh and git protocols additionally support ~~_<_u_s_e_r_n_a_m_e_> expansion:
+
+       •   sssshh::////[_<_u_s_e_r_>@@]_<_h_o_s_t_>[::_<_p_o_r_t_>]//~~_<_u_s_e_r_>//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       •   ggiitt::////_<_h_o_s_t_>[::_<_p_o_r_t_>]//~~_<_u_s_e_r_>//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       •   [_<_u_s_e_r_>@@]_<_h_o_s_t_>::~~_<_u_s_e_r_>//_<_p_a_t_h_-_t_o_-_g_i_t_-_r_e_p_o_>
+
+       For local repositories, also supported by Git natively, the following
+       syntaxes may be used:
+
+       •   //ppaatthh//ttoo//rreeppoo..ggiitt//
+
+       •   ffiillee:://////ppaatthh//ttoo//rreeppoo..ggiitt//
+
+       These two syntaxes are mostly equivalent, except the former implies
+       ----llooccaall option.
+
+       ggiitt cclloonnee, ggiitt ffeettcchh and ggiitt ppuullll, but not ggiitt ppuusshh, will also accept a
+       suitable bundle file. See ggiitt--bbuunnddllee(1).
+
+       When Git doesn’t know how to handle a certain transport protocol, it
+       attempts to use the rreemmoottee--_<_t_r_a_n_s_p_o_r_t_> remote helper, if one exists. To
+       explicitly request a remote helper, the following syntax may be used:
+
+       •   _<_t_r_a_n_s_p_o_r_t_>::::_<_a_d_d_r_e_s_s_>
+
+       where _<_a_d_d_r_e_s_s_> may be a path, a server and path, or an arbitrary
+       URL-like string recognized by the specific remote helper being invoked.
+       See ggiittrreemmoottee--hheellppeerrss(7) for details.
+
+       If there are a large number of similarly-named remote repositories and
+       you want to use a different format for them (such that the URLs you use
+       will be rewritten into URLs that work), you can create a configuration
+       section of the form:
+
+                   [url "_<_a_c_t_u_a_l_-_u_r_l_-_b_a_s_e_>"]
+                           insteadOf = _<_o_t_h_e_r_-_u_r_l_-_b_a_s_e_>
+
+       For example, with this:
+
+                   [url "git://git.host.xz/"]
+                           insteadOf = host.xz:/path/to/
+                           insteadOf = work:
+
+       a URL like "work:repo.git" or like "host.xz:/path/to/repo.git" will be
+       rewritten in any context that takes a URL to be
+       "git://git.host.xz/repo.git".
+
+       If you want to rewrite URLs for push only, you can create a
+       configuration section of the form:
+
+                   [url "_<_a_c_t_u_a_l_-_u_r_l_-_b_a_s_e_>"]
+                           pushInsteadOf = _<_o_t_h_e_r_-_u_r_l_-_b_a_s_e_>
+
+       For example, with this:
+
+                   [url "ssh://example.org/"]
+                           pushInsteadOf = git://example.org/
+
+       a URL like "git://example.org/path/to/repo.git" will be rewritten to
+       "ssh://example.org/path/to/repo.git" for pushes, but pulls will still
+       use the original URL.
+
+EEXXAAMMPPLLEESS
+       •   Clone from upstream:
+
+               $ git clone git://git.kernel.org/pub/scm/.../linux.git my-linux
+               $ cd my-linux
+               $ make
+
+       •   Make a local clone that borrows from the current directory, without
+           checking things out:
+
+               $ git clone -l -s -n . ../copy
+               $ cd ../copy
+               $ git show-branch
+
+       •   Clone from upstream while borrowing from an existing local
+           directory:
+
+               $ git clone --reference /git/linux.git \
+                       git://git.kernel.org/pub/scm/.../linux.git \
+                       my-linux
+               $ cd my-linux
+
+       •   Create a bare repository to publish your changes to the public:
+
+               $ git clone --bare -l /home/proj/.git /pub/scm/proj.git
+
+       •   Clone a local repository from a different user:
+
+               $ git clone --no-local /home/otheruser/proj.git /pub/scm/proj.git
+
+CCOONNFFIIGGUURRAATTIIOONN
+       Everything below this line in this section is selectively included from
+       the ggiitt--ccoonnffiigg(1) documentation. The content is the same as what’s
+       found there:
+
+       iinniitt..tteemmppllaatteeDDiirr
+           Specify the directory from which templates will be copied. (See the
+           "TEMPLATE DIRECTORY" section of ggiitt--iinniitt(1).)
+
+       iinniitt..ddeeffaauullttBBrraanncchh
+           Allows overriding the default branch name e.g. when initializing a
+           new repository.
+
+       iinniitt..ddeeffaauullttOObbjjeeccttFFoorrmmaatt
+           Allows overriding the default object format for new repositories.
+           See ----oobbjjeecctt--ffoorrmmaatt== in ggiitt--iinniitt(1). Both the command line option
+           and the GGIITT__DDEEFFAAUULLTT__HHAASSHH environment variable take precedence over
+           this config.
+
+       iinniitt..ddeeffaauullttRReeffFFoorrmmaatt
+           Allows overriding the default ref storage format for new
+           repositories. See ----rreeff--ffoorrmmaatt== in ggiitt--iinniitt(1). Both the command
+           line option and the GGIITT__DDEEFFAAUULLTT__RREEFF__FFOORRMMAATT environment variable
+           take precedence over this config.
+
+       cclloonnee..ddeeffaauullttRReemmootteeNNaammee
+           The name of the remote to create when cloning a repository.
+           Defaults to oorriiggiinn. It can be overridden by passing the ----oorriiggiinn
+           command-line option.
+
+       cclloonnee..rreejjeeccttSShhaallllooww
+           Reject cloning a repository if it is a shallow one; this can be
+           overridden by passing the ----rreejjeecctt--sshhaallllooww option on the command
+           line.
+
+       cclloonnee..ffiilltteerrSSuubbmmoodduulleess
+           If a partial clone filter is provided (see ----ffiilltteerr in ggiitt--rreevv--
+           lliisstt(1)) and ----rreeccuurrssee--ssuubbmmoodduulleess is used, also apply the filter to
+           submodules.
+
+GGIITT
+       Part of the ggiitt(1) suite
+
+Git 2.50.1.428.g0e8243            2025-07-22                      GIT-CLONE(1)

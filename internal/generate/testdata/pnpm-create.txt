@@ -1,0 +1,11 @@
+Usage: pnpm create <name>
+       pnpm create <name-without-create>
+       pnpm create <@scope>
+
+Creates a project from a `create-*` starter kit.
+
+Options:
+      --allow-build        A list of package names that are allowed to run
+                           postinstall scripts during installation
+
+Visit https://pnpm.io/10.x/cli/create for documentation about this command.

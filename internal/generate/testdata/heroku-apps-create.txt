@@ -1,0 +1,42 @@
+creates a new app
+
+USAGE
+  $ heroku apps:create [APP] [--addons <value>] [-b <value>] [-n] [-r
+    <value>] [-s <value>] [--space <value>] [--region <value>] [--json] [-t
+    <value>]
+
+ARGUMENTS
+  APP  name of app to create
+
+FLAGS
+  -b, --buildpack=<value>  buildpack url to use for this app
+  -n, --no-remote          do not create a git remote
+  -r, --remote=<value>     [default: heroku] the git remote to create, default
+                           "heroku"
+  -s, --stack=<value>      the stack to create the app on
+  -t, --team=<value>       team to use
+  --addons=<value>         comma-delimited list of addons to install
+  --json                   output in json format
+  --region=<value>         specify region for the app to run in
+  --space=<value>          the private space to create the app in
+
+DESCRIPTION
+  creates a new app
+
+EXAMPLES
+  $ heroku apps:create
+  Creating app... done, stack is heroku-24
+  https://floating-dragon-42.heroku.com/ | https://git.heroku.com/floating-dragon-42.git
+  # or just
+  $ heroku create
+  # use a heroku.yml manifest file
+  $ heroku apps:create --manifest
+  # specify a buildpack
+  $ heroku apps:create --buildpack https://github.com/some/buildpack.git
+  # specify a name
+  $ heroku apps:create example
+  # create a staging app
+  $ heroku apps:create example-staging --remote staging
+  # create an app in the eu region
+  $ heroku apps:create --region eu
+

@@ -1,0 +1,89 @@
+Usage: brakeman [options] rails/root/path
+    -n, --no-threads                 Run checks and file parsing sequentially
+        --[no-]progress              Show progress reports
+    -p, --path PATH                  Specify path to Rails application
+    -q, --[no-]quiet                 Suppress informational messages
+    -z, --[no-]exit-on-warn          Exit code is non-zero if warnings found (Default)
+        --[no-]exit-on-error         Exit code is non-zero if errors raised (Default)
+        --ensure-latest [DAYS]       Fail when Brakeman is outdated. Optionally set minimum age in days.
+        --ensure-ignore-notes        Fail when an ignored warnings does not include a note
+        --ensure-no-obsolete-ignore-entries
+                                     Fail when an obsolete ignore entry is found
+    -3, --rails3                     Force Rails 3 mode
+    -4, --rails4                     Force Rails 4 mode
+    -5, --rails5                     Force Rails 5 mode
+    -6, --rails6                     Force Rails 6 mode
+    -7, --rails7                     Force Rails 7 mode
+    -8, --rails8                     Force Rails 8 mode
+
+Scanning options:
+    -A, --run-all-checks             Run all default and optional checks
+    -a, --[no-]assume-routes         Assume all controller methods are actions (Default)
+    -e, --escape-html                Escape HTML by default
+        --faster                     Faster, but less accurate scan
+        --ignore-model-output        Consider model attributes XSS-safe
+        --ignore-protected           Consider models with attr_protected safe
+        --interprocedural            Process method calls to known methods
+        --no-branching               Disable flow sensitivity on conditionals
+        --branch-limit LIMIT         Limit depth of values in branches (-1 for no limit)
+        --parser-timeout SECONDS     Set parse timeout (Default: 10)
+        --[no-]prism                 Use the Prism parser
+    -r, --report-direct              Only report direct use of untrusted data
+    -s meth1,meth2,etc,              Set methods as safe for unescaped output in views
+        --safe-methods
+        --sql-safe-methods meth1,meth2,etc
+                                     Do not warn of SQL if the input is wrapped in a safe method
+        --url-safe-methods method1,method2,etc
+                                     Do not warn of XSS if the link_to href parameter is wrapped in a safe method
+        --skip-files file1,path2,etc Skip processing of these files/directories. Directories are application relative and must end in "/"
+        --only-files file1,path2,etc Process only these files/directories. Directories are application relative and must end in "/"
+        --[no-]skip-vendor           Skip processing vendor directory (Default)
+        --add-libs-path path1,path2,etc
+                                     An application relative lib directory (ex. app/mailers) to process
+        --add-engines-path path1,path2,etc
+                                     Include these engines in the scan
+        --[no-]follow-symlinks       Follow symbolic links for directions
+        --gemfile GEMFILE            Specify Gemfile to scan
+    -E, --enable Check1,Check2,etc   Enable the specified checks
+    -t, --test Check1,Check2,etc     Only run the specified checks
+    -x, --except Check1,Check2,etc   Skip the specified checks
+        --add-checks-path path1,path2,etc
+                                     A directory containing additional out-of-tree checks to run
+
+Output options:
+    -d, --debug                      Lots of output
+        --timing                     Measure time for scan steps
+    -f, --format TYPE                Specify output formats. Default is text
+        --css-file CSSFile           Specify CSS to use for HTML output
+    -i, --ignore-config IGNOREFILE   Use configuration to ignore warnings
+    -I, --interactive-ignore         Interactively ignore warnings
+        --show-ignored               Show files that are usually ignored by the ignore configuration file
+    -l, --[no-]combine-locations     Combine warning locations (Default)
+        --[no-]highlights            Highlight user input in report
+        --[no-]color                 Use ANSI colors in report (Default)
+    -m, --routes                     Report controller information
+        --message-limit LENGTH       Limit message length in HTML report
+        --[no-]pager                 Use pager for output to terminal (Default)
+        --table-width WIDTH          Limit table width in text report
+    -o, --output FILE                Specify files for output. Defaults to stdout. Multiple '-o's allowed
+        --[no-]separate-models       Warn on each model without attr_accessible (Default)
+        --[no-]summary               Only output summary of warnings
+        --absolute-paths             Output absolute file paths in reports
+        --github-repo USER/REPO[/PATH][@REF]
+                                     Output links to GitHub in markdown and HTML reports using specified repo
+        --text-fields field1,field2,etc.
+                                     Specify fields for text report format
+    -w, --confidence-level LEVEL     Set minimal confidence level (1 - 3)
+        --compare FILE               Compare the results of a previous Brakeman scan (only JSON is supported)
+
+Configuration files:
+    -c, --config-file FILE           Use specified configuration file
+    -C, --create-config [FILE]       Output configuration file based on options
+        --allow-check-paths-in-config
+                                     Allow loading checks from configuration file (Unsafe)
+
+    -k, --checks                     List all available vulnerability checks
+        --optional-checks            List optional checks
+    -v, --version                    Show Brakeman version
+        --force-scan                 Scan application even if rails is not detected
+    -h, --help                       Display this message

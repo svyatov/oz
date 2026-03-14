@@ -1,0 +1,170 @@
+BUNDLE-GEM(1)               General Commands Manual              BUNDLE-GEM(1)
+
+NNAAMMEE
+       bbuunnddllee--ggeemm - Generate a project skeleton for creating a rubygem
+
+SSYYNNOOPPSSIISS
+       bbuunnddllee ggeemm _G_E_M___N_A_M_E _O_P_T_I_O_N_S
+
+DDEESSCCRRIIPPTTIIOONN
+       Generates a directory named GGEEMM__NNAAMMEE with a RRaakkeeffiillee, GGEEMM__NNAAMMEE..ggeemmssppeecc,
+       and other supporting files and directories that can be used to develop
+       a rubygem with that name.
+
+       Run rraakkee --TT in the resulting project for a list of Rake tasks that can
+       be used to test and publish the gem to rubygems.org.
+
+       The generated project skeleton can be customized with OPTIONS, as
+       explained below. Note that these options can also be specified via
+       Bundler's global configuration file using the following names:
+
+       •   ggeemm..ccoocc
+
+       •   ggeemm..mmiitt
+
+       •   ggeemm..tteesstt
+
+
+
+
+OOPPTTIIOONNSS
+       ----eexxee, ----bbiinn, --bb
+              Specify that Bundler should create a binary executable (as
+              eexxee//GGEEMM__NNAAMMEE) in the generated rubygem project. This binary will
+              also be added to the GGEEMM__NNAAMMEE..ggeemmssppeecc manifest. This behavior is
+              disabled by default.
+
+       ----nnoo--eexxee
+              Do not create a binary (overrides ----eexxee specified in the global
+              config).
+
+       ----ccoocc  Add a CCOODDEE__OOFF__CCOONNDDUUCCTT..mmdd file to the root of the generated
+              project. If this option is unspecified, an interactive prompt
+              will be displayed and the answer will be saved in Bundler's
+              global config for future bbuunnddllee ggeemm use.
+
+       ----nnoo--ccoocc
+              Do not create a CCOODDEE__OOFF__CCOONNDDUUCCTT..mmdd (overrides ----ccoocc specified in
+              the global config).
+
+       ----cchhaannggeelloogg
+              Add a CCHHAANNGGEELLOOGG..mmdd file to the root of the generated project. If
+              this option is unspecified, an interactive prompt will be
+              displayed and the answer will be saved in Bundler's global
+              config for future bbuunnddllee ggeemm use. Update the default with bbuunnddllee
+              ccoonnffiigg sseett ----gglloobbaall ggeemm..cchhaannggeelloogg <<ttrruuee||ffaallssee>>.
+
+       ----nnoo--cchhaannggeelloogg
+              Do not create a CCHHAANNGGEELLOOGG..mmdd (overrides ----cchhaannggeelloogg specified in
+              the global config).
+
+       ----eexxtt==cc, ----eexxtt==ggoo, ----eexxtt==rruusstt
+              Add boilerplate for C, Go (currently go-gem-wrapper
+              _h_t_t_p_s_:_/_/_g_i_t_h_u_b_._c_o_m_/_r_u_b_y_-_g_o_-_g_e_m_/_g_o_-_g_e_m_-_w_r_a_p_p_e_r based) or Rust
+              (currently magnus _h_t_t_p_s_:_/_/_d_o_c_s_._r_s_/_m_a_g_n_u_s based) extension code
+              to the generated project. This behavior is disabled by default.
+
+       ----nnoo--eexxtt
+              Do not add extension code (overrides ----eexxtt specified in the
+              global config).
+
+       ----ggiitt  Initialize a git repo inside your library.
+
+       ----ggiitthhuubb--uusseerrnnaammee==GGIITTHHUUBB__UUSSEERRNNAAMMEE
+              Fill in GitHub username on README so that you don't have to do
+              it manually. Set a default with bbuunnddllee ccoonnffiigg sseett ----gglloobbaall
+              ggeemm..ggiitthhuubb__uusseerrnnaammee <<yyoouurr__uusseerrnnaammee>>.
+
+       ----mmiitt  Add an MIT license to a LLIICCEENNSSEE..ttxxtt file in the root of the
+              generated project. Your name from the global git config is used
+              for the copyright statement. If this option is unspecified, an
+              interactive prompt will be displayed and the answer will be
+              saved in Bundler's global config for future bbuunnddllee ggeemm use.
+
+       ----nnoo--mmiitt
+              Do not create a LLIICCEENNSSEE..ttxxtt (overrides ----mmiitt specified in the
+              global config).
+
+       --tt, ----tteesstt==mmiinniitteesstt, ----tteesstt==rrssppeecc, ----tteesstt==tteesstt--uunniitt
+              Specify the test framework that Bundler should use when
+              generating the project. Acceptable values are mmiinniitteesstt, rrssppeecc
+              and tteesstt--uunniitt. The GGEEMM__NNAAMMEE..ggeemmssppeecc will be configured and a
+              skeleton test/spec directory will be created based on this
+              option. Given no option is specified:
+
+              When Bundler is configured to generate tests, this defaults to
+              Bundler's global config setting ggeemm..tteesstt.
+
+              When Bundler is configured to not generate tests, an interactive
+              prompt will be displayed and the answer will be used for the
+              current rubygem project.
+
+              When Bundler is unconfigured, an interactive prompt will be
+              displayed and the answer will be saved in Bundler's global
+              config for future bbuunnddllee ggeemm use.
+
+       ----nnoo--tteesstt
+              Do not use a test framework (overrides ----tteesstt specified in the
+              global config).
+
+       ----ccii, ----ccii==cciirrccllee, ----ccii==ggiitthhuubb, ----ccii==ggiittllaabb
+              Specify the continuous integration service that Bundler should
+              use when generating the project. Acceptable values are ggiitthhuubb,
+              ggiittllaabb and cciirrccllee. A configuration file will be generated in the
+              project directory. Given no option is specified:
+
+              When Bundler is configured to generate CI files, this defaults
+              to Bundler's global config setting ggeemm..ccii.
+
+              When Bundler is configured to not generate CI files, an
+              interactive prompt will be displayed and the answer will be used
+              for the current rubygem project.
+
+              When Bundler is unconfigured, an interactive prompt will be
+              displayed and the answer will be saved in Bundler's global
+              config for future bbuunnddllee ggeemm use.
+
+       ----nnoo--ccii
+              Do not use a continuous integration service (overrides ----ccii
+              specified in the global config).
+
+       ----lliinntteerr, ----lliinntteerr==rruubbooccoopp, ----lliinntteerr==ssttaannddaarrdd
+              Specify the linter and code formatter that Bundler should add to
+              the project's development dependencies. Acceptable values are
+              rruubbooccoopp and ssttaannddaarrdd. A configuration file will be generated in
+              the project directory. Given no option is specified:
+
+              When Bundler is configured to add a linter, this defaults to
+              Bundler's global config setting ggeemm..lliinntteerr.
+
+              When Bundler is configured not to add a linter, an interactive
+              prompt will be displayed and the answer will be used for the
+              current rubygem project.
+
+              When Bundler is unconfigured, an interactive prompt will be
+              displayed and the answer will be saved in Bundler's global
+              config for future bbuunnddllee ggeemm use.
+
+       ----nnoo--lliinntteerr
+              Do not add a linter (overrides ----lliinntteerr specified in the global
+              config).
+
+       ----eeddiitt==EEDDIITT, --ee==EEDDIITT
+              Open the resulting GEM_NAME.gemspec in EDIT, or the default
+              editor if not specified. The default is $$BBUUNNDDLLEERR__EEDDIITTOORR,
+              $$VVIISSUUAALL, or $$EEDDIITTOORR.
+
+       ----bbuunnddllee
+              Run bbuunnddllee iinnssttaallll after creating the gem.
+
+       ----nnoo--bbuunnddllee
+              Do not run bbuunnddllee iinnssttaallll after creating the gem.
+
+SSEEEE AALLSSOO
+       •   bundle config(1) _b_u_n_d_l_e_-_c_o_n_f_i_g_._1_._h_t_m_l
+
+
+
+
+
+                                 February 2026                   BUNDLE-GEM(1)

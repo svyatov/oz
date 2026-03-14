@@ -1,0 +1,102 @@
+Usage of air:
+
+If no command is provided air will start the runner with the provided flags
+
+Commands:
+  init	creates a .air.toml file with default settings to the current directory
+
+Flags:
+  -build.args_bin string
+    	Add additional arguments when running binary (bin/full_bin).
+  -build.bin string
+    	Binary file yields from 'cmd', will be deprecated soon, recommend using entrypoint. (default "./tmp/main")
+  -build.cmd string
+    	Just plain old shell command. You could use 'make' as well (default "go build -o ./tmp/main .")
+  -build.delay string
+    	It's not necessary to trigger build each time file changes if it's too frequent (default "1000")
+  -build.entrypoint string
+    	Binary file plus optional arguments relative to root, prefer ["./tmp/main", "arg"] form
+  -build.exclude_dir string
+    	Ignore these filename extensions or directories (default "assets,tmp,vendor,testdata")
+  -build.exclude_file string
+    	Exclude files
+  -build.exclude_regex string
+    	Exclude specific regular expressions (default "_test.go")
+  -build.exclude_unchanged string
+    	Exclude unchanged files (default "false")
+  -build.follow_symlink string
+    	Follow symlink for directories (default "false")
+  -build.full_bin string
+    	Customize binary, can setup environment variables when run your app
+  -build.ignore_dangerous_root_dir string
+    	Ignore dangerous root directory that could cause excessive file watching (default "false")
+  -build.include_dir string
+    	Watch these directories if you specified
+  -build.include_ext string
+    	Watch these filename extensions (default "go,tpl,tmpl,html")
+  -build.include_file string
+    	Watch these files
+  -build.kill_delay string
+    	Delay after sending Interrupt signal (default "0s")
+  -build.log string
+    	This log file is placed in your tmp_dir (default "build-errors.log")
+  -build.poll string
+    	Poll files for changes instead of using fsnotify (default "false")
+  -build.poll_interval string
+    	Poll interval (defaults to the minimum interval of 500ms) (default "0")
+  -build.post_cmd string
+    	Array of commands to run after ^C
+  -build.pre_cmd string
+    	Array of commands to run before each build
+  -build.rerun string
+    	Rerun binary or not (default "false")
+  -build.rerun_delay string
+    	Delay after each execution (default "500")
+  -build.send_interrupt string
+    	Send Interrupt signal before killing process (ignored on Windows; uses TASKKILL) (default "false")
+  -build.stop_on_error string
+    	Stop running old binary when build errors occur (default "false")
+  -c string
+    	config path
+  -color string
+    	colored output: auto, always, never (default "auto")
+  -color.app string
+    	
+  -color.build string
+    	Customize build part's color (default "yellow")
+  -color.main string
+    	Customize main part's color. If no color found, use the raw app log (default "magenta")
+  -color.runner string
+    	Customize runner part's color (default "green")
+  -color.watcher string
+    	Customize watcher part's color (default "cyan")
+  -d	debug mode
+  -env_files string
+    	Paths to .env files to load before build/run
+  -log.main_only string
+    	Only show main log (silences watcher, build, runner) (default "false")
+  -log.silent string
+    	silence all logs produced by air (default "false")
+  -log.time string
+    	Show log time (default "false")
+  -misc.clean_on_exit string
+    	Delete tmp directory on exit (default "false")
+  -proxy.app_port string
+    	Port for your app (default "0")
+  -proxy.app_start_timeout string
+    	Timeout for waiting for app to start in milliseconds (default 5000) (default "0")
+  -proxy.enabled string
+    	Enable live-reloading on the browser (default "false")
+  -proxy.proxy_port string
+    	Port for proxy server (default "0")
+  -root string
+    	Working directory, . or absolute path, please note that the directories following must be under root (default ".")
+  -screen.clear_on_rebuild string
+    	Clear screen on rebuild (default "false")
+  -screen.keep_scroll string
+    	Keep scroll position after rebuild (default "true")
+  -testdata_dir string
+    	 (default "testdata")
+  -tmp_dir string
+    	Temporary directory for air (default "tmp")
+  -v	show version
