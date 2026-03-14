@@ -7,17 +7,40 @@ import (
 )
 
 func TestVersionMatchesConstraint(t *testing.T) {
-	tests := []struct {
-		name       string
-		version    string
-		constraint string
-		want       bool
-	}{
+	for _, tt := range constraintMatchCases() {
+		t.Run(tt.name, func(t *testing.T) {
+			got := versionMatchesConstraint(tt.version, tt.constraint)
+			if got != tt.want {
+				t.Errorf("versionMatchesConstraint(%q, %q) = %v, want %v",
+					tt.version, tt.constraint, got, tt.want)
+			}
+		})
+	}
+}
+
+type constraintCase struct {
+	name, version, constraint string
+	want                      bool
+}
+
+func constraintMatchCases() []constraintCase {
+	cases := constraintBasicCases()
+	cases = append(cases, constraintAdvancedCases()...)
+	return cases
+}
+
+func constraintBasicCases() []constraintCase {
+	return []constraintCase{
 		// Basic operators.
 		{"gte_match", "1.0.0", ">= 1.0.0", true},
+		{"gte_above", "2.0.0", ">= 1.0.0", true},
 		{"gte_no_match", "0.9.0", ">= 1.0.0", false},
+		{"lte_match", "1.0.0", "<= 1.0.0", true},
+		{"lte_no_match", "1.1.0", "<= 1.0.0", false},
+		{"gt_match", "1.1.0", "> 1.0.0", true},
+		{"gt_exact_no_match", "1.0.0", "> 1.0.0", false},
 		{"lt_match", "0.9.0", "< 1.0.0", true},
-		{"lt_no_match", "1.0.0", "< 1.0.0", false},
+		{"lt_exact_no_match", "1.0.0", "< 1.0.0", false},
 		{"eq_match", "1.0.0", "= 1.0.0", true},
 		{"eq_no_match", "1.0.1", "= 1.0.0", false},
 		{"ne_match", "1.0.1", "!= 1.0.0", true},
@@ -25,39 +48,69 @@ func TestVersionMatchesConstraint(t *testing.T) {
 
 		// Comma-separated AND.
 		{"range_match", "1.5.0", ">= 1.0.0, < 2.0.0", true},
+		{"range_lower_bound", "1.0.0", ">= 1.0.0, < 2.0.0", true},
+		{"range_upper_excluded", "2.0.0", ">= 1.0.0, < 2.0.0", false},
 		{"range_no_match", "2.1.0", ">= 1.0.0, < 2.0.0", false},
 
-		// Tilde (~) — patch-level range.
+		// Tilde (~) — patch-level range (>= X.Y.Z, < X.(Y+1).0).
 		{"tilde_match", "1.2.5", "~1.2.3", true},
+		{"tilde_lower_bound", "1.2.3", "~1.2.3", true},
 		{"tilde_no_match", "1.3.0", "~1.2.3", false},
+		{"tilde_two_segment", "1.2.9", "~1.2", true},
 
-		// Caret (^) — major-level range.
+		// Caret (^) — major-level range (>= X.Y.Z, < (X+1).0.0).
 		{"caret_match", "1.9.0", "^1.2.3", true},
+		{"caret_lower_bound", "1.2.3", "^1.2.3", true},
 		{"caret_no_match", "2.0.0", "^1.2.3", false},
+		// Caret on 0.x locks minor: ^0.2.3 → >= 0.2.3, < 0.3.0.
+		{"caret_zero_major_match", "0.2.5", "^0.2.3", true},
+		{"caret_zero_major_no_match", "0.3.0", "^0.2.3", false},
 
-		// Wildcards.
-		{"wildcard_match", "1.2.9", "1.2.x", true},
-		{"wildcard_no_match", "1.3.0", "1.2.x", false},
+		// Wildcards (x, X, *).
+		{"wildcard_x_match", "1.2.9", "1.2.x", true},
+		{"wildcard_x_no_match", "1.3.0", "1.2.x", false},
+		{"wildcard_star", "5.0.0", "*", true},
+	}
+}
 
+func constraintAdvancedCases() []constraintCase {
+	return []constraintCase{
 		// OR (||).
-		{"or_first_match", "1.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", true},
-		{"or_second_match", "3.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", true},
-		{"or_no_match", "2.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", false},
+		{"or_first_match", "1.5.0", ">= 1.0.0, < 2.0.0 || >= 3.0.0", true},
+		{"or_second_match", "3.5.0", ">= 1.0.0, < 2.0.0 || >= 3.0.0", true},
+		{"or_gap_no_match", "2.5.0", ">= 1.0.0, < 2.0.0 || >= 3.0.0", false},
+		{"or_multi", "5.0.0", "1.x || 3.x || >= 5.0.0", true},
+		{"or_multi_no_match", "4.0.0", "1.x || 3.x || >= 5.0.0", false},
 
-		// Two-segment version (coercion).
-		{"two_segment", "8.0", ">= 8.0", true},
+		// Hyphen ranges (X - Y → >= X, <= Y).
+		{"hyphen_match", "1.3.0", "1.2.0 - 1.4.5", true},
+		{"hyphen_lower_bound", "1.2.0", "1.2.0 - 1.4.5", true},
+		{"hyphen_upper_bound", "1.4.5", "1.2.0 - 1.4.5", true},
+		{"hyphen_no_match", "1.5.0", "1.2.0 - 1.4.5", false},
+
+		// Two-segment version (coercion to X.Y.0).
+		{"two_segment_gte", "8.0", ">= 8.0", true},
+		{"two_segment_lt", "7.2", "< 8.0", true},
+		{"two_segment_constraint", "8.1.0", ">= 8.0", true},
+
+		// v-prefix (stripped by semver.NewVersion).
+		{"v_prefix_version", "v1.2.3", ">= 1.0.0", true},
+
+		// Large version numbers (calendar versioning, high minors).
+		{"large_major", "2026.5.3", ">= 2026.0.0", true},
+		{"large_major_lt", "2025.11.0", "< 2026.0.0", true},
+		{"large_minor", "0.180.5", ">= 0.180.0", true},
+		{"large_minor_lt", "0.179.0", "< 0.180.0", true},
+
+		// Pre-release versions.
+		{"prerelease_excluded_by_default", "1.0.0-beta", ">= 1.0.0", false},
+		{"prerelease_included_explicit", "1.0.0-beta", ">= 1.0.0-0", true},
 
 		// Invalid inputs.
 		{"invalid_version", "not-a-version", ">= 1.0.0", false},
 		{"invalid_constraint", "1.0.0", ">>> bad", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := versionMatchesConstraint(tt.version, tt.constraint)
-			if got != tt.want {
-				t.Errorf("versionMatchesConstraint(%q, %q) = %v, want %v", tt.version, tt.constraint, got, tt.want)
-			}
-		})
+		{"empty_version", "", ">= 1.0.0", false},
+		{"empty_constraint", "1.0.0", "", false},
 	}
 }
 

@@ -92,6 +92,66 @@ func TestValidateVersionGating(t *testing.T) {
 	}
 }
 
+func TestConstraintsOverlap(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+		want bool
+	}{
+		// Basic overlapping ranges.
+		{"both_gte", ">= 1.0.0", ">= 2.0.0", true},
+		{"nested_range", ">= 1.0.0, < 3.0.0", ">= 2.0.0, < 4.0.0", true},
+		{"subset", ">= 2.0.0, < 3.0.0", ">= 1.0.0, < 4.0.0", true},
+		{"identical", ">= 1.0.0, < 2.0.0", ">= 1.0.0, < 2.0.0", true},
+
+		// Non-overlapping ranges.
+		{"disjoint", ">= 1.0.0, < 2.0.0", ">= 3.0.0, < 4.0.0", false},
+		{"touching_exclusive", "< 2.0.0", ">= 2.0.0", false},
+		{"touching_strict", "< 2.0.0", "> 2.0.0", false},
+
+		// Strict inequality boundaries.
+		{"gt_lt_overlap", "> 1.0.0, < 3.0.0", "> 2.0.0, < 4.0.0", true},
+		{"gt_lt_touching", "> 1.0.0, < 2.0.0", "> 2.0.0, < 3.0.0", false},
+
+		// Single-direction constraints.
+		{"lt_lt_overlap", "< 8.0", "< 7.0", true},
+		{"gte_gte_overlap", ">= 5.0", ">= 8.0", true},
+		{"lt_gte_no_overlap", "< 5.0", ">= 5.0", false},
+
+		// Large version numbers.
+		{"large_major_overlap", ">= 2026.0.0", "< 2027.0.0", true},
+		{"large_major_no_overlap", ">= 2027.0.0", "< 2026.0.0", false},
+		{"large_minor_overlap", ">= 0.180.0", "< 0.181.0", true},
+
+		// Tilde and caret.
+		{"tilde_overlap", "~1.2.0", ">= 1.2.5", true},
+		{"tilde_no_overlap", "~1.2.0", ">= 1.3.0", false},
+		{"caret_overlap", "^1.0.0", ">= 1.5.0", true},
+		{"caret_no_overlap", "^1.0.0", ">= 2.0.0", false},
+
+		// Wildcards.
+		{"wildcard_overlap", "1.x", ">= 1.5.0", true},
+		{"wildcard_no_overlap", "1.x", ">= 2.0.0", false},
+
+		// OR constraints.
+		{"or_overlap_first", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 1.5.0", true},
+		{"or_overlap_second", ">= 1.0.0, < 2.0.0 || >= 5.0.0", ">= 6.0.0", true},
+
+		// Invalid constraints.
+		{"invalid_a", ">>> bad", ">= 1.0.0", false},
+		{"invalid_b", ">= 1.0.0", ">>> bad", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := constraintsOverlap(tt.a, tt.b)
+			if got != tt.want {
+				t.Errorf("constraintsOverlap(%q, %q) = %v, want %v",
+					tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
 func versionGatingCases() []versionGatingCase {
 	return []versionGatingCase{
 		{"valid_no_versions", func(opts []Option) []Option {

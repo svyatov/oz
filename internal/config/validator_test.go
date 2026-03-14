@@ -121,9 +121,17 @@ func versionConstraintCases() []validationCase {
 			w.Version = vc
 			w.Options[0].Versions = "1.2.x"
 		}, ""},
+		{"versions_hyphen_range_valid", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = "1.2.0 - 1.4.5"
+		}, ""},
 		{"versions_invalid_constraint", func(w *Wizard) {
 			w.Version = vc
 			w.Options[0].Versions = ">= "
+		}, "invalid versions constraint"},
+		{"versions_invalid_operator", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = ">>> 1.0.0"
 		}, "invalid versions constraint"},
 	}
 }
