@@ -323,13 +323,16 @@ func presetsCmd(wizardName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "presets",
 		Short: "Manage presets",
-		Long: `Manage named presets for this wizard. Presets store a complete set of
-option values that can be replayed with "oz run <wizard> -p <name>".`,
-		Example: fmt.Sprintf(`  oz run %s presets list
-  oz run %s presets show mypreset
-  oz run %s presets save mypreset`, wizardName, wizardName, wizardName),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
+		Long: `Open an interactive TUI to manage named presets for this wizard.
+Presets store a complete set of option values that can be replayed
+with "oz run <wizard> -p <name>".
+
+Use subcommands for non-interactive operations.`,
+		Example: fmt.Sprintf(`  oz run %s presets
+  oz run %s presets list
+  oz run %s presets show mypreset`, wizardName, wizardName, wizardName),
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return runPresets(wizardName)
 		},
 	}
 

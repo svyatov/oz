@@ -188,10 +188,11 @@ func TestDoctorCmdMissingWizard(t *testing.T) {
 	}
 }
 
-func TestPresetsBareHelp(t *testing.T) {
+func TestPresetsBareRequiresTTY(t *testing.T) {
 	dir := setupTestConfig(t)
-	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets"); err != nil {
-		t.Fatalf("presets bare help: %v", err)
+	// Bare "presets" now launches the TUI which requires a TTY.
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "presets"); err == nil {
+		t.Fatal("expected error running presets TUI without TTY")
 	}
 }
 

@@ -219,6 +219,56 @@ func PinsMultiSelectEditNavHint() string {
 		hintKey("esc", "cancel")
 }
 
+// PresetEditIndicator renders the "preset" label for edit mode headers.
+func PresetEditIndicator() string {
+	return lipgloss.NewStyle().Foreground(Accent).Bold(true).Render("preset")
+}
+
+// PresetsListNavHint renders the nav hint for preset list mode.
+func PresetsListNavHint() string {
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("enter", "edit") + hintSep() +
+		hintKey("n", "new") + hintSep() +
+		hintKey("r", "rename") + hintSep() +
+		hintKey("d", "delete") + hintSep() +
+		hintKey("esc", "done")
+}
+
+// PresetsEmptyHint renders the nav hint for empty preset list.
+func PresetsEmptyHint() string {
+	return "  " +
+		hintKey("n", "new") + hintSep() +
+		hintKey("esc", "done")
+}
+
+// PresetsValuesNavHint renders the nav hint for preset value editing list mode.
+func PresetsValuesNavHint() string {
+	return "  " +
+		hintKey("\u2191/k", "up") + hintSep() +
+		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("\u2190/h \u2192/l", "cycle") + hintSep() +
+		hintKey("enter", "edit") + hintSep() +
+		hintKey("space", "toggle") + hintSep() +
+		hintKey("esc", "back")
+}
+
+// PresetsNameNavHint renders the nav hint for preset name input mode.
+func PresetsNameNavHint() string {
+	return "  " +
+		hintKey("enter", "confirm") + hintSep() +
+		hintKey("esc", "cancel")
+}
+
+// PresetsSourceNavHint renders the nav hint for preset source selection mode.
+func PresetsSourceNavHint() string {
+	return "  " +
+		hintKey("\u2191\u2193/jk", "navigate") + hintSep() +
+		hintKey("enter", "select") + hintSep() +
+		hintKey("esc", "cancel")
+}
+
 // WarningText renders a warning message in the warning color.
 func WarningText(msg string) string {
 	return lipgloss.NewStyle().Foreground(Warning).Render(msg)

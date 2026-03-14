@@ -245,6 +245,42 @@ func TestPathTraversalRejected(t *testing.T) {
 	}
 }
 
+func TestRenamePreset(t *testing.T) {
+	s := New(t.TempDir())
+	vals := config.Values{"lang": config.StringVal("go")}
+
+	if err := s.SavePreset("wiz", "old-name", vals); err != nil {
+		t.Fatalf("SavePreset: %v", err)
+	}
+	if err := s.RenamePreset("wiz", "old-name", "new-name"); err != nil {
+		t.Fatalf("RenamePreset: %v", err)
+	}
+
+	// Old name should be gone.
+	if _, err := s.LoadPreset("wiz", "old-name"); err == nil {
+		t.Error("expected error loading old name after rename")
+	}
+
+	// New name should have the values.
+	got, err := s.LoadPreset("wiz", "new-name")
+	if err != nil {
+		t.Fatalf("LoadPreset new name: %v", err)
+	}
+	if got["lang"].String() != "go" {
+		t.Errorf("lang = %v, want go", got["lang"])
+	}
+}
+
+func TestRenamePresetInvalidNames(t *testing.T) {
+	s := New(t.TempDir())
+	if err := s.RenamePreset("wiz", "", "new"); err == nil {
+		t.Error("expected error for empty old name")
+	}
+	if err := s.RenamePreset("wiz", "old", "../escape"); err == nil {
+		t.Error("expected error for invalid new name")
+	}
+}
+
 func TestListPresetsEmpty(t *testing.T) {
 	s := New(t.TempDir())
 	names, err := s.ListPresets("wiz")

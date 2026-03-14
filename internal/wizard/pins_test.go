@@ -69,8 +69,8 @@ func TestPinViaEditSelect(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after submit, got %d", m.mode)
 	}
-	if v, ok := m.pins["db"]; !ok || v.String() != "mysql" {
-		t.Errorf("expected db pinned to mysql, got %v", m.pins["db"])
+	if v, ok := m.editor.values["db"]; !ok || v.String() != "mysql" {
+		t.Errorf("expected db pinned to mysql, got %v", m.editor.values["db"])
 	}
 }
 
@@ -87,8 +87,8 @@ func TestPinViaEditConfirm(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
-	if v, ok := m.pins["api"]; !ok || v.Bool() != true {
-		t.Errorf("expected api pinned to true, got %v", m.pins["api"])
+	if v, ok := m.editor.values["api"]; !ok || v.Bool() != true {
+		t.Errorf("expected api pinned to true, got %v", m.editor.values["api"])
 	}
 }
 
@@ -98,16 +98,16 @@ func TestTogglePinSpace(t *testing.T) {
 
 	model, _ := m.Update(specialKey(tea.KeySpace))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; !ok {
+	if _, ok := m.editor.values["db"]; !ok {
 		t.Fatal("expected db to be pinned after space")
 	}
-	if m.pins["db"].String() != "pg" {
-		t.Errorf("expected pinned value pg, got %v", m.pins["db"])
+	if m.editor.values["db"].String() != "pg" {
+		t.Errorf("expected pinned value pg, got %v", m.editor.values["db"])
 	}
 
 	model, _ = m.Update(specialKey(tea.KeySpace))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db to be unpinned after second space")
 	}
 }
@@ -127,7 +127,7 @@ func TestCancelEdit(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after esc")
 	}
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Error("expected no pin after cancel")
 	}
 }
@@ -160,8 +160,8 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode")
 	}
-	if m.editIdx != 1 {
-		t.Errorf("expected editIdx=1, got %d", m.editIdx)
+	if m.editor.editIdx != 1 {
+		t.Errorf("expected editIdx=1, got %d", m.editor.editIdx)
 	}
 }
 
@@ -175,8 +175,8 @@ func TestEditUpdatesExistingPin(t *testing.T) {
 
 	model, _ = m.Update(key('2'))
 	m = mustPins(t, model)
-	if m.pins["db"].String() != "mysql" {
-		t.Errorf("expected db updated to mysql, got %v", m.pins["db"])
+	if m.editor.values["db"].String() != "mysql" {
+		t.Errorf("expected db updated to mysql, got %v", m.editor.values["db"])
 	}
 }
 
@@ -333,7 +333,7 @@ func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
-	if _, ok := m.pins["port"]; ok {
+	if _, ok := m.editor.values["port"]; ok {
 		t.Error("expected no pin saved")
 	}
 }
@@ -348,8 +348,8 @@ func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode, got %d", m.mode)
 	}
-	if v, ok := m.pins["port"]; !ok || v.String() != "3000" {
-		t.Errorf("expected port pinned to 3000, got %v", m.pins["port"])
+	if v, ok := m.editor.values["port"]; !ok || v.String() != "3000" {
+		t.Errorf("expected port pinned to 3000, got %v", m.editor.values["port"])
 	}
 }
 
@@ -363,7 +363,7 @@ func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode, got %d", m.mode)
 	}
-	if _, ok := m.pins["port"]; ok {
+	if _, ok := m.editor.values["port"]; ok {
 		t.Error("expected no pin saved for invalid last-used value")
 	}
 }
@@ -391,7 +391,7 @@ func TestPinInputRejectsInvalidValue(t *testing.T) {
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode after invalid input, got %d", m.mode)
 	}
-	if _, ok := m.pins["port"]; ok {
+	if _, ok := m.editor.values["port"]; ok {
 		t.Error("expected no pin saved for invalid input")
 	}
 }
@@ -409,7 +409,7 @@ func TestPinInputRejectsBlankRequired(t *testing.T) {
 	if m.mode != pinsEditMode {
 		t.Fatalf("expected edit mode after blank required input, got %d", m.mode)
 	}
-	if _, ok := m.pins["port"]; ok {
+	if _, ok := m.editor.values["port"]; ok {
 		t.Error("expected no pin saved for blank required input")
 	}
 }
@@ -431,8 +431,8 @@ func TestPinInputAcceptsValidValue(t *testing.T) {
 	if m.mode != pinsListMode {
 		t.Fatalf("expected list mode after valid input, got %d", m.mode)
 	}
-	if v, ok := m.pins["port"]; !ok || v.String() != "8080" {
-		t.Errorf("expected port pinned to 8080, got %v", m.pins["port"])
+	if v, ok := m.editor.values["port"]; !ok || v.String() != "8080" {
+		t.Errorf("expected port pinned to 8080, got %v", m.editor.values["port"])
 	}
 }
 
@@ -443,28 +443,28 @@ func TestCyclePinSelectForward(t *testing.T) {
 	// First right → pins db to first choice (pg).
 	model, _ := m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v, ok := m.pins["db"]; !ok || v.String() != "pg" {
-		t.Fatalf("expected db=pg, got %v", m.pins["db"])
+	if v, ok := m.editor.values["db"]; !ok || v.String() != "pg" {
+		t.Fatalf("expected db=pg, got %v", m.editor.values["db"])
 	}
 
 	// Second right → pg → mysql.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != "mysql" {
+	if v := m.editor.values["db"]; v.String() != "mysql" {
 		t.Fatalf("expected db=mysql, got %v", v)
 	}
 
 	// Third right → mysql → unpinned.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db unpinned")
 	}
 
 	// Fourth right → wraps to pg.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != "pg" {
+	if v := m.editor.values["db"]; v.String() != "pg" {
 		t.Fatalf("expected db=pg after wrap, got %v", v)
 	}
 }
@@ -476,21 +476,21 @@ func TestCyclePinSelectBackward(t *testing.T) {
 	// Left from unpinned → wraps to last choice (mysql).
 	model, _ := m.Update(specialKey(tea.KeyLeft))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != "mysql" {
+	if v := m.editor.values["db"]; v.String() != "mysql" {
 		t.Fatalf("expected db=mysql, got %v", v)
 	}
 
 	// Left → mysql → pg.
 	model, _ = m.Update(specialKey(tea.KeyLeft))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != "pg" {
+	if v := m.editor.values["db"]; v.String() != "pg" {
 		t.Fatalf("expected db=pg, got %v", v)
 	}
 
 	// Left → pg → unpinned.
 	model, _ = m.Update(specialKey(tea.KeyLeft))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db unpinned")
 	}
 }
@@ -505,28 +505,28 @@ func TestCyclePinConfirm(t *testing.T) {
 	// Right → Yes (true).
 	model, _ := m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v, ok := m.pins["api"]; !ok || v.Bool() != true {
-		t.Fatalf("expected api=true, got %v", m.pins["api"])
+	if v, ok := m.editor.values["api"]; !ok || v.Bool() != true {
+		t.Fatalf("expected api=true, got %v", m.editor.values["api"])
 	}
 
 	// Right → No (false).
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["api"]; v.Bool() != false {
+	if v := m.editor.values["api"]; v.Bool() != false {
 		t.Fatalf("expected api=false, got %v", v)
 	}
 
 	// Right → unpinned.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if _, ok := m.pins["api"]; ok {
+	if _, ok := m.editor.values["api"]; ok {
 		t.Fatal("expected api unpinned")
 	}
 
 	// Right → wraps to Yes.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["api"]; v.Bool() != true {
+	if v := m.editor.values["api"]; v.Bool() != true {
 		t.Fatalf("expected api=true after wrap, got %v", v)
 	}
 }
@@ -547,21 +547,21 @@ func TestCyclePinSelectAllowNone(t *testing.T) {
 	// Right → pg.
 	model, _ := m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != "pg" {
+	if v := m.editor.values["db"]; v.String() != "pg" {
 		t.Fatalf("expected db=pg, got %v", v)
 	}
 
 	// Right → None.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if v := m.pins["db"]; v.String() != config.NoneValue {
+	if v := m.editor.values["db"]; v.String() != config.NoneValue {
 		t.Fatalf("expected db=%s, got %v", config.NoneValue, v)
 	}
 
 	// Right → unpinned.
 	model, _ = m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db unpinned")
 	}
 }
@@ -576,7 +576,7 @@ func TestCyclePinInputNoop(t *testing.T) {
 
 	model, _ := m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if _, ok := m.pins["name"]; ok {
+	if _, ok := m.editor.values["name"]; ok {
 		t.Fatal("expected no pin change for input field")
 	}
 	if m.mode != pinsListMode {
@@ -601,7 +601,7 @@ func TestCyclePinMultiSelectNoop(t *testing.T) {
 
 	model, _ := m.Update(specialKey(tea.KeyRight))
 	m = mustPins(t, model)
-	if _, ok := m.pins["tags"]; ok {
+	if _, ok := m.editor.values["tags"]; ok {
 		t.Fatal("expected no pin change for multi-select field")
 	}
 }
@@ -632,14 +632,14 @@ func TestCyclePinWithHLKeys(t *testing.T) {
 	// 'l' key should cycle forward like right arrow.
 	model, _ := m.Update(key('l'))
 	m = mustPins(t, model)
-	if v, ok := m.pins["db"]; !ok || v.String() != "pg" {
-		t.Fatalf("expected db=pg via 'l', got %v", m.pins["db"])
+	if v, ok := m.editor.values["db"]; !ok || v.String() != "pg" {
+		t.Fatalf("expected db=pg via 'l', got %v", m.editor.values["db"])
 	}
 
 	// 'h' key should cycle backward like left arrow.
 	model, _ = m.Update(key('h'))
 	m = mustPins(t, model)
-	if _, ok := m.pins["db"]; ok {
+	if _, ok := m.editor.values["db"]; ok {
 		t.Fatal("expected db unpinned via 'h'")
 	}
 }

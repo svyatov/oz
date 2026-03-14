@@ -31,18 +31,14 @@ type PinsResult struct {
 
 // PinsModel is a Bubbletea model for interactive pin management.
 type PinsModel struct {
-	editField           Field
-	pins                config.Values
-	lastUsed            config.Values
-	hints               map[string]string
+	editField           Field // version pin editing only
+	editor              *ValuesEditor
 	customVersionVerify string
 	versionPin          string
 	verifyErr           string
-	options             []config.Option
 	spinner             spinner.Model
 	mode                pinsMode
 	cursor              int
-	editIdx             int
 	hasCustomVersion    bool
 	done                bool
 }
@@ -53,22 +49,14 @@ func newPinsModel(
 	hasCustomVersion bool, versionPin string,
 	customVersionVerify string,
 ) *PinsModel {
-	if pins == nil {
-		pins = make(config.Values)
-	}
-	if lastUsed == nil {
-		lastUsed = make(config.Values)
-	}
+	editor := NewValuesEditor(options, pins, lastUsed, hints)
 
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
 	s.Style = ui.AccentStyle
 
 	return &PinsModel{
-		options:             options,
-		pins:                pins,
-		lastUsed:            lastUsed,
-		hints:               hints,
+		editor:              editor,
 		hasCustomVersion:    hasCustomVersion,
 		versionPin:          versionPin,
 		customVersionVerify: customVersionVerify,
@@ -78,7 +66,7 @@ func newPinsModel(
 
 // itemCount returns the total number of items in the list.
 func (m *PinsModel) itemCount() int {
-	n := len(m.options)
+	n := len(m.editor.options)
 	if m.hasCustomVersion {
 		n++
 	}
@@ -136,13 +124,13 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case keyDown, "j":
 		m.cursor = (m.cursor + 1) % n
 	case keyLeft, "h":
-		return m.cyclePin(m.cursor, -1)
+		return m.handleCycle(-1)
 	case keyRight, "l":
-		return m.cyclePin(m.cursor, 1)
+		return m.handleCycle(1)
 	case keyEnter:
-		return m.enterEdit(m.cursor)
+		return m.handleEnter()
 	case keySpace:
-		return m.togglePin(m.cursor)
+		return m.handleToggle()
 	case keyEsc, keyCtrlC:
 		m.done = true
 		return m, tea.Quit
@@ -151,14 +139,73 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if msg.Code >= '1' && msg.Code <= '9' {
 		idx := int(msg.Code-'0') - 1
 		if idx < n {
-			return m.enterEdit(idx)
+			m.cursor = idx
+			return m.handleEnter()
 		}
 	}
 
 	return m, nil
 }
 
+func (m *PinsModel) handleCycle(direction int) (tea.Model, tea.Cmd) {
+	if m.isVersionIdx(m.cursor) {
+		m.toggleVersionPin()
+		return m, nil
+	}
+	m.editor.CycleValue(m.cursor-m.versionOffset(), direction)
+	return m, nil
+}
+
+func (m *PinsModel) handleEnter() (tea.Model, tea.Cmd) {
+	if m.isVersionIdx(m.cursor) {
+		return m.enterVersionEdit()
+	}
+	cmd := m.editor.EnterEdit(m.cursor - m.versionOffset())
+	m.mode = pinsEditMode
+	return m, cmd
+}
+
+func (m *PinsModel) handleToggle() (tea.Model, tea.Cmd) {
+	if m.isVersionIdx(m.cursor) {
+		m.toggleVersionPin()
+		return m, nil
+	}
+	cmd := m.editor.ToggleValue(m.cursor - m.versionOffset())
+	if m.editor.Editing() {
+		m.mode = pinsEditMode
+	}
+	return m, cmd
+}
+
+func (m *PinsModel) toggleVersionPin() {
+	if m.versionPin != "" {
+		m.versionPin = ""
+	} else {
+		m.versionPin = versionPinCurrent
+	}
+}
+
+func (m *PinsModel) enterVersionEdit() (tea.Model, tea.Cmd) {
+	m.editField = NewInputField(config.Option{
+		Label: "Version", Description: "Leave blank for current version",
+	})
+	if m.versionPin != "" && m.versionPin != versionPinCurrent {
+		m.editField.SetValue(config.StringVal(m.versionPin))
+	}
+	m.mode = pinsEditMode
+	return m, m.editField.Init()
+}
+
 func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if m.editor.Editing() {
+		exited, cmd := m.editor.UpdateEdit(msg)
+		if exited {
+			m.mode = pinsListMode
+		}
+		return m, cmd
+	}
+
+	// Version pin editing.
 	if msg.String() == keyEsc || msg.String() == keyCtrlC {
 		m.mode = pinsListMode
 		m.editField = nil
@@ -168,163 +215,10 @@ func (m *PinsModel) updateEdit(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	submitted, cmd := m.editField.Update(msg)
 	if submitted {
-		if m.isVersionIdx(m.editIdx) {
-			return m.submitVersionPin()
-		}
-		optIdx := m.editIdx - m.versionOffset()
-		opt := &m.options[optIdx]
-		m.pins[opt.Name] = m.editField.Value()
-		m.mode = pinsListMode
-		m.editField = nil
-		return m, cmd
+		return m.submitVersionPin()
 	}
 	m.verifyErr = ""
 	return m, cmd
-}
-
-func (m *PinsModel) enterEdit(idx int) (tea.Model, tea.Cmd) {
-	m.cursor = idx
-	m.editIdx = idx
-
-	if m.isVersionIdx(idx) {
-		m.editField = NewInputField(config.Option{Label: "Version", Description: "Leave blank for current version"})
-		if m.versionPin != "" && m.versionPin != versionPinCurrent {
-			m.editField.SetValue(config.StringVal(m.versionPin))
-		}
-		m.mode = pinsEditMode
-		return m, m.editField.Init()
-	}
-
-	optIdx := idx - m.versionOffset()
-	opt := &m.options[optIdx]
-	m.editField = buildField(opt)
-
-	switch f := m.editField.(type) {
-	case *SelectField:
-		if opt.Default != nil {
-			f.SetDefault(*opt.Default)
-		}
-	case *ConfirmField:
-		defVal := config.BoolVal(false)
-		if opt.Default != nil {
-			defVal = *opt.Default
-		}
-		f.SetDefault(defVal)
-	}
-
-	val := resolveDefault(opt, m.pins, m.lastUsed)
-	if val != nil {
-		m.editField.SetValue(*val)
-	}
-
-	m.mode = pinsEditMode
-	return m, m.editField.Init()
-}
-
-func (m *PinsModel) togglePin(idx int) (tea.Model, tea.Cmd) {
-	if m.isVersionIdx(idx) {
-		if m.versionPin != "" {
-			m.versionPin = ""
-		} else {
-			m.versionPin = versionPinCurrent
-		}
-		return m, nil
-	}
-
-	optIdx := idx - m.versionOffset()
-	name := m.options[optIdx].Name
-	if _, pinned := m.pins[name]; pinned {
-		delete(m.pins, name)
-		return m, nil
-	}
-
-	opt := &m.options[optIdx]
-	val := resolveDefault(opt, m.pins, m.lastUsed)
-	if opt.Type == config.OptionInput && !m.isValidInputValue(opt, val) {
-		return m.enterEdit(idx)
-	}
-	if val != nil {
-		m.pins[name] = *val
-	}
-	return m, nil
-}
-
-func (m *PinsModel) cyclePin(idx, direction int) (tea.Model, tea.Cmd) {
-	if m.isVersionIdx(idx) {
-		if m.versionPin != "" {
-			m.versionPin = ""
-		} else {
-			m.versionPin = versionPinCurrent
-		}
-		return m, nil
-	}
-
-	optIdx := idx - m.versionOffset()
-	opt := &m.options[optIdx]
-
-	values := cyclableValues(opt)
-	if len(values) == 0 {
-		return m, nil
-	}
-
-	name := opt.Name
-	total := len(values) + 1 // +1 for the "unpinned" slot
-
-	pos := len(values) // default: unpinned
-	if current, pinned := m.pins[name]; pinned {
-		for i, v := range values {
-			if v.Kind() == current.Kind() && v.Scalar() == current.Scalar() {
-				pos = i
-				break
-			}
-		}
-	}
-
-	newPos := (pos + direction + total) % total
-	if newPos == len(values) {
-		delete(m.pins, name)
-	} else {
-		m.pins[name] = values[newPos]
-	}
-
-	return m, nil
-}
-
-// cyclableValues returns the ordered values for cycling through an option.
-// Returns nil for option types that don't support cycling (input, multi_select).
-func cyclableValues(opt *config.Option) []config.FieldValue {
-	switch opt.Type {
-	case config.OptionSelect:
-		vals := make([]config.FieldValue, 0, len(opt.Choices)+1)
-		for _, c := range opt.Choices {
-			vals = append(vals, config.StringVal(c.Value))
-		}
-		if opt.AllowNone {
-			vals = append(vals, config.StringVal(config.NoneValue))
-		}
-		return vals
-	case config.OptionConfirm:
-		return []config.FieldValue{config.BoolVal(true), config.BoolVal(false)}
-	case config.OptionInput, config.OptionMultiSelect:
-		return nil
-	}
-	return nil
-}
-
-func (m *PinsModel) isValidInputValue(opt *config.Option, val *config.FieldValue) bool {
-	if val == nil {
-		return !opt.Required
-	}
-	s := val.Scalar()
-	if opt.Required && s == "" {
-		return false
-	}
-	if opt.Validate == nil || s == "" {
-		return true
-	}
-	f := NewInputField(config.Option{Validate: opt.Validate, Required: opt.Required})
-	f.SetValue(*val)
-	return f.validate() == ""
 }
 
 func (m *PinsModel) View() tea.View {
@@ -348,14 +242,9 @@ func (m *PinsModel) viewList() string {
 	b.WriteString("\n  " + ui.TitleStyle.Render("Manage pins") + "\n\n")
 
 	versionLabel := "Version"
-	maxLabel := 0
+	maxLabel := m.editor.MaxLabelWidth()
 	if m.hasCustomVersion && len(versionLabel) > maxLabel {
 		maxLabel = len(versionLabel)
-	}
-	for _, o := range m.options {
-		if len(o.Label) > maxLabel {
-			maxLabel = len(o.Label)
-		}
 	}
 
 	n := m.itemCount()
@@ -365,7 +254,8 @@ func (m *PinsModel) viewList() string {
 		if m.isVersionIdx(i) {
 			b.WriteString(m.viewVersionRow(i, active, maxLabel, gutterWidth, versionLabel))
 		} else {
-			b.WriteString(m.viewOptionRow(i, active, maxLabel, gutterWidth))
+			optIdx := i - m.versionOffset()
+			b.WriteString(m.editor.ViewOptionRow(optIdx, active, maxLabel, gutterWidth, i+1))
 		}
 	}
 
@@ -373,7 +263,9 @@ func (m *PinsModel) viewList() string {
 	return b.String()
 }
 
-func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel, gutterWidth int, label string) string {
+func (m *PinsModel) viewVersionRow(
+	i int, active bool, maxLabel, gutterWidth int, label string,
+) string {
 	num := ui.NumberGutter(i+1, gutterWidth, active)
 	cursor := cursorBlank
 	if active {
@@ -393,58 +285,18 @@ func (m *PinsModel) viewVersionRow(i int, active bool, maxLabel, gutterWidth int
 	return fmt.Sprintf("   %s%s  %s%s%s  %s\n", cursor, num, pin, styledLabel, pad, value)
 }
 
-func (m *PinsModel) viewOptionRow(i int, active bool, maxLabel, gutterWidth int) string {
-	num := ui.NumberGutter(i+1, gutterWidth, active)
-	cursor := cursorBlank
-	if active {
-		cursor = " " + ui.Cursor() + " "
-	}
-	o := m.options[i-m.versionOffset()]
-	val, pinned := m.pins[o.Name]
-	pin := "  "
-	if pinned {
-		pin = ui.PinIcon() + " "
-	}
-	label := ui.ChoiceLabel(o.Label, active)
-	pad := strings.Repeat(" ", maxLabel-len(o.Label))
-	value := ui.MutedStyle.Render("\u2500")
-	if pinned {
-		value = ui.CompletedStepAnswer(FormatAnswer(&o, val))
-	}
-	hint := ""
-	if h := m.hints[o.Name]; h != "" {
-		hint = " " + ui.NavHintText(h)
-	}
-	return fmt.Sprintf("   %s%s  %s%s%s  %s%s\n", cursor, num, pin, label, pad, value, hint)
-}
-
 func (m *PinsModel) viewEdit() string {
+	if m.editor.Editing() {
+		return m.editor.ViewEdit(ui.PinEditIndicator())
+	}
+	// Version pin editing.
 	var b strings.Builder
-
-	fieldView := m.editField.View()
-	placeholder := ui.StepCounter(0, 0)
-	replacement := ui.PinEditIndicator()
-	fieldView = strings.Replace(fieldView, placeholder, replacement, 1)
-
-	oldIndent := "\n" + strings.Repeat(" ", 2+ui.Width(placeholder)+2)
-	newIndent := "\n" + strings.Repeat(" ", 2+ui.Width(replacement)+2)
-	fieldView = strings.Replace(fieldView, oldIndent, newIndent, 1)
-
 	b.WriteString("\n")
-	b.WriteString(fieldView)
+	b.WriteString(renderFieldWithIndicator(m.editField.View(), ui.PinEditIndicator()))
 	if m.verifyErr != "" {
 		b.WriteString("\n  " + ui.WarningText(m.verifyErr))
 	}
-
-	hint := ui.PinsEditNavHint()
-	switch m.editField.(type) {
-	case *SelectField, *ConfirmField:
-		hint = ui.PinsSelectEditNavHint()
-	case *MultiSelectField:
-		hint = ui.PinsMultiSelectEditNavHint()
-	}
-	b.WriteString("\n" + hint + "\n")
-
+	b.WriteString("\n" + ui.PinsEditNavHint() + "\n")
 	return b.String()
 }
 
@@ -513,5 +365,5 @@ func RunPins(
 	if !ok {
 		return nil, errors.New("unexpected model type")
 	}
-	return &PinsResult{Pins: final.pins, VersionPin: final.versionPin}, nil
+	return &PinsResult{Pins: final.editor.Values(), VersionPin: final.versionPin}, nil
 }

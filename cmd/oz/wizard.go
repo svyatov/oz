@@ -215,6 +215,74 @@ func runWithPreset(
 	return nil
 }
 
+func runPresets(name string) error {
+	w, err := loadWizardConfig(name)
+	if err != nil {
+		return err
+	}
+
+	st := store.New(configDir)
+
+	presetNames, err := st.ListPresets(w.Name)
+	if err != nil {
+		return fmt.Errorf("listing presets: %w", err)
+	}
+
+	presets := make(map[string]config.Values, len(presetNames))
+	for _, pn := range presetNames {
+		vals, loadErr := st.LoadPreset(w.Name, pn)
+		if loadErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load preset %q: %v\n", pn, loadErr)
+			continue
+		}
+		presets[pn] = vals
+	}
+
+	// Load last-used for "copy from last-used" source.
+	detectedVersion, _ := compat.DetectVersion(w.Version)
+	majorVersion := majorVer(detectedVersion)
+	state, err := st.LoadState(w.Name, majorVersion)
+	if err != nil {
+		state = &store.StateEntry{}
+	}
+
+	hints := compat.OptionHints(w.Compat)
+	result, err := wizard.RunPresets(w.Options, presets, state.LastUsed, hints)
+	if err != nil {
+		return fmt.Errorf("managing presets: %w", err)
+	}
+
+	return reconcilePresets(st, w.Name, presetNames, result.Presets)
+}
+
+func reconcilePresets(
+	st *store.Store, wizardName string,
+	originalNames []string, final map[string]config.Values,
+) error {
+	// Save all presets in final state.
+	for name, values := range final {
+		if err := st.SavePreset(wizardName, name, values); err != nil {
+			return fmt.Errorf("saving preset %q: %w", name, err)
+		}
+	}
+	// Remove presets that no longer exist.
+	for _, name := range originalNames {
+		if _, exists := final[name]; !exists {
+			if err := st.RemovePreset(wizardName, name); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to remove preset %q: %v\n", name, err)
+			}
+		}
+	}
+
+	count := len(final)
+	word := "presets"
+	if count == 1 {
+		word = "preset"
+	}
+	ui.SuccessMsgf("%d %s saved", count, word)
+	return nil
+}
+
 func runPins(name string) error {
 	w, err := loadWizardConfig(name)
 	if err != nil {

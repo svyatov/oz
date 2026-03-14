@@ -256,6 +256,24 @@ func (s *Store) SavePreset(wizard, name string, values config.Values) error {
 	return nil
 }
 
+// RenamePreset renames a preset by copying its values to the new name and removing the old one.
+func (s *Store) RenamePreset(wizard, oldName, newName string) error {
+	if err := validateName(oldName); err != nil {
+		return err
+	}
+	if err := validateName(newName); err != nil {
+		return err
+	}
+	values, err := s.LoadPreset(wizard, oldName)
+	if err != nil {
+		return fmt.Errorf("loading preset %q for rename: %w", oldName, err)
+	}
+	if err := s.SavePreset(wizard, newName, values); err != nil {
+		return err
+	}
+	return s.RemovePreset(wizard, oldName)
+}
+
 // RemovePreset removes a named preset.
 func (s *Store) RemovePreset(wizard, name string) error {
 	if err := validateName(name); err != nil {
