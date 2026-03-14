@@ -1,8 +1,10 @@
 package config
 
 import (
-	"strconv"
-	"strings"
+	"regexp"
+	"slices"
+
+	semver "github.com/Masterminds/semver/v3"
 )
 
 // validateVersionGating checks for version-related inconsistencies:
@@ -76,131 +78,53 @@ func validateVisibilityRefsVersionGated(o Option, prefix string, versioned map[s
 	}
 }
 
+// versionRe matches version-like numbers in constraint strings.
+var versionRe = regexp.MustCompile(`\d+(?:\.\d+)*`)
+
 // constraintsOverlap checks if two version constraints can ever be simultaneously satisfied.
-// Uses probe versions at boundaries and extremes as a heuristic.
+// Concatenates both constraints (AND semantics) and probes with versions extracted from
+// the constraint text plus ±1 neighbors to catch strict inequality boundaries.
 func constraintsOverlap(a, b string) bool {
-	probes := []string{"0.0.0", "0.1.0", "1.0.0", "2.0.0", "5.0.0", "8.0.0", "9.0.0", "99.0.0"}
-	probes = append(probes, extractBoundaryVersions(a)...)
-	probes = append(probes, extractBoundaryVersions(b)...)
-	for _, v := range probes {
-		if matchConstraint(v, a) && matchConstraint(v, b) {
-			return true
-		}
+	c, err := semver.NewConstraint(a + ", " + b)
+	if err != nil {
+		return false
 	}
-	return false
+	return slices.ContainsFunc(probeVersions(a, b), c.Check)
 }
 
-// extractBoundaryVersions pulls version numbers from a constraint string
-// and returns them along with adjacent versions (±0.1).
-func extractBoundaryVersions(constraint string) []string {
-	var result []string
-	for part := range strings.SplitSeq(constraint, ",") {
-		p := strings.TrimSpace(part)
-		for _, prefix := range []string{">=", "<=", ">", "<", "="} {
-			if strings.HasPrefix(p, prefix) {
-				p = strings.TrimSpace(p[len(prefix):])
-				break
+// probeVersions extracts version numbers from constraint strings
+// and generates ±1 neighbors to catch strict inequality boundaries.
+func probeVersions(constraints ...string) []*semver.Version {
+	seen := make(map[string]bool)
+	var probes []*semver.Version
+	add := func(v *semver.Version) {
+		if k := v.String(); !seen[k] {
+			seen[k] = true
+			probes = append(probes, v)
+		}
+	}
+	for _, cs := range constraints {
+		for _, m := range versionRe.FindAllString(cs, -1) {
+			v, err := semver.NewVersion(m)
+			if err != nil {
+				continue
+			}
+			add(v)
+			add(semver.New(v.Major()+1, 0, 0, "", ""))
+			add(semver.New(v.Major(), v.Minor()+1, 0, "", ""))
+			add(semver.New(v.Major(), v.Minor(), v.Patch()+1, "", ""))
+			if v.Major() > 0 {
+				add(semver.New(v.Major()-1, 0, 0, "", ""))
+			}
+			if v.Minor() > 0 {
+				add(semver.New(v.Major(), v.Minor()-1, 0, "", ""))
+			}
+			if v.Patch() > 0 {
+				add(semver.New(v.Major(), v.Minor(), v.Patch()-1, "", ""))
 			}
 		}
-		if p != "" {
-			result = append(result, p)
-			result = append(result, incrementMinor(p), decrementMinor(p))
-		}
 	}
-	return result
-}
-
-func incrementMinor(v string) string {
-	parts := splitVersion(v)
-	if len(parts) >= 2 {
-		parts[1]++
-	}
-	return joinVersion(parts)
-}
-
-func decrementMinor(v string) string {
-	parts := splitVersion(v)
-	if len(parts) >= 2 && parts[1] > 0 {
-		parts[1]--
-	}
-	return joinVersion(parts)
-}
-
-// matchConstraint checks if version satisfies a comma-separated constraint.
-// Duplicates compat.matchVersionRange to avoid circular imports.
-func matchConstraint(version, constraint string) bool {
-	for part := range strings.SplitSeq(constraint, ",") {
-		p := strings.TrimSpace(part)
-		var op, target string
-		for _, prefix := range []string{">=", "<=", ">", "<", "="} {
-			if strings.HasPrefix(p, prefix) {
-				op = prefix
-				target = strings.TrimSpace(p[len(prefix):])
-				break
-			}
-		}
-		if op == "" {
-			op = "="
-			target = p
-		}
-		cmp := compareVer(version, target)
-		ok := false
-		switch op {
-		case ">=":
-			ok = cmp >= 0
-		case "<=":
-			ok = cmp <= 0
-		case ">":
-			ok = cmp > 0
-		case "<":
-			ok = cmp < 0
-		case "=":
-			ok = cmp == 0
-		}
-		if !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func splitVersion(v string) []int {
-	var parts []int
-	for seg := range strings.SplitSeq(v, ".") {
-		n, _ := strconv.Atoi(seg)
-		parts = append(parts, n)
-	}
-	return parts
-}
-
-func joinVersion(parts []int) string {
-	strs := make([]string, len(parts))
-	for i, p := range parts {
-		strs[i] = strconv.Itoa(p)
-	}
-	return strings.Join(strs, ".")
-}
-
-func compareVer(a, b string) int {
-	ap := splitVersion(a)
-	bp := splitVersion(b)
-	maxLen := max(len(ap), len(bp))
-	for i := range maxLen {
-		av, bv := 0, 0
-		if i < len(ap) {
-			av = ap[i]
-		}
-		if i < len(bp) {
-			bv = bp[i]
-		}
-		if av < bv {
-			return -1
-		}
-		if av > bv {
-			return 1
-		}
-	}
-	return 0
+	return probes
 }
 
 // validateVisibilityGraph checks show_when/hide_when/choices_from for

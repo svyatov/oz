@@ -48,6 +48,7 @@ type validationCase struct {
 
 func validationCases() []validationCase {
 	cases := baseCases()
+	cases = append(cases, versionConstraintCases()...)
 	cases = append(cases, versionControlCases()...)
 	cases = append(cases, newFeatureCases()...)
 	cases = append(cases, semanticCases()...)
@@ -94,12 +95,34 @@ func baseCases() []validationCase {
 		{"show_when_unknown_option", func(w *Wizard) {
 			w.Options[0].ShowWhen = Values{"nonexistent": BoolVal(true)}
 		}, "references unknown option"},
+	}
+}
+
+func versionConstraintCases() []validationCase {
+	vc := &VersionControl{Command: "cmd", Pattern: `(\d+)`}
+	return []validationCase{
 		{"versions_valid_with_version_control", func(w *Wizard) {
-			w.Version = &VersionControl{Command: "cmd", Pattern: `(\d+)`}
+			w.Version = vc
 			w.Options[0].Versions = ">= 1.0"
 		}, ""},
+		{"versions_tilde_valid", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = "~1.2.0"
+		}, ""},
+		{"versions_caret_valid", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = "^2.0.0"
+		}, ""},
+		{"versions_or_valid", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = ">= 1.0.0, < 2.0.0 || >= 3.0.0"
+		}, ""},
+		{"versions_wildcard_valid", func(w *Wizard) {
+			w.Version = vc
+			w.Options[0].Versions = "1.2.x"
+		}, ""},
 		{"versions_invalid_constraint", func(w *Wizard) {
-			w.Version = &VersionControl{Command: "cmd", Pattern: `(\d+)`}
+			w.Version = vc
 			w.Options[0].Versions = ">= "
 		}, "invalid versions constraint"},
 	}

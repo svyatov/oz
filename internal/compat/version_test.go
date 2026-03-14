@@ -6,77 +6,56 @@ import (
 	"github.com/svyatov/oz/internal/config"
 )
 
-func TestCompareVersions(t *testing.T) {
-	tests := []struct {
-		a, b string
-		want int
-	}{
-		{"1.0.0", "1.0.0", 0},
-		{"1.0.0", "2.0.0", -1},
-		{"2.0.0", "1.0.0", 1},
-		{"1", "1.0.0", 0},
-		{"1.10", "1.9", 1},
-		{"1.9", "1.10", -1},
-		{"0.1.0", "0.2.0", -1},
-		{"3.2.1", "3.2.1", 0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.a+"_vs_"+tt.b, func(t *testing.T) {
-			got := compareVersions(tt.a, tt.b)
-			if got != tt.want {
-				t.Errorf("compareVersions(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMatchSingleConstraint(t *testing.T) {
-	tests := []struct {
-		version    string
-		constraint string
-		want       bool
-	}{
-		{"1.0.0", ">= 1.0.0", true},
-		{"0.9.0", ">= 1.0.0", false},
-		{"2.0.0", ">= 1.0.0", true},
-		{"1.0.0", "<= 1.0.0", true},
-		{"1.1.0", "<= 1.0.0", false},
-		{"1.1.0", "> 1.0.0", true},
-		{"1.0.0", "> 1.0.0", false},
-		{"0.9.0", "< 1.0.0", true},
-		{"1.0.0", "< 1.0.0", false},
-		{"1.0.0", "= 1.0.0", true},
-		{"1.0.1", "= 1.0.0", false},
-		{"1.0.0", "1.0.0", true},
-		{"1.0.1", "1.0.0", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.version+"_"+tt.constraint, func(t *testing.T) {
-			got := matchSingleConstraint(tt.version, tt.constraint)
-			if got != tt.want {
-				t.Errorf("matchSingleConstraint(%q, %q) = %v, want %v", tt.version, tt.constraint, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMatchVersionRange(t *testing.T) {
+func TestVersionMatchesConstraint(t *testing.T) {
 	tests := []struct {
 		name       string
 		version    string
 		constraint string
 		want       bool
 	}{
-		{"comma_separated_match", "1.5.0", ">= 1.0.0, < 2.0.0", true},
-		{"comma_separated_no_match", "2.1.0", ">= 1.0.0, < 2.0.0", false},
-		{"single_constraint", "1.0.0", ">= 1.0.0", true},
-		{"empty_constraint", "1.0.0", "", false},
+		// Basic operators.
+		{"gte_match", "1.0.0", ">= 1.0.0", true},
+		{"gte_no_match", "0.9.0", ">= 1.0.0", false},
+		{"lt_match", "0.9.0", "< 1.0.0", true},
+		{"lt_no_match", "1.0.0", "< 1.0.0", false},
+		{"eq_match", "1.0.0", "= 1.0.0", true},
+		{"eq_no_match", "1.0.1", "= 1.0.0", false},
+		{"ne_match", "1.0.1", "!= 1.0.0", true},
+		{"ne_no_match", "1.0.0", "!= 1.0.0", false},
+
+		// Comma-separated AND.
+		{"range_match", "1.5.0", ">= 1.0.0, < 2.0.0", true},
+		{"range_no_match", "2.1.0", ">= 1.0.0, < 2.0.0", false},
+
+		// Tilde (~) — patch-level range.
+		{"tilde_match", "1.2.5", "~1.2.3", true},
+		{"tilde_no_match", "1.3.0", "~1.2.3", false},
+
+		// Caret (^) — major-level range.
+		{"caret_match", "1.9.0", "^1.2.3", true},
+		{"caret_no_match", "2.0.0", "^1.2.3", false},
+
+		// Wildcards.
+		{"wildcard_match", "1.2.9", "1.2.x", true},
+		{"wildcard_no_match", "1.3.0", "1.2.x", false},
+
+		// OR (||).
+		{"or_first_match", "1.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", true},
+		{"or_second_match", "3.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", true},
+		{"or_no_match", "2.5.0", ">= 1.0.0 < 2.0.0 || >= 3.0.0", false},
+
+		// Two-segment version (coercion).
+		{"two_segment", "8.0", ">= 8.0", true},
+
+		// Invalid inputs.
+		{"invalid_version", "not-a-version", ">= 1.0.0", false},
+		{"invalid_constraint", "1.0.0", ">>> bad", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := matchVersionRange(tt.version, tt.constraint)
+			got := versionMatchesConstraint(tt.version, tt.constraint)
 			if got != tt.want {
-				t.Errorf("matchVersionRange(%q, %q) = %v, want %v", tt.version, tt.constraint, got, tt.want)
+				t.Errorf("versionMatchesConstraint(%q, %q) = %v, want %v", tt.version, tt.constraint, got, tt.want)
 			}
 		})
 	}
@@ -195,6 +174,8 @@ func TestFilterOptions(t *testing.T) {
 		{Name: "old_only", Type: config.OptionInput, Label: "Old", Versions: ">= 1.0.0, < 2.0.0"},
 		{Name: "new_only", Type: config.OptionInput, Label: "New", Versions: ">= 2.0.0"},
 		{Name: "newer_only", Type: config.OptionInput, Label: "Newer", Versions: ">= 3.0.0"},
+		{Name: "tilde_gated", Type: config.OptionInput, Label: "Tilde", Versions: "~1.2.0"},
+		{Name: "caret_gated", Type: config.OptionInput, Label: "Caret", Versions: "^2.0.0"},
 	}
 
 	tests := []struct {
@@ -203,10 +184,13 @@ func TestFilterOptions(t *testing.T) {
 		wantNames []string
 	}{
 		{"old_version", "1.5.0", []string{"shared", "old_only"}},
-		{"new_version", "2.5.0", []string{"shared", "new_only"}},
+		{"new_version", "2.5.0", []string{"shared", "new_only", "caret_gated"}},
 		{"newer_version", "3.0.0", []string{"shared", "new_only", "newer_only"}},
 		{"no_match_returns_ungated", "0.1.0", []string{"shared"}},
-		{"empty_version_returns_all", "", []string{"shared", "old_only", "new_only", "newer_only"}},
+		{"empty_version_returns_all", "",
+			[]string{"shared", "old_only", "new_only", "newer_only", "tilde_gated", "caret_gated"}},
+		{"tilde_match", "1.2.5", []string{"shared", "old_only", "tilde_gated"}},
+		{"caret_match", "2.9.0", []string{"shared", "new_only", "caret_gated"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

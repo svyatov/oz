@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	semver "github.com/Masterminds/semver/v3"
 )
 
 // errorCollector accumulates validation errors.
@@ -247,16 +249,17 @@ func validateVersionsConstraints(w *Wizard, errs *errorCollector) {
 	for _, o := range w.Options {
 		if o.Versions != "" {
 			hasVersions = true
-			if !isValidConstraint(o.Versions) {
-				errs.addf("%s: invalid versions constraint %q", optionPrefix(indexOf(w.Options, o.Name), o.Name), o.Versions)
+			if _, err := semver.NewConstraint(o.Versions); err != nil {
+				prefix := optionPrefix(indexOf(w.Options, o.Name), o.Name)
+				errs.addf("%s: invalid versions constraint %q: %v", prefix, o.Versions, err)
 			}
 		}
 		for j, c := range o.Choices {
 			if c.Versions != "" {
 				hasVersions = true
 				prefix := optionPrefix(indexOf(w.Options, o.Name), o.Name)
-				if !isValidConstraint(c.Versions) {
-					errs.addf("%s: choices[%d]: invalid versions constraint %q", prefix, j, c.Versions)
+				if _, err := semver.NewConstraint(c.Versions); err != nil {
+					errs.addf("%s: choices[%d]: invalid versions constraint %q: %v", prefix, j, c.Versions, err)
 				}
 			}
 		}
@@ -275,27 +278,6 @@ func indexOf(options []Option, name string) int {
 	return -1
 }
 
-// isValidConstraint checks if a comma-separated version constraint string is parseable.
-func isValidConstraint(constraint string) bool {
-	for part := range strings.SplitSeq(constraint, ",") {
-		p := strings.TrimSpace(part)
-		if p == "" {
-			return false
-		}
-		// Strip operator prefix.
-		for _, prefix := range []string{">=", "<=", ">", "<", "="} {
-			if strings.HasPrefix(p, prefix) {
-				p = strings.TrimSpace(p[len(prefix):])
-				break
-			}
-		}
-		// Must have a non-empty version after the operator.
-		if p == "" {
-			return false
-		}
-	}
-	return true
-}
 
 func validateChoicesFromInterpolations(o Option, idx int, optionNames map[string]bool, errs *errorCollector) {
 	if o.ChoicesFrom == "" {

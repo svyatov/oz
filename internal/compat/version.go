@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
+
+	semver "github.com/Masterminds/semver/v3"
 
 	"github.com/svyatov/oz/internal/config"
 )
@@ -45,7 +46,7 @@ func FilterOptions(options []config.Option, version string) []config.Option {
 	}
 	filtered := make([]config.Option, 0, len(options))
 	for _, o := range options {
-		if o.Versions == "" || matchVersionRange(version, o.Versions) {
+		if o.Versions == "" || versionMatchesConstraint(version, o.Versions) {
 			filtered = append(filtered, o)
 		}
 	}
@@ -61,54 +62,26 @@ func FilterChoices(choices config.FlexChoices, version string) config.FlexChoice
 	}
 	filtered := make(config.FlexChoices, 0, len(choices))
 	for _, c := range choices {
-		if c.Versions == "" || matchVersionRange(version, c.Versions) {
+		if c.Versions == "" || versionMatchesConstraint(version, c.Versions) {
 			filtered = append(filtered, c)
 		}
 	}
 	return filtered
 }
 
-// matchVersionRange checks if version satisfies a comma-separated constraint string.
-// Supports: ">= X.Y", "< X.Y", "> X.Y", "<= X.Y", "= X.Y", "X.Y".
-func matchVersionRange(version, constraint string) bool {
-	for part := range strings.SplitSeq(constraint, ",") {
-		if !matchSingleConstraint(version, strings.TrimSpace(part)) {
-			return false
-		}
+// versionMatchesConstraint checks if version satisfies a semver constraint string.
+// Supports the full Masterminds/semver constraint syntax: >=, <=, >, <, =, !=,
+// tilde (~), caret (^), wildcards (x/X/*), hyphen ranges, and OR (||).
+func versionMatchesConstraint(version, constraint string) bool {
+	c, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return false
 	}
-	return true
-}
-
-func matchSingleConstraint(version, constraint string) bool {
-	constraint = strings.TrimSpace(constraint)
-
-	var op, target string
-	for _, prefix := range []string{">=", "<=", ">", "<", "="} {
-		if strings.HasPrefix(constraint, prefix) {
-			op = prefix
-			target = strings.TrimSpace(constraint[len(prefix):])
-			break
-		}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false
 	}
-	if op == "" {
-		op = "="
-		target = constraint
-	}
-
-	cmp := compareVersions(version, target)
-	switch op {
-	case ">=":
-		return cmp >= 0
-	case "<=":
-		return cmp <= 0
-	case ">":
-		return cmp > 0
-	case "<":
-		return cmp < 0
-	case "=":
-		return cmp == 0
-	}
-	return false
+	return c.Check(v)
 }
 
 // ExpandTemplate replaces {{version}} in a template string.
@@ -188,30 +161,3 @@ func formatHint(constraint string) string {
 	return c
 }
 
-// compareVersions compares two dotted version strings numerically.
-// Non-numeric segments (e.g. pre-release suffixes like "-rc1") are ignored;
-// only the leading digits of each part are compared.
-// Returns -1, 0, or 1.
-func compareVersions(a, b string) int {
-	aParts := strings.Split(a, ".")
-	bParts := strings.Split(b, ".")
-
-	maxLen := max(len(aParts), len(bParts))
-
-	for i := range maxLen {
-		av, bv := 0, 0
-		if i < len(aParts) {
-			av, _ = strconv.Atoi(aParts[i])
-		}
-		if i < len(bParts) {
-			bv, _ = strconv.Atoi(bParts[i])
-		}
-		if av < bv {
-			return -1
-		}
-		if av > bv {
-			return 1
-		}
-	}
-	return 0
-}

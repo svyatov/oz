@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"strconv"
 	"strings"
 
+	semver "github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 
 	"github.com/svyatov/oz/internal/command"
@@ -373,9 +375,14 @@ func majorVer(version string) string {
 	if version == "" {
 		return ""
 	}
-	parts := strings.SplitN(version, ".", 2)
-	if len(parts) >= 2 {
-		return parts[0] + "." + strings.SplitN(parts[1], ".", 2)[0]
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		// Fallback for non-semver strings.
+		parts := strings.SplitN(version, ".", 2)
+		if len(parts) >= 2 {
+			return parts[0] + "." + strings.SplitN(parts[1], ".", 2)[0]
+		}
+		return parts[0]
 	}
-	return parts[0]
+	return strconv.FormatUint(v.Major(), 10) + "." + strconv.FormatUint(v.Minor(), 10)
 }

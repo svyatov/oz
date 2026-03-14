@@ -98,6 +98,8 @@ oz run (r) <wizard>
 - `Engine` is the Bubbletea `Model` — manages step navigation, visibility (`show_when`/`hide_when`), back/forward
 - `Validate()` returns `[]error` (batch validation pattern); includes dependency graph cycle detection
 - Config structs use `yaml` struct tags, parsed via `gopkg.in/yaml.v3`
+- Version constraints use `github.com/Masterminds/semver/v3` — supports `>=`, `<=`, `>`, `<`, `=`, `!=`,
+  tilde (`~1.2`), caret (`^2.0`), wildcards (`1.2.x`), hyphen ranges (`1.2 - 1.4`), and OR (`||`)
 
 ## Go Conventions
 
