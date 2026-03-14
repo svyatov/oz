@@ -187,6 +187,7 @@ func PinsListNavHint() string {
 	return "  " +
 		hintKey("\u2191/k", "up") + hintSep() +
 		hintKey("\u2193/j", "down") + hintSep() +
+		hintKey("\u2190/h \u2192/l", "cycle") + hintSep() +
 		hintKey("enter", "edit") + hintSep() +
 		hintKey("space", "toggle pin") + hintSep() +
 		hintKey("esc", "done")

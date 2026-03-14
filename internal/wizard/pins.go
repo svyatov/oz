@@ -135,6 +135,10 @@ func (m *PinsModel) updateList(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.cursor = (m.cursor - 1 + n) % n
 	case keyDown, "j":
 		m.cursor = (m.cursor + 1) % n
+	case keyLeft, "h":
+		return m.cyclePin(m.cursor, -1)
+	case keyRight, "l":
+		return m.cyclePin(m.cursor, 1)
 	case keyEnter:
 		return m.enterEdit(m.cursor)
 	case keySpace:
@@ -243,6 +247,68 @@ func (m *PinsModel) togglePin(idx int) (tea.Model, tea.Cmd) {
 		m.pins[name] = *val
 	}
 	return m, nil
+}
+
+func (m *PinsModel) cyclePin(idx, direction int) (tea.Model, tea.Cmd) {
+	if m.isVersionIdx(idx) {
+		if m.versionPin != "" {
+			m.versionPin = ""
+		} else {
+			m.versionPin = versionPinCurrent
+		}
+		return m, nil
+	}
+
+	optIdx := idx - m.versionOffset()
+	opt := &m.options[optIdx]
+
+	values := cyclableValues(opt)
+	if len(values) == 0 {
+		return m, nil
+	}
+
+	name := opt.Name
+	total := len(values) + 1 // +1 for the "unpinned" slot
+
+	pos := len(values) // default: unpinned
+	if current, pinned := m.pins[name]; pinned {
+		for i, v := range values {
+			if v.Kind() == current.Kind() && v.Scalar() == current.Scalar() {
+				pos = i
+				break
+			}
+		}
+	}
+
+	newPos := (pos + direction + total) % total
+	if newPos == len(values) {
+		delete(m.pins, name)
+	} else {
+		m.pins[name] = values[newPos]
+	}
+
+	return m, nil
+}
+
+// cyclableValues returns the ordered values for cycling through an option.
+// Returns nil for option types that don't support cycling (input, multi_select).
+func cyclableValues(opt *config.Option) []config.FieldValue {
+	switch opt.Type {
+	case config.OptionSelect:
+		vals := make([]config.FieldValue, 0, len(opt.Choices)+1)
+		for _, c := range opt.Choices {
+			vals = append(vals, config.StringVal(c.Value))
+		}
+		if opt.AllowNone {
+			vals = append(vals, config.StringVal(config.NoneValue))
+		}
+		return vals
+	case config.OptionConfirm:
+		return []config.FieldValue{config.BoolVal(true), config.BoolVal(false)}
+	case config.OptionInput, config.OptionMultiSelect:
+		return nil
+	}
+	return nil
 }
 
 func (m *PinsModel) isValidInputValue(opt *config.Option, val *config.FieldValue) bool {

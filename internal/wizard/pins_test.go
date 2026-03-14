@@ -436,6 +436,214 @@ func TestPinInputAcceptsValidValue(t *testing.T) {
 	}
 }
 
+func TestCyclePinSelectForward(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// First right → pins db to first choice (pg).
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v, ok := m.pins["db"]; !ok || v.String() != "pg" {
+		t.Fatalf("expected db=pg, got %v", m.pins["db"])
+	}
+
+	// Second right → pg → mysql.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != "mysql" {
+		t.Fatalf("expected db=mysql, got %v", v)
+	}
+
+	// Third right → mysql → unpinned.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if _, ok := m.pins["db"]; ok {
+		t.Fatal("expected db unpinned")
+	}
+
+	// Fourth right → wraps to pg.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != "pg" {
+		t.Fatalf("expected db=pg after wrap, got %v", v)
+	}
+}
+
+func TestCyclePinSelectBackward(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Left from unpinned → wraps to last choice (mysql).
+	model, _ := m.Update(specialKey(tea.KeyLeft))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != "mysql" {
+		t.Fatalf("expected db=mysql, got %v", v)
+	}
+
+	// Left → mysql → pg.
+	model, _ = m.Update(specialKey(tea.KeyLeft))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != "pg" {
+		t.Fatalf("expected db=pg, got %v", v)
+	}
+
+	// Left → pg → unpinned.
+	model, _ = m.Update(specialKey(tea.KeyLeft))
+	m = mustPins(t, model)
+	if _, ok := m.pins["db"]; ok {
+		t.Fatal("expected db unpinned")
+	}
+}
+
+func TestCyclePinConfirm(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Move cursor to confirm field (index 1).
+	m.Update(specialKey(tea.KeyDown))
+
+	// Right → Yes (true).
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v, ok := m.pins["api"]; !ok || v.Bool() != true {
+		t.Fatalf("expected api=true, got %v", m.pins["api"])
+	}
+
+	// Right → No (false).
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["api"]; v.Bool() != false {
+		t.Fatalf("expected api=false, got %v", v)
+	}
+
+	// Right → unpinned.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if _, ok := m.pins["api"]; ok {
+		t.Fatal("expected api unpinned")
+	}
+
+	// Right → wraps to Yes.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["api"]; v.Bool() != true {
+		t.Fatalf("expected api=true after wrap, got %v", v)
+	}
+}
+
+func TestCyclePinSelectAllowNone(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:      "db",
+			Type:      config.OptionSelect,
+			Label:     "Database",
+			AllowNone: true,
+			Choices:   []config.Choice{{Value: "pg", Label: "PostgreSQL"}},
+		},
+	}
+	m := newPinsModel(opts, nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Right → pg.
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != "pg" {
+		t.Fatalf("expected db=pg, got %v", v)
+	}
+
+	// Right → None.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if v := m.pins["db"]; v.String() != config.NoneValue {
+		t.Fatalf("expected db=%s, got %v", config.NoneValue, v)
+	}
+
+	// Right → unpinned.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if _, ok := m.pins["db"]; ok {
+		t.Fatal("expected db unpinned")
+	}
+}
+
+func TestCyclePinInputNoop(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// Move cursor to input field (index 2).
+	m.Update(specialKey(tea.KeyDown))
+	m.Update(specialKey(tea.KeyDown))
+
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if _, ok := m.pins["name"]; ok {
+		t.Fatal("expected no pin change for input field")
+	}
+	if m.mode != pinsListMode {
+		t.Fatalf("expected list mode, got %d", m.mode)
+	}
+}
+
+func TestCyclePinMultiSelectNoop(t *testing.T) {
+	opts := []config.Option{
+		{
+			Name:  "tags",
+			Type:  config.OptionMultiSelect,
+			Label: "Tags",
+			Choices: []config.Choice{
+				{Value: "a", Label: "A"},
+				{Value: "b", Label: "B"},
+			},
+		},
+	}
+	m := newPinsModel(opts, nil, nil, nil, false, "", "")
+	m.Init()
+
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if _, ok := m.pins["tags"]; ok {
+		t.Fatal("expected no pin change for multi-select field")
+	}
+}
+
+func TestCyclePinVersionToggle(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m.Init()
+
+	// Right on version (index 0) → pins to "current".
+	model, _ := m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if m.versionPin != versionPinCurrent {
+		t.Fatalf("expected version pin 'current', got %q", m.versionPin)
+	}
+
+	// Right again → unpins.
+	model, _ = m.Update(specialKey(tea.KeyRight))
+	m = mustPins(t, model)
+	if m.versionPin != "" {
+		t.Fatalf("expected version unpinned, got %q", m.versionPin)
+	}
+}
+
+func TestCyclePinWithHLKeys(t *testing.T) {
+	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m.Init()
+
+	// 'l' key should cycle forward like right arrow.
+	model, _ := m.Update(key('l'))
+	m = mustPins(t, model)
+	if v, ok := m.pins["db"]; !ok || v.String() != "pg" {
+		t.Fatalf("expected db=pg via 'l', got %v", m.pins["db"])
+	}
+
+	// 'h' key should cycle backward like left arrow.
+	model, _ = m.Update(key('h'))
+	m = mustPins(t, model)
+	if _, ok := m.pins["db"]; ok {
+		t.Fatal("expected db unpinned via 'h'")
+	}
+}
+
 func TestResolveDefault(t *testing.T) {
 	tests := []struct {
 		name     string

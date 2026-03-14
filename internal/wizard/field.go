@@ -18,6 +18,8 @@ const (
 	keyCtrlC    = "ctrl+c"
 	keyUp       = "up"
 	keyDown     = "down"
+	keyLeft     = "left"
+	keyRight    = "right"
 	keyShiftTab = "shift+tab"
 	keySpace    = "space"
 	cursorBlank = "   " // inactive cursor padding
