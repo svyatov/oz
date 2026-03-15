@@ -26,7 +26,7 @@ func main() {
 	root := newRootCmd(os.Args[1:])
 
 	if err := root.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		ui.ErrorMsgf("%v", err)
 
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
@@ -315,7 +315,7 @@ reinstalled later.`,
 			if purge {
 				st := store.New(configDir)
 				if err := st.RemoveWizardData(args[0]); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+					ui.WarnMsgf("%v", err)
 				}
 			}
 			ui.SuccessMsgf("Wizard %q removed", args[0])

@@ -37,6 +37,7 @@ var (
 	AccentStyle   = lipgloss.NewStyle().Foreground(Accent)
 	GreenStyle    = lipgloss.NewStyle().Foreground(Green)
 	CyanBoldStyle = lipgloss.NewStyle().Foreground(Cyan).Bold(true)
+	WarningStyle  = lipgloss.NewStyle().Foreground(Warning)
 )
 
 // Width returns the rendered width of a string, accounting for ANSI sequences.
@@ -54,6 +55,18 @@ func SuccessMsgf(format string, args ...any) {
 func InfoMsgf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
 	fmt.Print("\n" + AccentStyle.Render("  "+msg) + "\n\n")
+}
+
+// ErrorMsgf prints a warning-colored "Error: ..." to stderr, padded with blank lines.
+func ErrorMsgf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Fprint(os.Stderr, "\n"+WarningStyle.Render("  Error: "+msg)+"\n\n")
+}
+
+// WarnMsgf prints a warning-colored "Warning: ..." to stderr, padded with blank lines.
+func WarnMsgf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Fprint(os.Stderr, "\n"+WarningStyle.Render("  Warning: "+msg)+"\n\n")
 }
 
 // CompletedStepLine renders a completed step: `  01  ✓ Label  Answer`.

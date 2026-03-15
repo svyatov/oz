@@ -177,50 +177,50 @@ func printOptionExplanation(step, total int, o config.Option) {
 }
 
 func printOptionFlags(o config.Option) {
-	fmt.Printf("         Type: %s", o.Type)
+	fmt.Printf("         %s %s", ui.MutedStyle.Render("Type:"), o.Type)
 	if o.Positional {
-		fmt.Print("  (positional)")
+		fmt.Printf("  %s", ui.MutedStyle.Render("(positional)"))
 	}
 	if o.Flag != "" {
-		fmt.Printf("  Flag: %s", o.Flag)
+		fmt.Printf("  %s %s", ui.MutedStyle.Render("Flag:"), o.Flag)
 	}
 	if o.FlagTrue != "" {
-		fmt.Printf("  FlagTrue: %s", o.FlagTrue)
+		fmt.Printf("  %s %s", ui.MutedStyle.Render("FlagTrue:"), o.FlagTrue)
 	}
 	if o.FlagFalse != "" {
-		fmt.Printf("  FlagFalse: %s", o.FlagFalse)
+		fmt.Printf("  %s %s", ui.MutedStyle.Render("FlagFalse:"), o.FlagFalse)
 	}
 	if o.Separator != "" {
-		fmt.Printf("  Separator: %q", o.Separator)
+		fmt.Printf("  %s %q", ui.MutedStyle.Render("Separator:"), o.Separator)
 	}
 	fmt.Println()
 }
 
 func printOptionDetails(o config.Option) {
 	if o.Default != nil {
-		fmt.Printf("         Default: %s\n", o.Default.Display())
+		fmt.Printf("         %s %s\n", ui.MutedStyle.Render("Default:"), o.Default.Display())
 	}
 	if o.Required {
-		fmt.Println("         Required: yes")
+		fmt.Printf("         %s yes\n", ui.MutedStyle.Render("Required:"))
 	}
 	if o.Validate != nil {
 		printValidateInfo(o.Validate)
 	}
 	if o.ChoicesFrom != "" {
-		fmt.Printf("         Choices from: %s\n",
-			ui.MutedStyle.Render(o.ChoicesFrom))
+		fmt.Printf("         %s %s\n",
+			ui.MutedStyle.Render("Choices from:"), o.ChoicesFrom)
 	}
 }
 
 func printValidateInfo(v *config.InputRule) {
 	if v.Pattern != "" {
-		fmt.Printf("         Pattern: %s\n", v.Pattern)
+		fmt.Printf("         %s %s\n", ui.MutedStyle.Render("Pattern:"), v.Pattern)
 	}
 	if v.MinLength > 0 {
-		fmt.Printf("         Min length: %d\n", v.MinLength)
+		fmt.Printf("         %s %d\n", ui.MutedStyle.Render("Min length:"), v.MinLength)
 	}
 	if v.MaxLength > 0 {
-		fmt.Printf("         Max length: %d\n", v.MaxLength)
+		fmt.Printf("         %s %d\n", ui.MutedStyle.Render("Max length:"), v.MaxLength)
 	}
 }
 
@@ -232,7 +232,7 @@ func printConditions(label string, conds config.Values) {
 	for k, v := range conds {
 		conditions = append(conditions, fmt.Sprintf("%s=%s", k, v.Display()))
 	}
-	fmt.Printf("         %s: %s\n", label, strings.Join(conditions, ", "))
+	fmt.Printf("         %s %s\n", ui.MutedStyle.Render(label+":"), strings.Join(conditions, ", "))
 }
 
 func pinsCmd(wizardName string) *cobra.Command {

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -91,12 +90,12 @@ func updateAll() error {
 
 		data, err := client.FetchWizard(w.Name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  skipping %s: %v\n", w.Name, err)
+			ui.WarnMsgf("skipping %s: %v", w.Name, err)
 			continue
 		}
 
 		if err := installWizard(data, true, "Updated"); err != nil {
-			fmt.Fprintf(os.Stderr, "  skipping %s: %v\n", w.Name, err)
+			ui.WarnMsgf("skipping %s: %v", w.Name, err)
 			continue
 		}
 

@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/svyatov/oz/internal/config"
+	"github.com/svyatov/oz/internal/ui"
 )
 
 func validateName(name string) error {
@@ -110,7 +111,7 @@ func modifyVersionedState(path string, fn func(*VersionedState)) error {
 	existing, readErr := os.ReadFile(path)
 	if readErr == nil {
 		if err := yaml.Unmarshal(existing, &vs); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: corrupt state file, starting fresh: %v\n", err)
+			ui.WarnMsgf("corrupt state file, starting fresh: %v", err)
 		}
 	}
 	fn(&vs)

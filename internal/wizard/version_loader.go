@@ -3,7 +3,6 @@ package wizard
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -209,7 +208,7 @@ func (m *VersionLoaderModel) handleVerified(msg versionVerifiedMsg) (tea.Model, 
 	if m.verifyingPin {
 		m.verifyingPin = false
 		if msg.err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: pinned version %q invalid, ignoring: %v\n", m.pin, msg.err)
+			ui.WarnMsgf("pinned version %q invalid, ignoring: %v", m.pin, msg.err)
 			m.pin = ""
 			return m.fallThroughToUI()
 		}

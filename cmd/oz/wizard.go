@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"maps"
-	"os"
 	"strconv"
 	"strings"
 
@@ -60,7 +59,7 @@ func resolveVersion(w *config.Wizard, st *store.Store, cached *wizard.VersionRes
 	pinnedVer, _ := st.LoadPinnedVersion(w.Name)
 	vr, err := wizard.RunVersionLoader(w.Name, w.Version, pinnedVer, cached)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: version detection failed: %v\n", err)
+		ui.WarnMsgf("version detection failed: %v", err)
 		vr = &wizard.VersionResult{}
 	}
 	overridden := vr.Selected != "" && vr.Selected != vr.Detected
@@ -93,7 +92,7 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 		majorVersion := majorVer(vr.Selected)
 		state, err := st.LoadState(w.Name, majorVersion)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load state: %v\n", err)
+			ui.WarnMsgf("failed to load state: %v", err)
 			state = &store.StateEntry{}
 		}
 
@@ -186,7 +185,7 @@ func saveLastUsed(
 	}
 	maps.Copy(state.LastUsed, answers)
 	if err := st.SaveState(wizardName, majorVersion, state); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to save state: %v\n", err)
+		ui.WarnMsgf("failed to save state: %v", err)
 	}
 }
 
@@ -194,7 +193,7 @@ func promptAndSavePreset(st *store.Store, wizardName string, allAnswers config.V
 	presetSaveName := promptPresetSave()
 	if presetSaveName != "" {
 		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save preset: %v\n", err)
+			ui.WarnMsgf("failed to save preset: %v", err)
 		} else {
 			ui.SuccessMsgf("Preset %q saved", presetSaveName)
 		}
@@ -239,7 +238,7 @@ func runPresets(name string) error {
 	for _, pn := range presetNames {
 		vals, loadErr := st.LoadPreset(w.Name, pn)
 		if loadErr != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load preset %q: %v\n", pn, loadErr)
+			ui.WarnMsgf("failed to load preset %q: %v", pn, loadErr)
 			continue
 		}
 		presets[pn] = vals
@@ -276,7 +275,7 @@ func reconcilePresets(
 	for _, name := range originalNames {
 		if _, exists := final[name]; !exists {
 			if err := st.RemovePreset(wizardName, name); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to remove preset %q: %v\n", name, err)
+				ui.WarnMsgf("failed to remove preset %q: %v", name, err)
 			}
 		}
 	}
@@ -327,7 +326,7 @@ func runPins(name string) error {
 	}
 	if hasCustomVersion {
 		if err := st.SavePinnedVersion(w.Name, result.VersionPin); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save pinned version: %v\n", err)
+			ui.WarnMsgf("failed to save pinned version: %v", err)
 		}
 	}
 
