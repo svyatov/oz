@@ -3,10 +3,19 @@ package generate
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	// thorDefaultCleanRe strips bare Default: value from descriptions.
+	thorDefaultCleanRe = regexp.MustCompile(`\s*\bDefault:\s+\S+`)
+
+	// possibleValuesCleanRe strips Possible values: ... from descriptions.
+	possibleValuesCleanRe = regexp.MustCompile(`(?i)\s*Possible values?:\s*.*`)
 )
 
 // scaffoldWizard is the minimal YAML-serializable wizard for scaffold output.
@@ -148,11 +157,18 @@ func preferredFlag(f Flag) string {
 	return f.Short
 }
 
-// cleanDescription trims and removes trailing default annotations.
+// cleanDescription trims and removes default/enum annotations.
 func cleanDescription(s string) string {
 	s = strings.TrimSpace(s)
-	// Remove (default ...) or [default ...] from the end.
+	// Remove (default ...) or [default ...].
 	s = defaultRe.ReplaceAllString(s, "")
+	// Remove bare Default: value (Thor convention).
+	s = thorDefaultCleanRe.ReplaceAllString(s, "")
+	// Remove Possible values: ... (Thor convention).
+	s = possibleValuesCleanRe.ReplaceAllString(s, "")
+	// Remove orphaned leading ", " from stripped negation variants.
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, ", ")
 	s = strings.TrimSpace(s)
 	// Ensure sentence ending.
 	if s != "" && !strings.HasSuffix(s, ".") && !strings.HasSuffix(s, "?") && !strings.HasSuffix(s, "!") {

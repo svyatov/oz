@@ -39,6 +39,18 @@ var (
 	// thorFlagRe matches Thor-style flag lines: [--flag=VALUE]  # description.
 	thorFlagRe = regexp.MustCompile(`\[--[\w][\w.-]*`)
 
+	// thorBracketFlagRe extracts flags from [--flag] or [--flag=VALUE] brackets.
+	thorBracketFlagRe = regexp.MustCompile(`\[--([\w][\w.-]*(?:=[A-Z_]+)?)\]`)
+
+	// thorPlainLongRe matches non-bracketed long flags like --master.
+	thorPlainLongRe = regexp.MustCompile(`--([\w][\w.-]*)`)
+
+	// thorShortFlagRe matches short flags like -p.
+	thorShortFlagRe = regexp.MustCompile(`-([A-Za-z])\b`)
+
+	// thorDefaultRe extracts bare Default: value patterns (Thor convention).
+	thorDefaultRe = regexp.MustCompile(`\bDefault:\s+(\S+)`)
+
 	// flagPrefixRe captures the flag portion at the start of an indented line.
 	// Groups: 1=short (e.g. "-v"), 2=long (e.g. "--verbose").
 	flagPrefixRe = regexp.MustCompile(
@@ -93,21 +105,155 @@ func isThorFormat(lines []string) bool {
 }
 
 // preprocessThor converts Thor-style lines to GNU format.
-// [--flag=VALUE]  # description  →  --flag VALUE  description.
+// Handles multi-flag lines by selecting the canonical flag and stripping negation variants.
 func preprocessThor(lines []string) []string {
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
-		if thorFlagRe.MatchString(line) {
-			line = strings.ReplaceAll(line, "[", "")
-			line = strings.ReplaceAll(line, "]", "")
-			line = strings.Replace(line, "# ", "  ", 1)
-		} else if strings.Contains(line, "# ") {
+		switch {
+		case thorFlagRe.MatchString(line):
+			out = append(out, preprocessThorFlagLine(line))
+		case strings.Contains(line, "# "):
 			// Continuation lines with # prefix (e.g. "# Default: value").
-			line = strings.Replace(line, "# ", "  ", 1)
+			out = append(out, strings.Replace(line, "# ", "  ", 1))
+		default:
+			out = append(out, line)
 		}
-		out = append(out, line)
 	}
 	return out
+}
+
+// preprocessThorFlagLine converts a Thor flag line to clean GNU format.
+// It extracts the canonical flag, strips negation variants (--no-X, --skip-X),
+// and resolves aliases to the canonical form (e.g. --js → --javascript).
+func preprocessThorFlagLine(line string) string {
+	// Split on "# " to separate flags from description.
+	flagPart, desc, _ := strings.Cut(line, "# ")
+	desc = strings.TrimSpace(desc)
+
+	// Extract bracketed flags [--flag] and [--flag=VALUE].
+	bracketedFlags := extractRegexFlags(thorBracketFlagRe, flagPart)
+
+	// Remove bracketed patterns to find remaining plain flags.
+	remaining := thorBracketFlagRe.ReplaceAllString(flagPart, "")
+
+	// Extract non-bracketed long flags and short flag.
+	plainFlags := extractRegexFlags(thorPlainLongRe, remaining)
+	var shortFlag string
+	if m := thorShortFlagRe.FindStringSubmatch(remaining); m != nil {
+		shortFlag = "-" + m[1]
+	}
+
+	// Collect base names (flags without no-/skip- prefix).
+	baseNames := make(map[string]bool)
+	for _, f := range append(bracketedFlags, plainFlags...) {
+		name := flagName(f)
+		if !strings.HasPrefix(name, "no-") && !strings.HasPrefix(name, "skip-") {
+			baseNames[name] = true
+		}
+	}
+
+	// Filter out negation variants when the base form exists.
+	bracketedFlags = filterNegationVariants(bracketedFlags, baseNames)
+	plainFlags = filterNegationVariants(plainFlags, baseNames)
+
+	// Pick the best long flag: prefer =PLACEHOLDER, then bracketed, then longest.
+	bestLong := selectCanonicalFlag(bracketedFlags, plainFlags)
+
+	return buildGNULine(shortFlag, bestLong, desc)
+}
+
+// extractRegexFlags collects all "--<match>" flags from regex submatches.
+func extractRegexFlags(re *regexp.Regexp, s string) []string {
+	matches := re.FindAllStringSubmatch(s, -1)
+	flags := make([]string, 0, len(matches))
+	for _, m := range matches {
+		flags = append(flags, "--"+m[1])
+	}
+	return flags
+}
+
+// buildGNULine reconstructs a clean GNU-format flag line.
+func buildGNULine(shortFlag, longFlag, desc string) string {
+	var b strings.Builder
+	b.WriteString("  ")
+	if shortFlag != "" {
+		b.WriteString(shortFlag)
+		if longFlag != "" {
+			b.WriteString(", ")
+		}
+	}
+	if longFlag != "" {
+		if name, placeholder, ok := strings.Cut(longFlag, "="); ok {
+			b.WriteString(name)
+			b.WriteString(" ")
+			b.WriteString(placeholder)
+		} else {
+			b.WriteString(longFlag)
+		}
+	}
+	if desc != "" {
+		b.WriteString("    ")
+		b.WriteString(desc)
+	}
+	return b.String()
+}
+
+// flagName strips the -- prefix and any =PLACEHOLDER suffix.
+func flagName(f string) string {
+	name := strings.TrimPrefix(f, "--")
+	if idx := strings.Index(name, "="); idx > 0 {
+		name = name[:idx]
+	}
+	return name
+}
+
+// filterNegationVariants removes --no-X and --skip-X when --X exists.
+func filterNegationVariants(flags []string, baseNames map[string]bool) []string {
+	result := make([]string, 0, len(flags))
+	for _, f := range flags {
+		name := flagName(f)
+		if strings.HasPrefix(name, "no-") && baseNames[strings.TrimPrefix(name, "no-")] {
+			continue
+		}
+		if strings.HasPrefix(name, "skip-") && baseNames[strings.TrimPrefix(name, "skip-")] {
+			continue
+		}
+		result = append(result, f)
+	}
+	return result
+}
+
+// selectCanonicalFlag picks the best long flag from bracketed and plain flags.
+// Priority: has =PLACEHOLDER (bracketed first) > bracketed > longest.
+func selectCanonicalFlag(bracketed, plain []string) string {
+	// Prefer flag with =PLACEHOLDER.
+	for _, f := range bracketed {
+		if strings.Contains(f, "=") {
+			return f
+		}
+	}
+	for _, f := range plain {
+		if strings.Contains(f, "=") {
+			return f
+		}
+	}
+	// Prefer longest bracketed flag.
+	var best string
+	for _, f := range bracketed {
+		if len(f) > len(best) {
+			best = f
+		}
+	}
+	if best != "" {
+		return best
+	}
+	// Fall back to longest plain flag.
+	for _, f := range plain {
+		if len(f) > len(best) {
+			best = f
+		}
+	}
+	return best
 }
 
 // stripANSI removes ANSI escape codes and man-page backspace formatting.
@@ -426,6 +572,12 @@ func extractDefault(f *Flag) {
 			f.Default = strings.TrimSpace(m[1])
 		}
 	}
+	// Try bare Default: value pattern (Thor convention).
+	if f.Default == "" {
+		if m := thorDefaultRe.FindStringSubmatch(f.Description); m != nil {
+			f.Default = strings.TrimRight(strings.TrimSpace(m[1]), ".")
+		}
+	}
 	// Strip surrounding quotes from default values (common in kubectl output).
 	f.Default = strings.Trim(f.Default, "'\"")
 }
@@ -455,6 +607,7 @@ var enumDescPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)one of[:\s]+([^.)\]]+)`),
 	regexp.MustCompile(`(?i)must be[:\s]+([^.)\]]+)`),
 	regexp.MustCompile(`(?i)valid values?[:\s]+([^.)\]]+)`),
+	regexp.MustCompile(`(?i)possible values?[:\s]+([^)\]]+)`),
 }
 
 // splitEnum splits comma/or-separated enum values, stripping quotes.

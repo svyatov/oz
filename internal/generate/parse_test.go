@@ -285,3 +285,114 @@ func TestParse_NoOptionsSection(t *testing.T) {
 		t.Errorf("got %d flags, want 0", len(flags))
 	}
 }
+
+func TestPreprocessThorFlagLine(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "simple flag",
+			input: "  [--skip-git]  # Skip git init",
+			want:  "  --skip-git    Skip git init",
+		},
+		{
+			name:  "short and long",
+			input: "  -r, [--ruby=PATH]  # Path to Ruby",
+			want:  "  -r, --ruby PATH    Path to Ruby",
+		},
+		{
+			name:  "negation variants stripped",
+			input: "  -p, [--pretend], [--no-pretend], [--skip-pretend]  # Run but do not make any changes",
+			want:  "  -p, --pretend    Run but do not make any changes",
+		},
+		{
+			name:  "alias resolved to canonical",
+			input: "  -j, --js, [--javascript=JAVASCRIPT]  # Choose JavaScript approach",
+			want:  "  -j, --javascript JAVASCRIPT    Choose JavaScript approach",
+		},
+		{
+			name:  "bracketed preferred over plain",
+			input: "  --master, [--main], [--no-main], [--skip-main]  # Use main branch",
+			want:  "  --main    Use main branch",
+		},
+		{
+			name:  "longer bracketed preferred",
+			input: "  -J, --skip-js, [--skip-javascript]  # Skip JavaScript files",
+			want:  "  -J, --skip-javascript    Skip JavaScript files",
+		},
+		{
+			name:  "no-flag standalone preserved",
+			input: "  [--no-rc]  # Skip loading .railsrc",
+			want:  "  --no-rc    Skip loading .railsrc",
+		},
+		{
+			name:  "only negation variants no base",
+			input: "  [--skip-git]  # Skip git",
+			want:  "  --skip-git    Skip git",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := preprocessThorFlagLine(tt.input)
+			if got != tt.want {
+				t.Errorf("\n got: %q\nwant: %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractDefault_BarePattern(t *testing.T) {
+	tests := []struct {
+		name    string
+		desc    string
+		wantDef string
+	}{
+		{
+			name:    "Thor-style Default",
+			desc:    "Preconfigure for selected database Default: sqlite3",
+			wantDef: "sqlite3",
+		},
+		{
+			name:    "Thor-style Default with trailing period",
+			desc:    "Some option Default: all.",
+			wantDef: "all",
+		},
+		{
+			name:    "bracketed default takes priority",
+			desc:    "Some option (default: bracket_val) Default: bare_val",
+			wantDef: "bracket_val",
+		},
+		{
+			name:    "no default",
+			desc:    "Just a description",
+			wantDef: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := Flag{Description: tt.desc}
+			extractDefault(&f)
+			if f.Default != tt.wantDef {
+				t.Errorf("Default = %q, want %q", f.Default, tt.wantDef)
+			}
+		})
+	}
+}
+
+func TestDetectEnum_PossibleValues(t *testing.T) {
+	f := Flag{
+		Description: "Choose approach Possible values: importmap, bun, webpack",
+	}
+	detectEnum(&f)
+	if len(f.EnumValues) != 3 {
+		t.Fatalf("EnumValues = %v, want 3 values", f.EnumValues)
+	}
+	want := []string{"importmap", "bun", "webpack"}
+	for i, v := range want {
+		if f.EnumValues[i] != v {
+			t.Errorf("EnumValues[%d] = %q, want %q", i, f.EnumValues[i], v)
+		}
+	}
+}

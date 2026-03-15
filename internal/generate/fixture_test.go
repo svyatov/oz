@@ -2,6 +2,7 @@ package generate
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/svyatov/oz/internal/config"
@@ -112,7 +113,13 @@ var fixtureTests = []fixtureTest{
 		file: "rails-new.txt", name: "rails-new", command: "rails new",
 		minFlags: 30,
 		spotChecks: []spotCheck{
-			{long: "--database"},
+			{long: "--database", hasEnum: true, hasDefault: true},
+			{long: "--javascript", short: "-j", hasEnum: true, hasDefault: true},
+			{long: "--css", short: "-c", hasEnum: true},
+			{long: "--main", isBool: true},
+			{long: "--pretend", short: "-p", isBool: true, description: "Run but do not make any changes"},
+			{long: "--api", isBool: true, description: "Preconfigure smaller stack for API only apps"},
+			{long: "--skip-javascript", short: "-J", isBool: true},
 			{long: "--skip-git", isBool: true},
 			{long: "--skip-test", isBool: true},
 			{long: "--name"},
@@ -539,8 +546,8 @@ func checkFlag(t *testing.T, flagMap map[string]*Flag, sc spotCheck) {
 	}
 
 	if sc.description != "" {
-		if f.Description == "" {
-			t.Errorf("%s: expected description containing %q, got empty", sc.long, sc.description)
+		if !strings.Contains(f.Description, sc.description) {
+			t.Errorf("%s: expected description containing %q, got %q", sc.long, sc.description, f.Description)
 		}
 	}
 }
