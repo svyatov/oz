@@ -14,8 +14,20 @@ var (
 	// thorDefaultCleanRe strips bare Default: value from descriptions.
 	thorDefaultCleanRe = regexp.MustCompile(`\s*\bDefault:\s+\S+`)
 
-	// possibleValuesCleanRe strips Possible values: ... from descriptions.
-	possibleValuesCleanRe = regexp.MustCompile(`(?i)\s*Possible values?:\s*.*`)
+	// possibleValuesCleanRe strips [possible values: ...] from descriptions (Clap/Thor).
+	possibleValuesCleanRe = regexp.MustCompile(`(?i)\s*\[?\s*Possible values?:\s*[^\]]*\]?`)
+
+	// allowedValuesCleanRe strips Allowed values: ... from descriptions (Azure CLI).
+	allowedValuesCleanRe = regexp.MustCompile(`(?i)\s*Allowed values?:\s*[^.]*`)
+
+	// envVarCleanRe strips [env: VAR_NAME=] hints from descriptions (Clap).
+	envVarCleanRe = regexp.MustCompile(`\s*\[env:\s*\S*\]`)
+
+	// standaloneDefaultRe strips [default] or (default) without a value (Clap).
+	standaloneDefaultRe = regexp.MustCompile(`(?i)\s*[\[(]default[\])]`)
+
+	// multiSpaceRe collapses consecutive spaces left by metadata stripping.
+	multiSpaceRe = regexp.MustCompile(`\s{2,}`)
 )
 
 // scaffoldWizard is the minimal YAML-serializable wizard for scaffold output.
@@ -157,15 +169,23 @@ func preferredFlag(f Flag) string {
 	return f.Short
 }
 
-// cleanDescription trims and removes default/enum annotations.
+// cleanDescription trims and removes CLI metadata annotations.
 func cleanDescription(s string) string {
 	s = strings.TrimSpace(s)
-	// Remove (default ...) or [default ...].
+	// Remove (default ...) or [default ...] with values.
 	s = defaultRe.ReplaceAllString(s, "")
+	// Remove standalone [default] or (default) without values.
+	s = standaloneDefaultRe.ReplaceAllString(s, "")
 	// Remove bare Default: value (Thor convention).
 	s = thorDefaultCleanRe.ReplaceAllString(s, "")
-	// Remove Possible values: ... (Thor convention).
+	// Remove [possible values: ...] (Clap) and Possible values: ... (Thor).
 	s = possibleValuesCleanRe.ReplaceAllString(s, "")
+	// Remove Allowed values: ... (Azure CLI).
+	s = allowedValuesCleanRe.ReplaceAllString(s, "")
+	// Remove [env: VAR=] hints (Clap).
+	s = envVarCleanRe.ReplaceAllString(s, "")
+	// Collapse double spaces left by metadata stripping.
+	s = multiSpaceRe.ReplaceAllString(s, " ")
 	// Remove orphaned leading ", " from stripped negation variants.
 	s = strings.TrimSpace(s)
 	s = strings.TrimPrefix(s, ", ")

@@ -64,7 +64,8 @@ var fixtureTests = []fixtureTest{
 		file: "cargo-new.txt", name: "cargo-new", command: "cargo new",
 		minFlags: 5,
 		spotChecks: []spotCheck{
-			{long: "--vcs", description: "version control"},
+			{long: "--vcs", hasEnum: true, description: "version control"},
+			{long: "--edition", hasEnum: true},
 			{long: "--bin", isBool: true},
 			{long: "--lib", isBool: true},
 			{long: "--name"},
@@ -130,7 +131,7 @@ var fixtureTests = []fixtureTest{
 		file: "just.txt", name: "just", command: "just",
 		minFlags: 25,
 		spotChecks: []spotCheck{
-			{long: "--color", hasDefault: true},
+			{long: "--color", hasDefault: true, hasEnum: true, description: "Print colorful output"},
 			{long: "--check", isBool: true},
 			{long: "--justfile", short: "-f"},
 			{long: "--yes", isBool: true},
@@ -390,6 +391,8 @@ var fixtureTests = []fixtureTest{
 		file: "xh.txt", name: "xh", command: "xh", minFlags: 30,
 		spotChecks: []spotCheck{
 			{long: "--json", short: "-j", isBool: true},
+			{long: "--pretty", hasEnum: true, description: "Controls output processing"},
+			{long: "--style", short: "-s", hasEnum: true},
 		},
 	},
 

@@ -607,7 +607,8 @@ var enumDescPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)one of[:\s]+([^.)\]]+)`),
 	regexp.MustCompile(`(?i)must be[:\s]+([^.)\]]+)`),
 	regexp.MustCompile(`(?i)valid values?[:\s]+([^.)\]]+)`),
-	regexp.MustCompile(`(?i)possible values?[:\s]+([^)\]]+)`),
+	regexp.MustCompile(`(?i)\[?\s*possible values?[:\s]+([^)\]]+)`),
+	regexp.MustCompile(`(?i)allowed values?[:\s]+([^.)\]]+)`),
 }
 
 // splitEnum splits comma/or-separated enum values, stripping quotes.
