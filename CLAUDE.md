@@ -49,6 +49,8 @@ cmd/oz/
   prompt.go            Post-run confirmation prompts
   template.go          Wizard YAML template for create
   generate.go          Generate wizard YAML from --help output
+  add.go               Add wizard from registry or local file
+  update.go            Update wizard from registry
   → generate/
       parse.go         Parse --help text into []Flag (GNU, Cobra, kubectl, Clap, argparse, Thor, man page)
       emit.go          Convert []Flag to scaffold YAML string
@@ -71,9 +73,12 @@ cmd/oz/
       pins.go          Interactive TUI for managing pinned options
       choices.go       Dynamic choice loading from shell commands
       state.go         Session state (completed steps, navigation history)
+      presets.go       Preset application during wizard run
+      values_editor.go Interactive values editor
   → command/builder.go  Build CLI command parts from answers
   → command/runner.go   Execute or copy the built command
   → store/store.go      Persist last-used state, pins + presets as YAML
+  → registry/registry.go  Fetch wizard configs from remote registry (oz-wizards on GitHub)
   → ui/theme.go         Lipgloss color palette and styles
 
 oz list (l, ls)              list available wizards
@@ -81,6 +86,8 @@ oz validate <wizard>         validate wizard config
 oz edit (e) <wizard>         open wizard YAML in $EDITOR
 oz create (c, new) <wizard>  scaffold new wizard from template
 oz generate (g, gen) <tool>  generate wizard YAML from --help output
+oz add <name|file>           add wizard from registry or local file (--force to overwrite)
+oz update (u) <wizard>       update wizard from registry (--all for all)
 oz remove (rm) <wizard>      delete wizard config (--force to skip confirm)
 oz run (r) <wizard>
 ├── -n, --dry-run
