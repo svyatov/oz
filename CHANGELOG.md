@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `oz generate` now writes to config directory by default instead of stdout
+- Added `--force/-f` flag to `oz generate` for overwrite protection
+
+### Removed
+
+- `--stdin` and `--install` flags from `oz generate`
+
 ## [0.1.0] - 2026-03-14
 
 ### Added

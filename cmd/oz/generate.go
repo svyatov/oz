@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -19,10 +17,9 @@ import (
 
 func generateCmd() *cobra.Command {
 	var (
-		name    string
-		output  string
-		install bool
-		stdin   bool
+		name   string
+		output string
+		force  bool
 	)
 
 	cmd := &cobra.Command{
@@ -30,48 +27,35 @@ func generateCmd() *cobra.Command {
 		Aliases: []string{"g", "gen"},
 		Short:   "Generate wizard config from --help output",
 		Long: `Run <tool> [subcommand...] --help, parse the output, and scaffold
-a wizard YAML config. Writes to stdout by default.
+a wizard YAML config. Saves to the config directory by default.
 
-Use --install to save directly to the config directory and open in your editor.`,
+Use -o to write to a specific file instead. Use -n to override the wizard name.`,
 		Example: `  oz generate docker run
   oz generate kubectl apply
   oz generate ffmpeg
-  oz generate docker run --install
-  oz generate docker run -o docker-run.yml
-  echo "..." | oz generate --stdin --name my-tool`,
+  oz generate docker run --name docker-run
+  oz generate docker run -o custom-path.yml
+  oz generate docker run --force`,
 		Args: func(_ *cobra.Command, args []string) error {
-			if stdin {
-				if len(args) > 0 {
-					return errors.New("--stdin does not accept arguments")
-				}
-				if name == "" {
-					return errors.New("--stdin requires --name")
-				}
-				return nil
-			}
 			if len(args) == 0 {
 				return errors.New("specify a tool name")
 			}
 			return nil
 		},
 		RunE: func(_ *cobra.Command, args []string) error {
-			return runGenerate(args, name, output, install, stdin)
+			return runGenerate(args, name, output, force)
 		},
 	}
 
 	cmd.Flags().StringVarP(&name, "name", "n", "", "override wizard name")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "write to file instead of stdout")
-	cmd.Flags().BoolVarP(&install, "install", "i", false, "install to config dir and open in editor")
-	cmd.Flags().BoolVar(&stdin, "stdin", false, "read help text from stdin")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "write to file instead of config dir")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "overwrite existing file")
 
 	return cmd
 }
 
-func runGenerate(args []string, name, output string, install, stdin bool) error {
-	helpText, err := acquireHelpText(args, stdin)
-	if err != nil {
-		return err
-	}
+func runGenerate(args []string, name, output string, force bool) error {
+	helpText := acquireHelpText(args)
 
 	flags := generate.Parse(helpText)
 	if len(flags) == 0 {
@@ -82,45 +66,46 @@ func runGenerate(args []string, name, output string, install, stdin bool) error 
 	if wizardName == "" {
 		wizardName = strings.Join(args, "-")
 	}
-	command := strings.Join(args, " ")
 
 	yamlStr := generate.Emit(generate.EmitConfig{
 		Name:    wizardName,
-		Command: command,
+		Command: strings.Join(args, " "),
 	}, flags)
 
-	if install {
-		return installGenerated(wizardName, yamlStr)
+	dest := output
+	if dest == "" {
+		dest = config.WizardPath(configDir, wizardName)
 	}
 
-	if output != "" {
-		if err := os.WriteFile(output, []byte(yamlStr), 0o644); err != nil {
-			return fmt.Errorf("writing file: %w", err)
+	if !force {
+		if _, err := os.Stat(dest); err == nil {
+			return fmt.Errorf("file already exists: %s (use --force to overwrite)", dest)
 		}
-		ui.SuccessMsgf("Written to %s", output)
-		return nil
 	}
 
-	fmt.Print(yamlStr)
+	if output == "" {
+		if err := os.MkdirAll(config.WizardsDir(configDir), 0o755); err != nil {
+			return fmt.Errorf("creating wizards directory: %w", err)
+		}
+	}
+
+	if err := os.WriteFile(dest, []byte(yamlStr), 0o644); err != nil {
+		return fmt.Errorf("writing file: %w", err)
+	}
+
+	ui.SuccessMsgf("Created %s", dest)
+
 	return nil
 }
 
-func acquireHelpText(args []string, stdin bool) (string, error) {
-	if stdin {
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return "", fmt.Errorf("reading stdin: %w", err)
-		}
-		return string(data), nil
-	}
-
+func acquireHelpText(args []string) string {
 	text := runHelp(args[0], args[1:], "--help")
 	if strings.TrimSpace(text) != "" {
-		return text, nil
+		return text
 	}
 
 	// Fallback to -h if --help produced nothing.
-	return runHelp(args[0], args[1:], "-h"), nil
+	return runHelp(args[0], args[1:], "-h")
 }
 
 func runHelp(tool string, subcmds []string, helpFlag string) string {
@@ -139,33 +124,4 @@ func runHelp(tool string, subcmds []string, helpFlag string) string {
 	_ = cmd.Run()
 
 	return buf.String()
-}
-
-func installGenerated(name, yamlStr string) error {
-	path := config.WizardPath(configDir, name)
-
-	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("wizard %q already exists: %s", name, path)
-	}
-
-	if err := os.MkdirAll(config.WizardsDir(configDir), 0o755); err != nil {
-		return fmt.Errorf("creating wizards directory: %w", err)
-	}
-
-	if err := os.WriteFile(path, []byte(yamlStr), 0o644); err != nil {
-		return fmt.Errorf("writing wizard config: %w", err)
-	}
-
-	ui.SuccessMsgf("Created %s", path)
-
-	editor, err := findEditor()
-	if err != nil {
-		return fmt.Errorf("finding editor: %w", err)
-	}
-
-	if err := syscall.Exec(editor, []string{editor, path}, os.Environ()); err != nil {
-		return fmt.Errorf("opening editor: %w", err)
-	}
-
-	return nil
 }
