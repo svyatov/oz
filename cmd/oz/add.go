@@ -16,7 +16,8 @@ func addCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "add <wizard-name|file-path>",
+		Use:     "add <wizard-name|file-path>",
+		Aliases: []string{"a"},
 		Short: "Add a wizard from the registry or a local file",
 		Long: `Download a wizard config from the remote registry and install it,
 or copy a local YAML file into the wizards directory.

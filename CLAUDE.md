@@ -86,7 +86,7 @@ oz validate <wizard>         validate wizard config
 oz edit (e) <wizard>         open wizard YAML in $EDITOR
 oz create (c, new) <wizard>  scaffold new wizard from template
 oz generate (g, gen) <tool>  generate wizard YAML from --help output
-oz add <name|file>           add wizard from registry or local file (--force to overwrite)
+oz add (a) <name|file>       add wizard from registry or local file (--force to overwrite)
 oz update (u) <wizard>       update wizard from registry (--all for all)
 oz remove (rm) <wizard>      delete wizard config (--force to skip confirm)
 oz run (r) <wizard>
