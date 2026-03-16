@@ -290,6 +290,50 @@ func assertResolvedScalar(t *testing.T, got *config.FieldValue, want string) {
 	}
 }
 
+func TestMissingRequired(t *testing.T) {
+	opts := []config.Option{
+		{Name: "name", Label: "Name", Required: true},
+		{Name: "database", Label: "Database", Required: true},
+		{Name: "optional", Label: "Optional"},
+		{Name: "hidden", Label: "Hidden", Required: true,
+			HideWhen: config.Values{"name": config.StringVal("skip")}},
+	}
+
+	tests := []struct {
+		name   string
+		values config.Values
+		want   []string
+	}{
+		{"all_filled", config.Values{
+			"name":     config.StringVal("app"),
+			"database": config.StringVal("pg"),
+			"hidden":   config.StringVal("val"),
+		}, nil},
+		{"one_missing", config.Values{
+			"name":   config.StringVal("app"),
+			"hidden": config.StringVal("val"),
+		}, []string{"Database"}},
+		{"hidden_required_skipped", config.Values{
+			"name":     config.StringVal("skip"),
+			"database": config.StringVal("pg"),
+		}, nil},
+		{"none_filled", config.Values{}, []string{"Name", "Database", "Hidden"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MissingRequired(opts, tt.values)
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestValuesMatchExpectedListActualScalar(t *testing.T) {
 	// Expected is a list, actual is scalar: match if actual is in expected.
 	actual := config.StringVal("go")

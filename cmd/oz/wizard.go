@@ -25,13 +25,15 @@ func wizardCmd(name string) *cobra.Command {
 		Example: fmt.Sprintf(`  oz run %s
   oz run %s --dry-run
   oz run %s -p fast
+  oz run %s -p fast -- myproject
+  oz run %s -- --extra-flag
   oz run %s doctor
   oz run %s show
-  oz run %s presets list`, name, name, name, name, name, name),
-		RunE: func(cmd *cobra.Command, _ []string) error {
+  oz run %s presets list`, name, name, name, name, name, name, name, name),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			presetName, _ := cmd.Flags().GetString("preset")
-			return runWizard(name, presetName, dryRun)
+			return runWizard(name, presetName, dryRun, args)
 		},
 	}
 
@@ -73,7 +75,10 @@ type wizardSession struct {
 	pinnedValues  config.Values
 }
 
-func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun bool) (*wizardSession, error) {
+func runWizardLoop(
+	w *config.Wizard, st *store.Store,
+	presetName string, dryRun bool, extraArgs []string,
+) (*wizardSession, error) {
 	var prevResult *wizard.VersionResult
 	for {
 		vr, overridden := resolveVersion(w, st, prevResult)
@@ -97,7 +102,7 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 		}
 
 		if presetName != "" {
-			return nil, runWithPreset(w, st, presetName, dryRun)
+			return nil, runWithPreset(w, st, presetName, dryRun, extraArgs)
 		}
 
 		// Load version-independent pins, keep only those matching filtered options.
@@ -130,16 +135,19 @@ func runWizardLoop(w *config.Wizard, st *store.Store, presetName string, dryRun 
 	}
 }
 
-func runWizard(name string, presetName string, dryRun bool) error {
+func runWizard(name string, presetName string, dryRun bool, extraArgs []string) error {
 	w, err := loadWizardConfig(name)
 	if err != nil {
 		return err
 	}
 
 	st := store.New(configDir)
-	s, err := runWizardLoop(w, st, presetName, dryRun)
+	s, err := runWizardLoop(w, st, presetName, dryRun, extraArgs)
 	if err != nil {
 		return err
+	}
+	if s == nil {
+		return nil // preset path already handled
 	}
 	if s.result.Aborted {
 		return nil
@@ -151,7 +159,15 @@ func runWizard(name string, presetName string, dryRun bool) error {
 	maps.Copy(allAnswers, s.pinnedValues)
 	maps.Copy(allAnswers, s.result.Values)
 
+	matched, rawExtra := command.ParseExtra(w.Options, extraArgs)
+	maps.Copy(allAnswers, matched)
+
+	if missing := wizard.MissingRequired(w.Options, allAnswers); len(missing) > 0 {
+		return fmt.Errorf("missing required options: %s", strings.Join(missing, ", "))
+	}
+
 	parts := command.Build(w, allAnswers)
+	parts = command.AppendExtra(parts, rawExtra)
 	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Values)
 	if dryRun {
 		command.PrintCommand(parts)
@@ -202,14 +218,22 @@ func promptAndSavePreset(st *store.Store, wizardName string, allAnswers config.V
 
 func runWithPreset(
 	w *config.Wizard, st *store.Store,
-	presetName string, dryRun bool,
+	presetName string, dryRun bool, extraArgs []string,
 ) error {
 	values, err := st.LoadPreset(w.Name, presetName)
 	if err != nil {
 		return fmt.Errorf("loading preset %q: %w", presetName, err)
 	}
 
+	matched, rawExtra := command.ParseExtra(w.Options, extraArgs)
+	maps.Copy(values, matched)
+
+	if missing := wizard.MissingRequired(w.Options, values); len(missing) > 0 {
+		return fmt.Errorf("missing required options: %s", strings.Join(missing, ", "))
+	}
+
 	parts := command.Build(w, values)
+	parts = command.AppendExtra(parts, rawExtra)
 	if dryRun {
 		command.PrintCommand(parts)
 		return nil

@@ -16,6 +16,7 @@ const (
 	PartCommand PartKind = iota
 	PartArg
 	PartFlag
+	PartExtra // passthrough args from --.
 )
 
 // Part is a tagged segment of the built command.
@@ -108,9 +109,19 @@ func formatCommandColored(parts []Part) string {
 			} else {
 				b.WriteString(flagStyle.Render(p.Text))
 			}
+		case PartExtra:
+			b.WriteString(highlightStyle.Render(p.Text))
 		}
 	}
 	return b.String()
+}
+
+// AppendExtra appends passthrough args (from --) as PartExtra parts.
+func AppendExtra(parts []Part, extra []string) []Part {
+	for _, e := range extra {
+		parts = append(parts, Part{e, PartExtra})
+	}
+	return parts
 }
 
 // PlainParts returns just the text strings (for execution).

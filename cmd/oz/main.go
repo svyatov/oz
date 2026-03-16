@@ -76,12 +76,20 @@ func runCmd() *cobra.Command {
 		Long: `Launch an interactive wizard that walks through options step by step
 and builds a CLI command from your answers.
 
+Arguments after -- are passed to the underlying command. Flags matching wizard
+options override their values; positional args fill required positional options.
+Unrecognized args are appended to the built command as-is.
+
 Wizard subcommands (use after wizard name):
   doctor     Check tool installation and detected version
   show       Show all options with descriptions
   pins       Manage pinned options
   presets    Manage presets`,
-		Example: "  oz run myapp\n  oz run myapp --dry-run\n  oz run myapp -p fast",
+		Example: `  oz run myapp
+  oz run myapp --dry-run
+  oz run myapp -p fast
+  oz run myapp -p fast -- myproject
+  oz run myapp -- --extra-flag`,
 		ValidArgsFunction: completeWizardNames,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) == 0 {

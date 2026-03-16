@@ -71,6 +71,20 @@ func valuesMatch(actual, expected config.FieldValue) bool {
 	return actual.Scalar() == expected.Scalar()
 }
 
+// MissingRequired returns labels of visible required options that have no value.
+func MissingRequired(options []config.Option, values config.Values) []string {
+	var missing []string
+	for _, opt := range options {
+		if !opt.Required || !IsVisible(opt, values) {
+			continue
+		}
+		if _, has := values[opt.Name]; !has {
+			missing = append(missing, opt.Label)
+		}
+	}
+	return missing
+}
+
 // FilterPinned removes options that are pinned, returning the filtered list
 // and the count of pinned options.
 func FilterPinned(options []config.Option, pins config.Values) (filtered []config.Option, pinCount int) {

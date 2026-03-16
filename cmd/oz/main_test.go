@@ -650,6 +650,49 @@ func TestCompletePresetNames(t *testing.T) {
 	}
 }
 
+func TestDetectWizardName(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"basic", []string{"run", "mywiz"}, "mywiz"},
+		{"with_flags", []string{"run", "--dry-run", "mywiz"}, "mywiz"},
+		{"alias", []string{"r", "mywiz"}, "mywiz"},
+		{"with_double_dash", []string{"run", "mywiz", "--", "extra"}, "mywiz"},
+		{"flags_and_double_dash", []string{"run", "mywiz", "--dry-run", "--", "foo", "--bar"}, "mywiz"},
+		{"no_run", []string{"list"}, ""},
+		{"empty", nil, ""},
+		{"run_only", []string{"run"}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectWizardName(tt.args)
+			if got != tt.want {
+				t.Errorf("detectWizardName(%v) = %q, want %q", tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPresetWithExtraArgs(t *testing.T) {
+	dir := setupTestConfig(t)
+	st := store.New(dir)
+
+	// Save a preset for testwiz.
+	if err := st.SavePreset("testwiz", "fast", config.Values{
+		"greeting": config.StringVal("hello"),
+		"verbose":  config.BoolVal(true),
+	}); err != nil {
+		t.Fatalf("saving preset: %v", err)
+	}
+
+	// Run with preset + extra args (dry-run to avoid execution).
+	if err := execCmd(t, "--config-dir", dir, "run", "testwiz", "-p", "fast", "-n"); err != nil {
+		t.Fatalf("preset with dry-run: %v", err)
+	}
+}
+
 const versionWizardYAML = `name: verwiz
 description: Version wizard
 command: echo

@@ -223,6 +223,57 @@ func TestFormatCommandColored(t *testing.T) {
 	}
 }
 
+func TestAppendExtra(t *testing.T) {
+	parts := []Part{{Text: "git", Kind: PartCommand}}
+
+	t.Run("appends_as_PartExtra", func(t *testing.T) {
+		got := AppendExtra(parts, []string{"--force", "file.txt"})
+		if len(got) != 3 {
+			t.Fatalf("expected 3 parts, got %d", len(got))
+		}
+		if got[1].Kind != PartExtra || got[1].Text != "--force" {
+			t.Errorf("[1] = %+v, want PartExtra --force", got[1])
+		}
+		if got[2].Kind != PartExtra || got[2].Text != "file.txt" {
+			t.Errorf("[2] = %+v, want PartExtra file.txt", got[2])
+		}
+	})
+
+	t.Run("empty_noop", func(t *testing.T) {
+		got := AppendExtra(parts, nil)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 part, got %d", len(got))
+		}
+	})
+}
+
+func TestFormatCommandColored_extra(t *testing.T) {
+	parts := []Part{
+		{Text: "rails", Kind: PartCommand},
+		{Text: "myapp", Kind: PartExtra},
+	}
+	got := stripANSI(formatCommandColored(parts))
+	for _, want := range []string{"rails", "myapp"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %q", want, got)
+		}
+	}
+}
+
+func TestBuild_with_extra(t *testing.T) {
+	w := &config.Wizard{
+		Command: "rails new",
+		Options: []config.Option{
+			{Name: "database", Type: config.OptionSelect, Flag: "--database"},
+		},
+	}
+	answers := config.Values{"database": config.StringVal("pg")}
+	parts := Build(w, answers)
+	parts = AppendExtra(parts, []string{"myapp", "--force"})
+	want := []string{"rails", "new", "--database=pg", "myapp", "--force"}
+	assertStringSlice(t, PlainParts(parts), want)
+}
+
 func TestBuildOptionFlags_unknown_type(t *testing.T) {
 	opt := config.Option{
 		Name: "bad",

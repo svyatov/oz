@@ -243,17 +243,7 @@ func (m *PresetsModel) tryExitValues() (tea.Model, tea.Cmd) {
 
 // missingRequiredOptions returns labels of visible required options that have no value.
 func (m *PresetsModel) missingRequiredOptions() []string {
-	values := m.editor.Values()
-	var missing []string
-	for _, opt := range m.options {
-		if !opt.Required || !IsVisible(opt, values) {
-			continue
-		}
-		if _, has := values[opt.Name]; !has {
-			missing = append(missing, opt.Label)
-		}
-	}
-	return missing
+	return MissingRequired(m.options, m.editor.Values())
 }
 
 func (m *PresetsModel) updateName(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
