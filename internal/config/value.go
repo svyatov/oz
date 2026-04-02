@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -68,10 +69,7 @@ func (v FieldValue) Strings() []string { return v.ss }
 func (v FieldValue) Scalar() string {
 	switch v.kind {
 	case BoolKind:
-		if v.b {
-			return "true"
-		}
-		return "false"
+		return strconv.FormatBool(v.b)
 	case StringKind:
 		return v.s
 	case StringsKind:
@@ -85,10 +83,7 @@ func (v FieldValue) Scalar() string {
 func (v FieldValue) Display() string {
 	switch v.kind {
 	case BoolKind:
-		if v.b {
-			return "true"
-		}
-		return "false"
+		return strconv.FormatBool(v.b)
 	case StringsKind:
 		return strings.Join(v.ss, ", ")
 	case StringKind:
