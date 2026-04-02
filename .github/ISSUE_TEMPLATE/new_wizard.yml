@@ -1,0 +1,21 @@
+name: New Wizard
+description: Request or submit a wizard for a CLI tool
+labels: ["wizard"]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: CLI tool
+      description: Which tool should this wizard wrap?
+    validations:
+      required: true
+  - type: input
+    id: tool_url
+    attributes:
+      label: Tool URL
+      description: Link to the tool's homepage or docs
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Any specific options, subcommands, or considerations?

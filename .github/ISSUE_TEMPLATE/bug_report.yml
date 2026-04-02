@@ -1,0 +1,32 @@
+name: Bug Report
+description: Report a bug in oz
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: oz version
+      description: Output of `oz --version`
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: e.g. macOS 15.3, Ubuntu 24.04
+    validations:
+      required: true
