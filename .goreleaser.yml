@@ -29,7 +29,6 @@ checksum:
   name_template: "checksums.txt"
 
 changelog:
-  use: github
   groups:
     - title: Features
       regexp: '^.*?feat(\(.+\))?\!?:.+$'
@@ -39,6 +38,14 @@ changelog:
       order: 1
     - title: Other
       order: 999
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^style:'
+      - '^ci:'
+      - '^build:'
 
 brews:
   - repository:
