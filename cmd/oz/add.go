@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -77,11 +78,12 @@ func installWizard(data []byte, force bool, verb string) error {
 		return fmt.Errorf("validation errors:\n%s", config.FormatErrors(errs))
 	}
 
-	dest := config.WizardPath(configDir, w.Name)
+	safeName := filepath.Base(w.Name)
+	dest := config.WizardPath(configDir, safeName)
 
 	if !force {
 		if _, err := os.Stat(dest); err == nil {
-			return fmt.Errorf("wizard %q already exists (use --force to overwrite)", w.Name)
+			return fmt.Errorf("wizard %q already exists (use --force to overwrite)", safeName)
 		}
 	}
 
@@ -89,11 +91,11 @@ func installWizard(data []byte, force bool, verb string) error {
 		return fmt.Errorf("creating wizards directory: %w", err)
 	}
 
-	if err := os.WriteFile(dest, data, 0o644); err != nil {
+	if err := os.WriteFile(dest, data, 0o644); err != nil { //nolint:gosec // G703: path sanitized via filepath.Base above
 		return fmt.Errorf("writing wizard config: %w", err)
 	}
 
-	ui.SuccessMsgf("%s wizard %q", verb, w.Name)
+	ui.SuccessMsgf("%s wizard %q", verb, safeName)
 
 	return nil
 }

@@ -2,6 +2,7 @@ package command
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -179,14 +180,8 @@ func TestBuild(t *testing.T) {
 
 func assertStringSlice(t *testing.T, got, want []string) {
 	t.Helper()
-	if len(got) != len(want) {
-		t.Fatalf("got %v (len %d), want %v (len %d)",
-			got, len(got), want, len(want))
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			t.Errorf("[%d] got %q, want %q", i, got[i], want[i])
-		}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
 	}
 }
 

@@ -72,8 +72,6 @@ linters:
         - G301
         - G304
         - G306
-        - G602
-        - G703
     revive:
       rules:
         - name: exported
