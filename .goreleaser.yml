@@ -50,16 +50,19 @@ changelog:
       - '^ci:'
       - '^build:'
 
-brews:
-  - repository:
+homebrew_casks:
+  - name: oz
+    description: "Config-driven CLI wizard framework"
+    homepage: "https://github.com/svyatov/oz"
+    binaries:
+      - oz
+    generate_completions_from_executable:
+      shell_parameter_format: cobra
+      shells:
+        - bash
+        - zsh
+        - fish
+    repository:
       owner: svyatov
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    name: oz
-    homepage: "https://github.com/svyatov/oz"
-    description: "Config-driven CLI wizard framework"
-    license: "MIT"
-    install: |
-      bin.install "oz"
-    test: |
-      assert_match version.to_s, shell_output("#{bin}/oz --version")
