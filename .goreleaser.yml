@@ -29,6 +29,9 @@ checksum:
   name_template: "checksums.txt"
 
 changelog:
+  use: github
+  format: "{{.SHA}}: {{.Message}}{{ if .Logins }} ({{ .Logins | englishJoin }}){{ end }}"
+  abbrev: 7
   groups:
     - title: Features
       regexp: '^.*?feat(\(.+\))?\!?:.+$'
