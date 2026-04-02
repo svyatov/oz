@@ -62,6 +62,12 @@ homebrew_casks:
         - bash
         - zsh
         - fish
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/oz"]
+          end
     repository:
       owner: svyatov
       name: homebrew-tap
