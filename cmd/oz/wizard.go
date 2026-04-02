@@ -336,11 +336,15 @@ func runPins(name string) error {
 	hints := compat.OptionHints(w.Options)
 	pinnedVer, _ := st.LoadPinnedVersion(w.Name)
 
-	result, err := wizard.RunPins(
-		w.Options, pins, state.LastUsed,
-		hints, hasCustomVersion, pinnedVer,
-		versionVerifyCmd(w),
-	)
+	result, err := wizard.RunPins(wizard.PinsParams{
+		Options:             w.Options,
+		Pins:                pins,
+		LastUsed:            state.LastUsed,
+		Hints:               hints,
+		HasCustomVersion:    hasCustomVersion,
+		VersionPin:          pinnedVer,
+		CustomVersionVerify: versionVerifyCmd(w),
+	})
 	if err != nil {
 		return fmt.Errorf("managing pins: %w", err)
 	}

@@ -72,6 +72,12 @@ var (
 
 	// placeholderRe matches a placeholder token (word, braced, or angle-bracketed).
 	placeholderRe = regexp.MustCompile(`^(\{[^}]+\}|<[^>]+>|\w+)$`)
+
+	// minThorMatches is the minimum number of Thor bracket-flag matches to classify the format.
+	minThorMatches = 3
+
+	// kubectlThresholdRatio is the minimum fraction of --flag=default: lines to classify as kubectl format.
+	kubectlThresholdRatio = 0.3
 )
 
 // Parse extracts flags from CLI --help output text.
@@ -97,7 +103,7 @@ func isThorFormat(lines []string) bool {
 		if thorFlagRe.MatchString(line) {
 			matches++
 		}
-		if matches >= 3 {
+		if matches >= minThorMatches {
 			return true
 		}
 	}
@@ -275,7 +281,7 @@ func isKubectlFormat(lines []string) bool {
 			}
 		}
 	}
-	return total > 0 && float64(kubectl)/float64(total) > 0.3
+	return total > 0 && float64(kubectl)/float64(total) > kubectlThresholdRatio
 }
 
 // parseGNU handles GNU/Cobra/Docker/argparse-style help output.

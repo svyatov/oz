@@ -23,6 +23,17 @@ const (
 	pinsVerifyingMode
 )
 
+// PinsParams groups the parameters for RunPins.
+type PinsParams struct {
+	Pins                config.Values
+	LastUsed            config.Values
+	Hints               map[string]string
+	VersionPin          string
+	CustomVersionVerify string
+	Options             []config.Option
+	HasCustomVersion    bool
+}
+
 // PinsResult is returned by RunPins.
 type PinsResult struct {
 	Pins       config.Values
@@ -43,13 +54,8 @@ type PinsModel struct {
 	done                bool
 }
 
-func newPinsModel(
-	options []config.Option, pins, lastUsed config.Values,
-	hints map[string]string,
-	hasCustomVersion bool, versionPin string,
-	customVersionVerify string,
-) *PinsModel {
-	editor := NewValuesEditor(options, pins, lastUsed, hints)
+func newPinsModel(p PinsParams) *PinsModel {
+	editor := NewValuesEditor(p.Options, p.Pins, p.LastUsed, p.Hints)
 
 	s := spinner.New()
 	s.Spinner = spinner.MiniDot
@@ -57,9 +63,9 @@ func newPinsModel(
 
 	return &PinsModel{
 		editor:              editor,
-		hasCustomVersion:    hasCustomVersion,
-		versionPin:          versionPin,
-		customVersionVerify: customVersionVerify,
+		hasCustomVersion:    p.HasCustomVersion,
+		versionPin:          p.VersionPin,
+		customVersionVerify: p.CustomVersionVerify,
 		spinner:             s,
 	}
 }
@@ -348,18 +354,14 @@ func (m *PinsModel) handleVersionVerified(msg versionVerifiedMsg) (tea.Model, te
 }
 
 // RunPins shows the interactive pin management UI and returns updated pins.
-func RunPins(
-	options []config.Option, currentPins, lastUsed config.Values,
-	hints map[string]string,
-	hasCustomVersion bool, currentVersionPin string,
-	customVersionVerify string,
-) (*PinsResult, error) {
-	pins := make(config.Values, len(currentPins))
-	maps.Copy(pins, currentPins)
+func RunPins(p PinsParams) (*PinsResult, error) {
+	pins := make(config.Values, len(p.Pins))
+	maps.Copy(pins, p.Pins)
 
-	model := newPinsModel(options, pins, lastUsed, hints, hasCustomVersion, currentVersionPin, customVersionVerify)
-	p := tea.NewProgram(model)
-	finalModel, err := p.Run()
+	p.Pins = pins
+	model := newPinsModel(p)
+	prog := tea.NewProgram(model)
+	finalModel, err := prog.Run()
 	if err != nil {
 		return nil, fmt.Errorf("pins UI error: %w", err)
 	}

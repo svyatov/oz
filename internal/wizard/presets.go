@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
@@ -268,7 +269,7 @@ func (m *PresetsModel) submitName() (tea.Model, tea.Cmd) {
 		m.nameErr = "Name must not be empty"
 		return m, nil
 	}
-	if strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
+	if !filepath.IsLocal(name) {
 		m.nameErr = "Name must not contain path separators or '..'"
 		return m, nil
 	}

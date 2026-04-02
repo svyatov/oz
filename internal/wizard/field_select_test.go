@@ -2,7 +2,6 @@ package wizard
 
 import (
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -25,13 +24,6 @@ func testChoices() []config.Choice {
 		{Label: "Node.js", Value: "nodejs", Description: "JavaScript runtime"},
 		{Label: "Go", Value: "go", Description: "Fast compiled"},
 	}
-}
-
-var ansiRE = regexp.MustCompile(`\x1b(?:\[[0-9;]*[a-zA-Z]|\([A-Za-z])`)
-
-// stripANSI removes ANSI escape sequences for text assertions.
-func stripANSI(s string) string {
-	return ansiRE.ReplaceAllString(s, "")
 }
 
 func TestSelectFieldDefaultTag(t *testing.T) {

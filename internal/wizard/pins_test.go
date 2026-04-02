@@ -11,12 +11,6 @@ import (
 	"github.com/svyatov/oz/internal/config"
 )
 
-
-
-func key(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code, Text: string(code)}
-}
-
 func mustPins(t *testing.T, model tea.Model) *PinsModel {
 	t.Helper()
 	m, ok := model.(*PinsModel)
@@ -24,10 +18,6 @@ func mustPins(t *testing.T, model tea.Model) *PinsModel {
 		t.Fatalf("expected *PinsModel, got %T", model)
 	}
 	return m
-}
-
-func specialKey(code rune) tea.KeyPressMsg {
-	return tea.KeyPressMsg{Code: code}
 }
 
 func testOptions() []config.Option {
@@ -56,7 +46,7 @@ func testOptions() []config.Option {
 }
 
 func TestPinViaEditSelect(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -76,7 +66,7 @@ func TestPinViaEditSelect(t *testing.T) {
 }
 
 func TestPinViaEditConfirm(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	m.Update(specialKey(tea.KeyDown))
@@ -94,7 +84,7 @@ func TestPinViaEditConfirm(t *testing.T) {
 }
 
 func TestTogglePinSpace(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, config.Values{"db": config.StringVal("pg")}, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), LastUsed: config.Values{"db": config.StringVal("pg")}})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeySpace))
@@ -114,7 +104,7 @@ func TestTogglePinSpace(t *testing.T) {
 }
 
 func TestCancelEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -134,7 +124,7 @@ func TestCancelEdit(t *testing.T) {
 }
 
 func TestCursorWrapping(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	if m.cursor != 0 {
@@ -153,7 +143,7 @@ func TestCursorWrapping(t *testing.T) {
 }
 
 func TestNumberKeyEntersEdit(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	model, _ := m.Update(key('2'))
@@ -168,7 +158,7 @@ func TestNumberKeyEntersEdit(t *testing.T) {
 
 func TestEditUpdatesExistingPin(t *testing.T) {
 	pins := config.Values{"db": config.StringVal("pg")}
-	m := newPinsModel(testOptions(), pins, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), Pins: pins})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -182,7 +172,7 @@ func TestEditUpdatesExistingPin(t *testing.T) {
 }
 
 func TestVersionPinWithoutVerify(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true})
 	m.Init()
 
 	// Enter edit for version (index 0)
@@ -210,7 +200,7 @@ func TestVersionPinWithoutVerify(t *testing.T) {
 }
 
 func TestVersionPinWithVerifyEntersVerifying(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter edit for version (index 0)
@@ -232,7 +222,7 @@ func TestVersionPinWithVerifyEntersVerifying(t *testing.T) {
 }
 
 func TestHandleVersionVerifiedError(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter edit for version
@@ -263,7 +253,7 @@ func TestHandleVersionVerifiedError(t *testing.T) {
 }
 
 func TestHandleVersionVerifiedSuccess(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter edit for version
@@ -294,7 +284,7 @@ func TestHandleVersionVerifiedSuccess(t *testing.T) {
 }
 
 func TestEmptyVersionPinMapsToCurrent(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter edit for version
@@ -325,7 +315,7 @@ func validatedInputOptions() []config.Option {
 }
 
 func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: validatedInputOptions()})
 	m.Init()
 
 	// Space on required input with no stored value → enters edit mode
@@ -340,7 +330,10 @@ func TestSpaceOnInputWithoutValidDefault(t *testing.T) {
 }
 
 func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, config.Values{"port": config.StringVal("3000")}, nil, false, "", "")
+	m := newPinsModel(PinsParams{
+		Options:  validatedInputOptions(),
+		LastUsed: config.Values{"port": config.StringVal("3000")},
+	})
 	m.Init()
 
 	// Space on input with valid last-used → quick-pins
@@ -355,7 +348,10 @@ func TestSpaceOnInputWithValidLastUsed(t *testing.T) {
 }
 
 func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, config.Values{"port": config.StringVal("abc")}, nil, false, "", "")
+	m := newPinsModel(PinsParams{
+		Options:  validatedInputOptions(),
+		LastUsed: config.Values{"port": config.StringVal("abc")},
+	})
 	m.Init()
 
 	// Space on input with invalid last-used → enters edit mode
@@ -370,7 +366,7 @@ func TestSpaceOnInputWithInvalidLastUsed(t *testing.T) {
 }
 
 func TestPinInputRejectsInvalidValue(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: validatedInputOptions()})
 	m.Init()
 
 	// Enter edit mode
@@ -398,7 +394,7 @@ func TestPinInputRejectsInvalidValue(t *testing.T) {
 }
 
 func TestPinInputRejectsBlankRequired(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: validatedInputOptions()})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -416,7 +412,7 @@ func TestPinInputRejectsBlankRequired(t *testing.T) {
 }
 
 func TestPinInputAcceptsValidValue(t *testing.T) {
-	m := newPinsModel(validatedInputOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: validatedInputOptions()})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyEnter))
@@ -438,7 +434,7 @@ func TestPinInputAcceptsValidValue(t *testing.T) {
 }
 
 func TestCyclePinSelectForward(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// First right → pins db to first choice (pg).
@@ -471,7 +467,7 @@ func TestCyclePinSelectForward(t *testing.T) {
 }
 
 func TestCyclePinSelectBackward(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// Left from unpinned → wraps to last choice (mysql).
@@ -497,7 +493,7 @@ func TestCyclePinSelectBackward(t *testing.T) {
 }
 
 func TestCyclePinConfirm(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// Move cursor to confirm field (index 1).
@@ -542,7 +538,7 @@ func TestCyclePinSelectAllowNone(t *testing.T) {
 			Choices:   []config.Choice{{Value: "pg", Label: "PostgreSQL"}},
 		},
 	}
-	m := newPinsModel(opts, nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: opts})
 	m.Init()
 
 	// Right → pg.
@@ -568,7 +564,7 @@ func TestCyclePinSelectAllowNone(t *testing.T) {
 }
 
 func TestCyclePinInputNoop(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// Move cursor to input field (index 2).
@@ -597,7 +593,7 @@ func TestCyclePinMultiSelectNoop(t *testing.T) {
 			},
 		},
 	}
-	m := newPinsModel(opts, nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: opts})
 	m.Init()
 
 	model, _ := m.Update(specialKey(tea.KeyRight))
@@ -608,7 +604,7 @@ func TestCyclePinMultiSelectNoop(t *testing.T) {
 }
 
 func TestCyclePinVersionToggle(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true})
 	m.Init()
 
 	// Right on version (index 0) → pins to "current".
@@ -627,7 +623,7 @@ func TestCyclePinVersionToggle(t *testing.T) {
 }
 
 func TestCyclePinWithHLKeys(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// 'l' key should cycle forward like right arrow.
@@ -646,7 +642,7 @@ func TestCyclePinWithHLKeys(t *testing.T) {
 }
 
 func TestPinsViewListMode(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	v := m.View()
@@ -666,7 +662,7 @@ func TestPinsViewListMode(t *testing.T) {
 }
 
 func TestPinsViewEditMode(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 
 	// Enter edit mode for first option.
@@ -684,7 +680,7 @@ func TestPinsViewEditMode(t *testing.T) {
 }
 
 func TestPinsViewVerifyingMode(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter version edit, type a value, submit to enter verifying.
@@ -711,7 +707,7 @@ func TestPinsViewVerifyingMode(t *testing.T) {
 }
 
 func TestPinsViewWhenDone(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, false, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions()})
 	m.Init()
 	m.done = true
 
@@ -722,7 +718,7 @@ func TestPinsViewWhenDone(t *testing.T) {
 }
 
 func TestPinsViewVersionRow(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "3.2.1", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, VersionPin: "3.2.1"})
 	m.Init()
 
 	content := stripANSI(m.viewList())
@@ -735,7 +731,7 @@ func TestPinsViewVersionRow(t *testing.T) {
 }
 
 func TestPinsUpdateVerifyingKeyPress(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "echo ok")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true, CustomVersionVerify: "echo ok"})
 	m.Init()
 
 	// Enter version edit, type, submit.
@@ -768,7 +764,7 @@ func TestPinsUpdateVerifyingKeyPress(t *testing.T) {
 }
 
 func TestPinsHandleToggleVersionRow(t *testing.T) {
-	m := newPinsModel(testOptions(), nil, nil, nil, true, "", "")
+	m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: true})
 	m.Init()
 
 	// Cursor should be at 0 (version row when hasCustomVersion=true).
@@ -805,7 +801,7 @@ func TestPinsVersionOffset(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := newPinsModel(testOptions(), nil, nil, nil, tt.hasCustomVersion, "", "")
+			m := newPinsModel(PinsParams{Options: testOptions(), HasCustomVersion: tt.hasCustomVersion})
 			got := m.versionOffset()
 			if got != tt.wantOffset {
 				t.Errorf("versionOffset() = %d, want %d", got, tt.wantOffset)
