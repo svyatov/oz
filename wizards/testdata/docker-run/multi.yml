@@ -1,0 +1,9 @@
+# Multi-select: each env value renders a repeated -e flag.
+version: ""
+answers:
+  image: nginx
+  detach: true
+  port: "8080:80"
+  env:
+    - NODE_ENV=production
+    - DEBUG=1

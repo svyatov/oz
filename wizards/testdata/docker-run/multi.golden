@@ -1,0 +1,1 @@
+docker run nginx -d -p 8080:80 -e NODE_ENV=production -e DEBUG=1

@@ -1,0 +1,1 @@
+bundle _2.7.0_ gem my_gem --exe --test=rspec --linter=standard --no-bundle

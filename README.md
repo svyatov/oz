@@ -45,6 +45,9 @@ Pre-built wizards are available in the [`wizards/`](wizards/) directory:
 | Wizard | Tool | Description |
 |--------|------|-------------|
 | [rails-new](wizards/rails-new.yml) | Ruby on Rails | Scaffold a new Rails application |
+| [bundle-gem](wizards/bundle-gem.yml) | Bundler | Generate a new rubygem skeleton |
+| [docker-run](wizards/docker-run.yml) | Docker | Run a container with selected options |
+| [git-switch](wizards/git-switch.yml) | Git | Switch to a branch from the local list |
 
 Browse and install wizards:
 
@@ -62,9 +65,12 @@ Have a CLI tool you use often? Wrap it in a wizard and share it:
 
 1. Create a YAML config: `oz create my-tool` or `oz generate my-tool`
 2. Test it: `oz validate my-tool && oz run my-tool`
-3. Submit a PR adding your file to the [`wizards/`](wizards/) directory
+3. Add at least one fixture under `wizards/testdata/my-tool/` (required — CI
+   rejects a wizard without one) and generate its golden with `oz test my-tool
+   --update --config-dir .`
+4. Submit a PR adding your file to the [`wizards/`](wizards/) directory
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details, including the fixture format.
 
 ## Example Wizard
 
@@ -123,6 +129,8 @@ options:
 | `oz edit <wizard>` | Open wizard config in `$EDITOR` |
 | `oz remove <wizard>` | Remove a wizard config |
 | `oz validate <path>` | Validate a wizard YAML file |
+| `oz test [wizard]` | Run wizard fixtures and check built commands |
+| `oz test [wizard] --update` | Regenerate fixture goldens |
 
 **Aliases:** `r` (run), `a` (add), `c`/`new` (create), `g`/`gen` (generate), `e` (edit), `rm` (remove), `l`/`ls` (list), `u` (update).
 

@@ -1,0 +1,19 @@
+name: git-switch
+description: "Switch to a git branch chosen from the local branch list."
+command: "git switch"
+
+options:
+  - name: branch
+    type: select
+    label: "Branch"
+    description: "Branch to switch to (choices come from local branches)."
+    positional: true
+    required: true
+    choices_from: "git branch --format='%(refname:short)'"
+
+  - name: create
+    type: confirm
+    label: "Create if missing?"
+    description: "Create the branch and switch to it."
+    flag: -c
+    default: false

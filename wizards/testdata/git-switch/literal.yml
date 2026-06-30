@@ -1,0 +1,6 @@
+# Dynamic choice supplied as a literal: the choices_from shell command
+# ("git branch ...") never runs; the fixture's branch value is used as-is.
+version: ""
+answers:
+  branch: feature/login
+  create: true

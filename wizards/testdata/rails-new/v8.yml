@@ -1,0 +1,8 @@
+# Rails >= 8.0: asset_pipeline is gated out (dropped even though supplied);
+# the 8.0-only mariadb adapter and skip-thruster flag are gated in.
+version: "8.0.0"
+answers:
+  app_name: shop
+  database: mariadb-mysql
+  asset_pipeline: propshaft
+  skip_thruster: true

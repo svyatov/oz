@@ -1,0 +1,1 @@
+rails _8.0.0_ new --no-rc --name=shop --database=mariadb-mysql --skip-thruster

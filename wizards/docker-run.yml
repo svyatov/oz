@@ -1,0 +1,41 @@
+name: docker-run
+description: "Run a Docker container with interactive option selection."
+command: "docker run"
+flag_style: space
+
+options:
+  - name: image
+    type: input
+    label: "Image name"
+    description: "Container image to run."
+    positional: true
+    required: true
+
+  - name: detach
+    type: confirm
+    label: "Run detached?"
+    description: "Run the container in the background."
+    flag: -d
+    default: false
+
+  - name: port
+    type: input
+    label: "Port mapping"
+    description: "Publish a container port to the host (host:container)."
+    flag: -p
+    validate:
+      pattern: '^\d+:\d+$'
+      message: "Use host:container format (e.g. 8080:80)."
+
+  - name: env
+    type: multi_select
+    label: "Environment"
+    description: "Environment variables to set in the container."
+    flag: -e
+    choices:
+      - value: NODE_ENV=production
+        label: Production
+      - value: NODE_ENV=development
+        label: Development
+      - value: DEBUG=1
+        label: Debug

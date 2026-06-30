@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `oz test [wizard]`: a hermetic snapshot harness that asserts a wizard's fixture answers
+  build the expected command. Fixtures live in `wizards/testdata/<wizard>/` as a `<case>.yml`
+  (pinned `version:` + `answers:`) and a sibling `<case>.golden`; `--update` regenerates the
+  goldens. Execution is hermetic — the pinned version drives option filtering (no detection)
+  and dynamic-choice answers are taken as literal values (no shell runs) — so fixtures pass on
+  any machine. Runs in CI over `wizards/` as a gate: a wizard that ships no fixture fails
+- Proving-pack registry wizards exercising the harness's hard cases: `docker-run` (multi-select),
+  `git-switch` (dynamic-choice supplied as a literal), with `rails-new` and `bundle-gem` covering
+  version gating — each with passing fixtures
 - `bundle-gem` registry wizard: wraps Bundler's `bundle gem` generator with version-aware
   options verified against real Bundler binaries from 2.2 to 4.x — `--changelog` (≥2.2.8),
   `--github-username` (≥2.2.16), `--linter` (≥2.2.31, supersedes the `<2.2.31` `--rubocop`),

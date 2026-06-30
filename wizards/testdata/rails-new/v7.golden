@@ -1,0 +1,1 @@
+rails _7.2.0_ new --no-rc --name=blog --database=postgresql --asset-pipeline=propshaft

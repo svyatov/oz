@@ -1,0 +1,8 @@
+# Bundler 2.7.0: linter and bundle options gated in; pre-2.2.31 rubocop gated out.
+version: "2.7.0"
+answers:
+  gem_name: my_gem
+  exe: true
+  test: rspec
+  linter: standard
+  bundle: false
