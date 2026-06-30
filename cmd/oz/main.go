@@ -293,9 +293,9 @@ func newListTable() *table.Table {
 		StyleFunc(func(_, col int) lipgloss.Style {
 			switch col {
 			case 0:
-				return lipgloss.NewStyle().Foreground(ui.Accent).PaddingLeft(1)
+				return lipgloss.NewStyle().Foreground(ui.Accent).PaddingLeft(1).PaddingRight(2)
 			default:
-				return lipgloss.NewStyle().Foreground(ui.Muted)
+				return lipgloss.NewStyle().Foreground(ui.Muted).PaddingRight(2)
 			}
 		})
 }
