@@ -117,7 +117,10 @@ func flagToOption(f Flag) scaffoldOption {
 	return opt
 }
 
-const boolTrue = "true"
+const (
+	boolTrue  = "true"
+	boolFalse = "false"
+)
 
 // isBoolFlag returns true if the flag looks like a boolean toggle.
 func isBoolFlag(f Flag) bool {
@@ -125,7 +128,7 @@ func isBoolFlag(f Flag) bool {
 		return false
 	}
 	switch f.Default {
-	case "", boolTrue, "false":
+	case "", boolTrue, boolFalse:
 		return true
 	}
 	return false

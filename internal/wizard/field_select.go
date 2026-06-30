@@ -107,7 +107,7 @@ func (f *SelectField) maxDisplayWidth() int {
 		}
 	}
 	if f.allowNone {
-		n := len("None")
+		n := len(labelNone)
 		if f.defaultValue == config.NoneValue {
 			n += len(defaultSuffix)
 		}
@@ -155,5 +155,5 @@ func (f *SelectField) itemAt(i int) (label, desc string) {
 	if i < len(f.choices) {
 		return f.choices[i].Label, f.choices[i].Description
 	}
-	return "None", ""
+	return labelNone, ""
 }

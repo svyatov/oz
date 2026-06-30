@@ -22,6 +22,12 @@ var version = "dev"
 
 var configDir string
 
+// Command name literals reused across command defs and arg detection.
+const (
+	cmdRun  = "run"
+	cmdList = "list"
+)
+
 func main() {
 	root := newRootCmd(os.Args[1:])
 
@@ -125,7 +131,7 @@ func detectWizardName(args []string) string {
 			continue
 		}
 		if !foundRun {
-			if a == "run" || a == "r" {
+			if a == cmdRun || a == "r" {
 				foundRun = true
 			}
 			continue
@@ -200,7 +206,7 @@ func listCmd() *cobra.Command {
 	var remote bool
 
 	cmd := &cobra.Command{
-		Use:     "list",
+		Use:     cmdList,
 		Aliases: []string{"l", "ls"},
 		Args:    cobra.NoArgs,
 		Short:   "List available wizards",

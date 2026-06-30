@@ -62,7 +62,7 @@ func (f *ConfirmField) View() string {
 
 	b.WriteString(fieldHeader(f.label, f.description))
 
-	items := []string{"Yes", "No"}
+	items := []string{labelYes, "No"}
 	for i, item := range items {
 		active := i == f.cursor
 		num := ui.NumberGutter(i+1, 1, active)

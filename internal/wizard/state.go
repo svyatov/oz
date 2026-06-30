@@ -114,7 +114,7 @@ func FormatAnswer(opt *config.Option, val config.FieldValue) string {
 	switch opt.Type {
 	case config.OptionConfirm:
 		if val.Bool() {
-			return "Yes"
+			return labelYes
 		}
 		return "No"
 	case config.OptionSelect:
@@ -125,7 +125,7 @@ func FormatAnswer(opt *config.Option, val config.FieldValue) string {
 			}
 		}
 		if s == config.NoneValue {
-			return "None"
+			return labelNone
 		}
 		return s
 	case config.OptionMultiSelect:

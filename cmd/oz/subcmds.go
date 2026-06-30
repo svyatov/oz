@@ -257,7 +257,7 @@ Use "pins list" to view or "pins clear" to remove all pins.`,
 
 func pinsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:     "list",
+		Use:     cmdList,
 		Aliases: []string{"l", "ls"},
 		Args:    cobra.NoArgs,
 		Short:   "List current pins",
@@ -375,7 +375,7 @@ func listPresets(wizardName string) error {
 
 func presetsListCmd(wizardName string) *cobra.Command {
 	return &cobra.Command{
-		Use:     "list",
+		Use:     cmdList,
 		Aliases: []string{"l", "ls"},
 		Args:    cobra.NoArgs,
 		Short:   "List presets",

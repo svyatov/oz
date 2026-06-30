@@ -145,6 +145,11 @@ func NavHints(hints ...Hint) string {
 }
 
 // Common hint building blocks.
+const (
+	keyEnter = "enter"
+	keyEsc   = "esc"
+)
+
 var (
 	HintUp       = Hint{Key: "\u2191/k", Desc: "up"}
 	HintDown     = Hint{Key: "\u2193/j", Desc: "down"}
@@ -152,14 +157,14 @@ var (
 	HintCycle    = Hint{Key: "\u2190/h \u2192/l", Desc: "cycle"}
 	HintBack     = Hint{Key: "shift+tab", Desc: "back"}
 	HintNext     = Hint{Key: "tab/enter", Desc: "next"}
-	HintEdit     = Hint{Key: "enter", Desc: "edit"}
-	HintEnter    = Hint{Key: "enter", Desc: "confirm"}
-	HintSelect   = Hint{Key: "enter", Desc: "select"}
+	HintEdit     = Hint{Key: keyEnter, Desc: "edit"}
+	HintEnter    = Hint{Key: keyEnter, Desc: "confirm"}
+	HintSelect   = Hint{Key: keyEnter, Desc: "select"}
 	HintSpace    = Hint{Key: "space", Desc: "toggle"}
-	HintEsc      = Hint{Key: "esc", Desc: "cancel"}
-	HintEscDone  = Hint{Key: "esc", Desc: "done"}
-	HintEscBack  = Hint{Key: "esc", Desc: "back"}
-	HintEscQuit  = Hint{Key: "esc", Desc: "quit"}
+	HintEsc      = Hint{Key: keyEsc, Desc: "cancel"}
+	HintEscDone  = Hint{Key: keyEsc, Desc: "done"}
+	HintEscBack  = Hint{Key: keyEsc, Desc: "back"}
+	HintEscQuit  = Hint{Key: keyEsc, Desc: "quit"}
 )
 
 // StepCounter returns a formatted step counter like "01/05" in accent color.

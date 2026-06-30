@@ -25,6 +25,12 @@ const (
 	cursorBlank = "   " // inactive cursor padding
 )
 
+// Display labels for boolean and empty selections.
+const (
+	labelYes  = "Yes"
+	labelNone = "None"
+)
+
 // versionPinCurrent is the sentinel value for "pin to detected version".
 const versionPinCurrent = "current"
 

@@ -16,9 +16,11 @@ type Flag struct {
 	EnumValues  []string // detected enum values from {a,b,c} or description.
 }
 
+const flagHelp = "--help"
+
 // skipFlags are universally useless in wizards.
 var skipFlags = map[string]bool{
-	"--help": true, "-h": true,
+	flagHelp: true, "-h": true,
 	"--version": true, "-V": true,
 }
 
@@ -529,7 +531,7 @@ func parseKubectl(lines []string) []Flag {
 			}
 
 			// Infer placeholder from default value.
-			if current.Default != "" && current.Default != "false" && current.Default != "true" {
+			if current.Default != "" && current.Default != boolFalse && current.Default != boolTrue {
 				current.Placeholder = "value"
 			}
 			continue
