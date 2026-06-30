@@ -199,6 +199,14 @@ When implementing UI changes (TUI, CLI output), consider ALL field types and edg
 - Keep functions under 60 lines; extract helpers if needed
 - No `//nolint` without a comment explaining why
 
+## Documented Knowledge
+
+- `docs/solutions/` — documented solutions to past problems (bugs, best practices, architecture/workflow
+  patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant
+  when implementing or debugging in documented areas.
+- `CONCEPTS.md` — shared domain vocabulary (entities, named processes, status concepts). Relevant when
+  orienting to the codebase or discussing domain concepts.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
