@@ -54,6 +54,8 @@ oz add <name>         # install a wizard
 oz update <name>      # update to latest version
 ```
 
+The registry is this repository's [`wizards/`](wizards/) directory (indexed by [`index.yml`](index.yml)) on the `main` branch, so a wizard is installable as soon as it's merged here. Point `OZ_REGISTRY_URL` at another base URL to use a different source.
+
 ### Contributing a Wizard
 
 Have a CLI tool you use often? Wrap it in a wizard and share it:

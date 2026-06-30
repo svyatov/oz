@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Registry now served from the main repo (`svyatov/oz` `wizards/` + `index.yml`)
+  instead of a separate `oz-wizards` repo, so `oz add`, `oz list --remote`, and
+  `oz update` work out of the box; override with `OZ_REGISTRY_URL`
 - rails-new wizard: expose `--skip-asset-pipeline` on Rails 8.x via a version-gated
   toggle (the asset-pipeline selector is `< 8.0` only, so 8.x had no way to skip it)
 

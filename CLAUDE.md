@@ -79,7 +79,7 @@ cmd/oz/
   → command/extra.go    Parse extra CLI args back into options + passthrough (ParseExtra)
   → command/runner.go   Execute or copy the built command
   → store/store.go      Persist last-used state, pins + presets as YAML
-  → registry/registry.go  Fetch wizard configs from remote registry (oz-wizards on GitHub)
+  → registry/registry.go  Fetch wizard configs from the registry (this repo's wizards/ + index.yml on main; override via OZ_REGISTRY_URL)
   → ui/theme.go         Lipgloss color palette and styles
 
 oz list (l, ls)              list available wizards

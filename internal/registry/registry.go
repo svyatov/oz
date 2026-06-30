@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultBaseURL = "https://raw.githubusercontent.com/svyatov/oz-wizards/main/"
+	defaultBaseURL = "https://raw.githubusercontent.com/svyatov/oz/main/"
 	maxBodySize    = 1 << 20 // 1 MB.
 	httpTimeout    = 30 * time.Second
 )

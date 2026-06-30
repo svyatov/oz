@@ -1,0 +1,5 @@
+# Registry index for `oz list --remote`.
+# Each entry maps to wizards/<name>.yml in this repository.
+wizards:
+  - name: rails-new
+    description: Scaffold a new Ruby on Rails application with interactive option selection.
