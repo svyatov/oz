@@ -270,7 +270,7 @@ func listRemote() error {
 		}
 		t.Row(e.Name, e.Description, tag)
 	}
-	fmt.Println("\n" + t.Render())
+	fmt.Print("\n" + t.Render() + "\n\n")
 	return nil
 }
 
@@ -279,7 +279,7 @@ func printWizardList(wizards []*config.Wizard) {
 	for _, w := range wizards {
 		t.Row(w.Name, w.Description)
 	}
-	fmt.Println("\n" + t.Render())
+	fmt.Print("\n" + t.Render() + "\n\n")
 }
 
 func newListTable() *table.Table {

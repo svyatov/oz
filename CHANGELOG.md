@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - `oz list` / `oz list --remote`: add column spacing so the wizard name, description,
-  and `(installed)` tag no longer run together
+  and `(installed)` tag no longer run together, and a trailing blank line to match
+  every other command's output
 - Registry now served from the main repo (`svyatov/oz` `wizards/` + `index.yml`)
   instead of a separate `oz-wizards` repo, so `oz add`, `oz list --remote`, and
   `oz update` work out of the box; override with `OZ_REGISTRY_URL`
