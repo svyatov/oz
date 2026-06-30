@@ -3,3 +3,5 @@
 wizards:
   - name: rails-new
     description: Scaffold a new Ruby on Rails application with interactive option selection.
+  - name: bundle-gem
+    description: Generate a project skeleton for creating a rubygem with interactive option selection.

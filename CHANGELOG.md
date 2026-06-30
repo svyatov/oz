@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `bundle-gem` registry wizard: wraps Bundler's `bundle gem` generator with version-aware
+  options verified against real Bundler binaries from 2.2 to 4.x — `--changelog` (≥2.2.8),
+  `--github-username` (≥2.2.16), `--linter` (≥2.2.31, supersedes the `<2.2.31` `--rubocop`),
+  `--ext` values `c`/`rust` (≥2.4)/`go` (≥4.0), and `--bundle` (≥2.7); `--rubocop` is hidden on
+  4.x where it was removed. Includes a version picker via `bundle _<version>_ gem`
+
 ### Fixed
 
 - `oz list` / `oz list --remote`: add column spacing so the wizard name, description,

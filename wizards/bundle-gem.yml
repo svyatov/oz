@@ -1,0 +1,169 @@
+name: bundle-gem
+description: "Generate a project skeleton for creating a rubygem with interactive option selection."
+command: "bundle gem"
+
+version_control:
+  label: "Bundler"
+  command: "bundle --version"
+  pattern: '(\d+\.\d+\.\d+)'
+  custom_version_command: "bundle _{{version}}_ gem"
+  custom_version_verify_command: "bundle _{{version}}_ --version"
+  available_versions_command: "gem list bundler -e -q | sed 's/bundler (//;s/)//'"
+
+options:
+  - name: gem_name
+    type: input
+    label: "Gem name"
+    description: "Directory and constant name for the new rubygem."
+    positional: true
+    required: true
+    validate:
+      pattern: "^[a-zA-Z][a-zA-Z0-9_-]*$"
+      message: "Must start with a letter, then letters/digits/hyphens/underscores."
+
+  - name: exe
+    type: confirm
+    label: "Create an executable?"
+    description: "Add a binary in exe/ so the gem can be run as a command."
+    flag_true: --exe
+    flag_false: --no-exe
+    default: false
+
+  - name: coc
+    type: confirm
+    label: "Add a code of conduct?"
+    description: "Add a CODE_OF_CONDUCT.md template for contributors."
+    flag_true: --coc
+    flag_false: --no-coc
+    default: false
+
+  - name: changelog
+    type: confirm
+    label: "Add a changelog?"
+    description: "Add a CHANGELOG.md to track release notes."
+    flag_true: --changelog
+    flag_false: --no-changelog
+    versions: ">= 2.2.8"
+    default: false
+
+  - name: ext
+    type: select
+    label: "Which native extension?"
+    description: "Generate native extension scaffolding for the chosen language."
+    flag: --ext
+    allow_none: true
+    flag_none: --no-ext
+    choices:
+      - value: c
+        label: C
+        description: "C extension scaffolding."
+      - value: rust
+        label: Rust
+        description: "Rust extension scaffolding (magnus based)."
+        versions: ">= 2.4.0"
+      - value: go
+        label: Go
+        description: "Go extension scaffolding (go-gem-wrapper based)."
+        versions: ">= 4.0.0"
+
+  - name: git
+    type: confirm
+    label: "Initialize a git repository?"
+    description: "Run git init inside the new gem directory."
+    flag_true: --git
+    flag_false: --no-git
+    versions: ">= 2.1.0"
+    default: true
+
+  - name: github_username
+    type: input
+    label: "GitHub username"
+    description: "Fill in the GitHub username on the README and gemspec URLs (optional)."
+    flag: --github-username
+    versions: ">= 2.2.16"
+
+  - name: mit
+    type: confirm
+    label: "Add an MIT license?"
+    description: "Add a LICENSE.txt with the MIT license."
+    flag_true: --mit
+    flag_false: --no-mit
+    default: false
+
+  - name: test
+    type: select
+    label: "Which test framework?"
+    description: "Generate test scaffolding for the chosen framework."
+    flag: --test
+    allow_none: true
+    flag_none: --no-test
+    choices:
+      - value: minitest
+        label: Minitest
+        description: "Lightweight test framework bundled with Ruby."
+      - value: rspec
+        label: RSpec
+        description: "Expressive BDD-style testing framework."
+      - value: test-unit
+        label: Test::Unit
+        description: "xUnit-style framework from the Ruby standard family."
+        versions: ">= 2.2.0"
+
+  - name: ci
+    type: select
+    label: "Which CI provider?"
+    description: "Generate a continuous integration config for the chosen service."
+    flag: --ci
+    versions: ">= 2.2.0"
+    allow_none: true
+    flag_none: --no-ci
+    choices:
+      - value: github
+        label: GitHub Actions
+        description: "Generate .github/workflows/main.yml."
+      - value: gitlab
+        label: GitLab CI
+        description: "Generate .gitlab-ci.yml."
+      - value: circle
+        label: CircleCI
+        description: "Generate .circleci/config.yml."
+
+  - name: rubocop
+    type: confirm
+    label: "Add RuboCop?"
+    description: "Add RuboCop to the gem (pre-2.2.31 Bundler; later versions use the linter option)."
+    flag_true: --rubocop
+    flag_false: --no-rubocop
+    versions: ">= 2.2.0, < 2.2.31"
+    default: false
+
+  - name: linter
+    type: select
+    label: "Which linter and formatter?"
+    description: "Add the chosen linter to the gem's development dependencies."
+    flag: --linter
+    versions: ">= 2.2.31"
+    allow_none: true
+    flag_none: --no-linter
+    choices:
+      - value: rubocop
+        label: RuboCop
+        description: "Configurable Ruby linter and formatter."
+      - value: standard
+        label: Standard
+        description: "RuboCop preset with no configuration to bikeshed."
+
+  - name: edit
+    type: input
+    label: "Editor command"
+    description: "Open the generated gemspec in this editor after creating (optional)."
+    flag: --edit
+
+  - name: bundle
+    type: confirm
+    label: "Run bundle install?"
+    description: "Run bundle install after generating the gem."
+    flag_true: --bundle
+    flag_false: --no-bundle
+    versions: ">= 2.7.0"
+    default: false
