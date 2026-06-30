@@ -136,6 +136,16 @@ options:
         label: Propshaft
         description: "Modern, simpler asset pipeline replacement."
 
+  - name: skip_asset_pipeline
+    type: confirm
+    label: "Skip asset pipeline?"
+    description: "Don't set up Propshaft for serving static assets."
+    flag: --skip-asset-pipeline
+    versions: ">= 8.0"
+    hide_when:
+      api: true
+    default: false
+
   - name: template
     type: input
     label: "Application template path"

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- rails-new wizard: expose `--skip-asset-pipeline` on Rails 8.x via a version-gated
+  toggle (the asset-pipeline selector is `< 8.0` only, so 8.x had no way to skip it)
+
 ## [0.1.0] - 2026-04-02
 
 Initial public release.
