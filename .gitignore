@@ -3,7 +3,7 @@
 *.out
 .DS_Store
 .plans/
-docs/superpowers/
+docs/
 dist/
 graphify-out/
 .compound-engineering/
