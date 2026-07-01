@@ -143,7 +143,9 @@ func FormatAnswer(opt *config.Option, val config.FieldValue) string {
 			}
 		}
 		return strings.Join(labels, ", ")
-	case config.OptionInput:
+	case config.OptionPassword:
+		return config.SecretMask
+	case config.OptionInput, config.OptionNumber:
 		// fall through to default
 	}
 	return val.Scalar()
@@ -168,7 +170,7 @@ func resolveDefault(opt *config.Option, sources ...config.Values) *config.FieldV
 	case config.OptionConfirm:
 		v := config.BoolVal(false)
 		return &v
-	case config.OptionInput:
+	case config.OptionInput, config.OptionPassword, config.OptionNumber:
 		v := config.StringVal("")
 		return &v
 	case config.OptionMultiSelect:

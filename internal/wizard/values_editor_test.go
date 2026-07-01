@@ -9,6 +9,23 @@ import (
 	"github.com/svyatov/oz/internal/config"
 )
 
+func TestExcludeSecrets(t *testing.T) {
+	opts := []config.Option{
+		{Name: "user", Type: config.OptionInput},
+		{Name: "token", Type: config.OptionPassword},
+		{Name: "port", Type: config.OptionNumber},
+	}
+	got := excludeSecrets(opts)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 options, got %d", len(got))
+	}
+	for _, o := range got {
+		if o.Type == config.OptionPassword {
+			t.Errorf("password option %q leaked into editor list", o.Name)
+		}
+	}
+}
+
 func editorOptions() []config.Option {
 	return []config.Option{
 		{

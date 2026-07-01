@@ -54,6 +54,10 @@ func buildField(opt *config.Option) Field {
 		return NewInputField(*opt)
 	case config.OptionMultiSelect:
 		return NewMultiSelectField(*opt)
+	case config.OptionPassword:
+		return NewPasswordField(*opt)
+	case config.OptionNumber:
+		return NewNumberField(*opt)
 	default:
 		return NewInputField(*opt)
 	}

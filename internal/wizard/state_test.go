@@ -191,6 +191,8 @@ func TestFormatAnswer(t *testing.T) {
 			Choices: config.FlexChoices{{Value: "a", Label: "Alpha"}, {Value: "b", Label: "Beta"}},
 		}, config.StringsVal("a", "b"), "Alpha, Beta"},
 		{"input_fallback", config.Option{Type: config.OptionInput}, config.StringVal("hello"), "hello"},
+		{"password_redacted", config.Option{Type: config.OptionPassword}, config.StringVal("s3cr3t"), "****"},
+		{"number_scalar", config.Option{Type: config.OptionNumber}, config.StringVal("443"), "443"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

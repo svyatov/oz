@@ -198,7 +198,11 @@ func printOptionFlags(o config.Option) {
 
 func printOptionDetails(o config.Option) {
 	if o.Default != nil {
-		fmt.Printf("         %s %s\n", ui.MutedStyle.Render("Default:"), o.Default.Display())
+		def := o.Default.Display()
+		if o.Type == config.OptionPassword {
+			def = config.SecretMask
+		}
+		fmt.Printf("         %s %s\n", ui.MutedStyle.Render("Default:"), def)
 	}
 	if o.Required {
 		fmt.Printf("         %s yes\n", ui.MutedStyle.Render("Required:"))
@@ -274,6 +278,7 @@ func pinsListCmd(wizardName string) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("loading pins: %w", err)
 			}
+			pins = stripSecrets(w, pins) // never surface a stale on-disk secret.
 			pinnedVer, _ := st.LoadPinnedVersion(w.Name)
 			if pinnedVer == "" && len(pins) == 0 {
 				ui.InfoMsgf("No pins set")
@@ -411,6 +416,7 @@ Use --verbose to include labels, descriptions, and choice annotations.`,
 			if err != nil {
 				return fmt.Errorf("loading preset %q: %w", args[0], err)
 			}
+			values = stripSecrets(w, values) // never surface a stale on-disk secret.
 
 			detectedVersion, _ := compat.DetectVersion(w.Version)
 			w.Command = w.EffectiveCommand(detectedVersion)
@@ -498,7 +504,7 @@ unless --force is set.`,
 				}
 			}
 
-			if err := st.SavePreset(wizardName, args[0], state.LastUsed); err != nil {
+			if err := st.SavePreset(wizardName, args[0], stripSecrets(w, state.LastUsed)); err != nil {
 				return fmt.Errorf("saving preset %q: %w", args[0], err)
 			}
 			ui.SuccessMsgf("Preset %q saved", args[0])

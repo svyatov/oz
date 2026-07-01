@@ -402,6 +402,9 @@ func validateCmd() *cobra.Command {
 			if len(errs) > 0 {
 				return fmt.Errorf("validation errors:\n%s", config.FormatErrors(errs))
 			}
+			for _, warn := range config.Warnings(w) {
+				ui.WarnMsgf("%s", warn)
+			}
 			ui.SuccessMsgf("%s is valid", w.Name)
 			return nil
 		},

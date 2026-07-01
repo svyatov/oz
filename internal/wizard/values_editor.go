@@ -25,6 +25,19 @@ type ValuesEditor struct {
 	showRequired bool // show * marker on required options
 }
 
+// excludeSecrets drops password-typed options so secrets never appear as
+// editable or pinnable rows in the pins/presets TUIs — a never-persisted value
+// is meaningless to pin or preset, and showing it masked risks landing plaintext.
+func excludeSecrets(options []config.Option) []config.Option {
+	filtered := make([]config.Option, 0, len(options))
+	for _, o := range options {
+		if o.Type != config.OptionPassword {
+			filtered = append(filtered, o)
+		}
+	}
+	return filtered
+}
+
 // NewValuesEditor creates a ValuesEditor for the given options and values.
 func NewValuesEditor(
 	options []config.Option, values, lastUsed config.Values, hints map[string]string,
@@ -152,7 +165,7 @@ func (e *ValuesEditor) ToggleValue(idx int) tea.Cmd {
 
 	opt := &e.options[idx]
 	val := resolveDefault(opt, e.values, e.lastUsed)
-	if opt.Type == config.OptionInput && !e.isValidInputValue(opt, val) {
+	if needsToggleValidation(opt.Type) && !isValidToggleValue(opt, val) {
 		return e.EnterEdit(idx)
 	}
 	if val != nil {
@@ -161,7 +174,15 @@ func (e *ValuesEditor) ToggleValue(idx int) tea.Cmd {
 	return nil
 }
 
-func (e *ValuesEditor) isValidInputValue(opt *config.Option, val *config.FieldValue) bool {
+// needsToggleValidation reports whether toggling an option on must validate the
+// resolved value before setting it (text/numeric fields), rather than blindly set.
+func needsToggleValidation(t config.OptionType) bool {
+	return t == config.OptionInput || t == config.OptionNumber
+}
+
+// isValidToggleValue validates a resolved default against the option's field
+// rules (pattern/length for input, numeric bounds for number).
+func isValidToggleValue(opt *config.Option, val *config.FieldValue) bool {
 	if val == nil {
 		return !opt.Required
 	}
@@ -169,12 +190,15 @@ func (e *ValuesEditor) isValidInputValue(opt *config.Option, val *config.FieldVa
 	if opt.Required && s == "" {
 		return false
 	}
-	if opt.Validate == nil || s == "" {
+	if s == "" {
 		return true
 	}
-	f := NewInputField(config.Option{Validate: opt.Validate, Required: opt.Required})
+	f := buildField(opt)
 	f.SetValue(*val)
-	return f.validate() == ""
+	if vf, ok := f.(interface{ validate() string }); ok {
+		return vf.validate() == ""
+	}
+	return true
 }
 
 // cyclableValues returns the ordered values for cycling through an option.
@@ -192,7 +216,7 @@ func cyclableValues(opt *config.Option) []config.FieldValue {
 		return vals
 	case config.OptionConfirm:
 		return []config.FieldValue{config.BoolVal(true), config.BoolVal(false)}
-	case config.OptionInput, config.OptionMultiSelect:
+	case config.OptionInput, config.OptionMultiSelect, config.OptionPassword, config.OptionNumber:
 		return nil
 	}
 	return nil

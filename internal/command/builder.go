@@ -21,15 +21,16 @@ const (
 
 // Part is a tagged segment of the built command.
 type Part struct {
-	Text string
-	Kind PartKind
+	Text   string
+	Kind   PartKind
+	Secret bool // password flag: mask the value in human-facing renderers only.
 }
 
 // Build constructs the full CLI command from the wizard config and answers.
 func Build(w *config.Wizard, answers config.Values) []Part {
 	var parts []Part
 	for s := range strings.FieldsSeq(w.Command) {
-		parts = append(parts, Part{s, PartCommand})
+		parts = append(parts, Part{Text: s, Kind: PartCommand})
 	}
 
 	// Collect positional options (emitted between command and flags)
@@ -45,14 +46,15 @@ func Build(w *config.Wizard, answers config.Values) []Part {
 		if opt.Positional {
 			s := val.Scalar()
 			if s != "" && s != config.NoneValue {
-				positionalParts = append(positionalParts, Part{s, PartArg})
+				positionalParts = append(positionalParts, Part{Text: s, Kind: PartArg})
 			}
 			continue
 		}
 
+		secret := opt.Type == config.OptionPassword
 		flags := buildOptionFlags(opt, val, defaultStyle)
 		for _, f := range flags {
-			parts = append(parts, Part{f, PartFlag})
+			parts = append(parts, Part{Text: f, Kind: PartFlag, Secret: secret})
 		}
 	}
 
@@ -102,12 +104,14 @@ func formatCommandColored(parts []Part) string {
 		case PartArg:
 			b.WriteString(highlightStyle.Render(p.Text))
 		case PartFlag:
-			if eqIdx := strings.Index(p.Text, "="); eqIdx >= 0 {
-				flag := p.Text[:eqIdx+1]
-				val := p.Text[eqIdx+1:]
-				b.WriteString(flagStyle.Render(flag) + ui.CompletedStepAnswer(val))
-			} else {
+			flag, val, hasVal := splitFlag(p.Text, p.Secret)
+			if !hasVal {
 				b.WriteString(flagStyle.Render(p.Text))
+			} else {
+				if p.Secret {
+					val = config.SecretMask
+				}
+				b.WriteString(flagStyle.Render(flag) + ui.CompletedStepAnswer(val))
 			}
 		case PartExtra:
 			b.WriteString(highlightStyle.Render(p.Text))
@@ -119,7 +123,7 @@ func formatCommandColored(parts []Part) string {
 // AppendExtra appends passthrough args (from --) as PartExtra parts.
 func AppendExtra(parts []Part, extra []string) []Part {
 	for _, e := range extra {
-		parts = append(parts, Part{e, PartExtra})
+		parts = append(parts, Part{Text: e, Kind: PartExtra})
 	}
 	return parts
 }
@@ -141,10 +145,16 @@ func buildOptionFlags(opt config.Option, val config.FieldValue, defaultStyle con
 		return buildConfirmFlags(opt, val)
 	case config.OptionSelect:
 		return buildSelectFlags(opt, val, style)
-	case config.OptionInput:
+	case config.OptionInput, config.OptionNumber:
 		return buildInputFlags(opt, val, style)
 	case config.OptionMultiSelect:
 		return buildMultiSelectFlags(opt, val, style)
+	case config.OptionPassword:
+		// An env-delivered secret emits no argv token; env wins over flag.
+		if opt.SecretEnv != "" {
+			return nil
+		}
+		return buildInputFlags(opt, val, style)
 	}
 	return nil
 }
@@ -207,6 +217,24 @@ func buildMultiSelectFlags(opt config.Option, val config.FieldValue, style confi
 		flags = append(flags, formatFlag(opt.Flag, v, style))
 	}
 	return flags
+}
+
+// splitFlag separates a flag part into its flag and value for colored rendering.
+// For secrets it splits on the earliest delimiter (space before "="), so a
+// space-style secret whose value contains "=" (e.g. a base64 token) masks the
+// whole value rather than leaking the pre-"=" prefix. Non-secret flags split on
+// "=" only, preserving how space-style flags render.
+func splitFlag(text string, secret bool) (flag, val string, hasVal bool) {
+	eq := strings.Index(text, "=")
+	if secret {
+		if sp := strings.Index(text, " "); sp >= 0 && (eq < 0 || sp < eq) {
+			return text[:sp+1], text[sp+1:], true
+		}
+	}
+	if eq >= 0 {
+		return text[:eq+1], text[eq+1:], true
+	}
+	return text, "", false
 }
 
 func formatFlag(flag, value string, style config.FlagStyle) string {

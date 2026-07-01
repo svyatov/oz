@@ -16,12 +16,14 @@ const (
 	OptionConfirm     OptionType = "confirm"
 	OptionInput       OptionType = "input"
 	OptionMultiSelect OptionType = "multi_select"
+	OptionPassword    OptionType = "password"
+	OptionNumber      OptionType = "number"
 )
 
 // IsValid reports whether t is a recognized option type.
 func (t OptionType) IsValid() bool {
 	switch t {
-	case OptionSelect, OptionConfirm, OptionInput, OptionMultiSelect:
+	case OptionSelect, OptionConfirm, OptionInput, OptionMultiSelect, OptionPassword, OptionNumber:
 		return true
 	default:
 		return false
@@ -38,6 +40,10 @@ const (
 
 // NoneValue is the sentinel value for "no selection" in select fields.
 const NoneValue = "_none"
+
+// SecretMask is the placeholder shown wherever a password value would otherwise
+// be displayed. Its value must never appear in an executed command.
+const SecretMask = "****"
 
 // Wizard is the top-level YAML config for a wizard.
 type Wizard struct {
@@ -81,6 +87,8 @@ func (w *Wizard) EffectiveCommand(version string) string {
 type Option struct {
 	Default     *FieldValue `yaml:"default,omitempty"`
 	Validate    *InputRule  `yaml:"validate"`
+	Min         *float64    `yaml:"min,omitempty"` // number: inclusive lower bound
+	Max         *float64    `yaml:"max,omitempty"` // number: inclusive upper bound
 	ShowWhen    Values      `yaml:"show_when,omitempty"`
 	HideWhen    Values      `yaml:"hide_when,omitempty"`
 	FlagNone    string      `yaml:"flag_none"`
@@ -93,6 +101,7 @@ type Option struct {
 	Name        string      `yaml:"name"`
 	Versions    string      `yaml:"versions"`
 	Separator   string      `yaml:"separator"`
+	SecretEnv   string      `yaml:"secret_env"` // password: deliver via this env var, not argv
 	FlagStyle   FlagStyle   `yaml:"flag_style"`
 	ChoicesFrom string      `yaml:"choices_from"`
 	Choices     FlexChoices `yaml:"choices"`

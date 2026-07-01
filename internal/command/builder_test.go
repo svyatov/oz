@@ -105,6 +105,12 @@ func TestBuildInputFlags(t *testing.T) {
 	}
 }
 
+func TestBuildOptionFlagsNumber(t *testing.T) {
+	opt := config.Option{Type: config.OptionNumber, Flag: "--port"}
+	assertStringSlice(t, buildOptionFlags(opt, config.StringVal("443"), "equals"), []string{"--port=443"})
+	assertStringSlice(t, buildOptionFlags(opt, config.StringVal(""), "equals"), nil)
+}
+
 func TestBuildMultiSelectFlags(t *testing.T) {
 	tests := []struct {
 		name string
@@ -194,7 +200,7 @@ func stripANSI(s string) string {
 
 func TestRun(t *testing.T) {
 	t.Run("empty_parts", func(t *testing.T) {
-		err := Run(nil)
+		err := RunWithEnv(nil, nil)
 		if err == nil || !strings.Contains(err.Error(), "empty command") {
 			t.Errorf("got %v, want error containing %q", err, "empty command")
 		}
@@ -215,6 +221,68 @@ func TestFormatCommandColored(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
 		}
+	}
+}
+
+func TestFormatCommandColored_secretMasked(t *testing.T) {
+	t.Run("equals_style", func(t *testing.T) {
+		parts := []Part{
+			{Text: "gh", Kind: PartCommand},
+			{Text: "--token=abc123", Kind: PartFlag, Secret: true},
+			{Text: "--repo=oz", Kind: PartFlag},
+		}
+		got := stripANSI(formatCommandColored(parts))
+		if strings.Contains(got, "abc123") {
+			t.Errorf("secret leaked: %q", got)
+		}
+		if !strings.Contains(got, "--token=****") {
+			t.Errorf("expected masked --token=****, got %q", got)
+		}
+		if !strings.Contains(got, "--repo=oz") {
+			t.Errorf("non-secret flag altered: %q", got)
+		}
+	})
+
+	t.Run("space_style", func(t *testing.T) {
+		parts := []Part{
+			{Text: "gh", Kind: PartCommand},
+			{Text: "--token abc123", Kind: PartFlag, Secret: true},
+		}
+		got := stripANSI(formatCommandColored(parts))
+		if strings.Contains(got, "abc123") {
+			t.Errorf("space-style secret leaked: %q", got)
+		}
+		if !strings.Contains(got, "--token ****") {
+			t.Errorf("expected masked --token ****, got %q", got)
+		}
+	})
+
+	t.Run("space_style_value_with_equals", func(t *testing.T) {
+		// A base64/k=v secret must mask whole, not leak the pre-"=" prefix.
+		parts := []Part{
+			{Text: "gh", Kind: PartCommand},
+			{Text: "--token sk-abc=xyz", Kind: PartFlag, Secret: true},
+		}
+		got := stripANSI(formatCommandColored(parts))
+		if strings.Contains(got, "sk-abc") {
+			t.Errorf("space-style secret prefix leaked: %q", got)
+		}
+		if !strings.Contains(got, "--token ****") {
+			t.Errorf("expected masked --token ****, got %q", got)
+		}
+	})
+}
+
+func TestSecretFidelityRaw(t *testing.T) {
+	parts := []Part{
+		{Text: "gh", Kind: PartCommand},
+		{Text: "--token=abc123", Kind: PartFlag, Secret: true},
+	}
+	if got := FormatCommand(parts); !strings.Contains(got, "abc123") {
+		t.Errorf("FormatCommand must keep real secret for harness goldens, got %q", got)
+	}
+	if got := PlainParts(parts); !slices.Contains(got, "--token=abc123") {
+		t.Errorf("PlainParts must keep real secret for exec, got %v", got)
 	}
 }
 

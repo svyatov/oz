@@ -392,7 +392,8 @@ func TestReconcilePresets(t *testing.T) {
 		"c": {"z": config.StringVal("new")},
 	}
 
-	if err := reconcilePresets(st, "wiz", []string{"a", "b"}, final); err != nil {
+	w := &config.Wizard{Name: "wiz"}
+	if err := reconcilePresets(st, w, []string{"a", "b"}, final); err != nil {
 		t.Fatalf("reconcilePresets: %v", err)
 	}
 

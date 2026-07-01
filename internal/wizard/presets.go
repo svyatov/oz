@@ -536,6 +536,7 @@ func RunPresets(
 	lastUsed config.Values,
 	hints map[string]string,
 ) (*PresetsResult, error) {
+	options = excludeSecrets(options) // password rows never appear in the editor.
 	// Deep copy presets so we don't mutate the caller's map.
 	working := make(map[string]config.Values, len(presets))
 	for k, v := range presets {

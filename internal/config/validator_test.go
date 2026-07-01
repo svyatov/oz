@@ -172,7 +172,81 @@ func versionControlCases() []validationCase {
 func newFeatureCases() []validationCase {
 	cases := choicesCases()
 	cases = append(cases, constraintCases()...)
+	cases = append(cases, numberCases()...)
 	return cases
+}
+
+func numberCases() []validationCase {
+	return []validationCase{
+		{"number_valid_type", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+		}, ""},
+		{"password_valid_type", func(w *Wizard) {
+			w.Options[0].Type = OptionPassword
+		}, ""},
+		{"number_min_max_valid", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+			w.Options[0].Min = new(1.0)
+			w.Options[0].Max = new(65535.0)
+		}, ""},
+		{"number_min_only_valid", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+			w.Options[0].Min = new(0.0)
+		}, ""},
+		{"number_max_only_valid", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+			w.Options[0].Max = new(10.0)
+		}, ""},
+		{"number_min_exceeds_max", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+			w.Options[0].Min = new(10.0)
+			w.Options[0].Max = new(1.0)
+		}, "min (10) exceeds max (1)"},
+		{"min_on_non_number", func(w *Wizard) {
+			w.Options[0].Min = new(1.0)
+		}, "min/max are only valid for number type"},
+		{"validate_on_number_valid", func(w *Wizard) {
+			w.Options[0].Type = OptionNumber
+			w.Options[0].Validate = &InputRule{Pattern: `^\d+$`}
+		}, ""},
+		{"secret_env_valid", func(w *Wizard) {
+			w.Options[0].Type = OptionPassword
+			w.Options[0].SecretEnv = "GH_TOKEN"
+		}, ""},
+		{"secret_env_on_non_password", func(w *Wizard) {
+			w.Options[0].SecretEnv = "GH_TOKEN"
+		}, "secret_env is only valid for password type"},
+		{"secret_env_invalid_name", func(w *Wizard) {
+			w.Options[0].Type = OptionPassword
+			w.Options[0].SecretEnv = "GH-TOKEN"
+		}, "is not a valid environment variable name"},
+	}
+}
+
+func TestWarnings(t *testing.T) {
+	t.Run("secret_env_and_flag", func(t *testing.T) {
+		w := &Wizard{
+			Name: "t", Command: "cmd",
+			Options: []Option{{
+				Name: "tok", Type: OptionPassword, Label: "Token",
+				SecretEnv: "GH_TOKEN", Flag: "--token",
+			}},
+		}
+		warns := Warnings(w)
+		if len(warns) != 1 || !strings.Contains(warns[0], "both secret_env and flag") {
+			t.Errorf("expected both-set warning, got %v", warns)
+		}
+	})
+
+	t.Run("no_warning_env_only", func(t *testing.T) {
+		w := &Wizard{
+			Name: "t", Command: "cmd",
+			Options: []Option{{Name: "tok", Type: OptionPassword, Label: "Token", SecretEnv: "GH_TOKEN"}},
+		}
+		if warns := Warnings(w); len(warns) != 0 {
+			t.Errorf("expected no warnings, got %v", warns)
+		}
+	})
 }
 
 func choicesCases() []validationCase {
@@ -222,6 +296,10 @@ func constraintCases() []validationCase {
 		{"positional_valid", func(w *Wizard) {
 			w.Options[0].Positional = true
 		}, ""},
+		{"positional_password_rejected", func(w *Wizard) {
+			w.Options[0].Type = OptionPassword
+			w.Options[0].Positional = true
+		}, "positional is not allowed for password type"},
 		{"hide_when_unknown_option", func(w *Wizard) {
 			w.Options[0].HideWhen = Values{"nonexistent": BoolVal(true)}
 		}, "hide_when references unknown option"},

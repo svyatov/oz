@@ -355,6 +355,7 @@ func (m *PinsModel) handleVersionVerified(msg versionVerifiedMsg) (tea.Model, te
 
 // RunPins shows the interactive pin management UI and returns updated pins.
 func RunPins(p PinsParams) (*PinsResult, error) {
+	p.Options = excludeSecrets(p.Options) // password rows never appear in the editor.
 	pins := make(config.Values, len(p.Pins))
 	maps.Copy(pins, p.Pins)
 
