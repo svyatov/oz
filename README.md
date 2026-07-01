@@ -157,6 +157,35 @@ options:
 - **multi_select** -- multiple choices with optional `separator`
 - **confirm** -- yes/no toggle (`flag`, `flag_true`, `flag_false`)
 - **input** -- free-text entry with optional `validate` (pattern, min/max length)
+- **password** -- masked entry for secrets; redacted in oz's output and never persisted (see below)
+- **number** -- integer/float entry with optional inclusive `min`/`max` bounds
+
+### Password Fields and Secret Delivery
+
+A `password` option masks its input, shows `****` everywhere oz prints a command or answer
+(dry-run, confirmation prompt, values editor, `oz run show`), and is **never** written to
+last-used state, presets, or pins — every run re-prompts for it.
+
+```yaml
+  - name: token
+    type: password
+    label: API token
+    secret_env: GH_TOKEN   # deliver via env var instead of argv
+```
+
+- **With `secret_env`:** oz sets `GH_TOKEN=<value>` in the executed command's environment and emits
+  nothing for the option into `argv`. On **Linux** this keeps the secret off the world-readable
+  process list (`/proc/<pid>/cmdline` is world-readable; `/proc/<pid>/environ` is owner/root-only).
+  macOS/BSD have no `/proc` and restrict cross-user `ps` by default, so env delivery is *no less
+  private than* a flag everywhere and *strictly more private* on Linux — but "off the process list"
+  is a Linux-specific guarantee.
+- **Without `secret_env`:** the value is passed as the option's normal flag (`--token <value>`).
+  oz still masks it in its own output, but a flag value is inherent to CLI argument passing and
+  **remains visible in the executed process's `argv`** — a documented limitation, not a defect.
+- **Tradeoff:** env delivery hands the secret to the wrapped process *and every child it spawns*
+  (env is inherited; argv is per-process), so a descendant that logs or crash-dumps its environment
+  can re-expose it. If both `secret_env` and `flag` are set, env delivery wins (nothing is emitted
+  to `argv`) and oz prints a warning.
 
 ### Configuration
 

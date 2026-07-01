@@ -16,6 +16,7 @@ import (
 type InputField struct {
 	rule            *config.InputRule
 	compiledPattern *regexp.Regexp
+	validateFn      func() string // entry validator; nil falls back to validate (set by NumberField).
 	label           string
 	description     string
 	errMsg          string
@@ -47,7 +48,7 @@ func (f *InputField) Init() tea.Cmd {
 func (f *InputField) Update(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch msg.String() {
 	case keyEnter, keyTab:
-		if err := f.validate(); err != "" {
+		if err := f.validateEntry(); err != "" {
 			f.errMsg = err
 			return false, nil
 		}
@@ -77,6 +78,15 @@ func (f *InputField) Value() config.FieldValue { return config.StringVal(f.ti.Va
 
 func (f *InputField) SetValue(v config.FieldValue) {
 	f.ti.SetValue(v.Scalar())
+}
+
+// validateEntry runs the field's entry validator: the numeric validator when
+// set (NumberField), otherwise the default input rules.
+func (f *InputField) validateEntry() string {
+	if f.validateFn != nil {
+		return f.validateFn()
+	}
+	return f.validate()
 }
 
 func (f *InputField) validate() string {

@@ -93,7 +93,7 @@ func validateOptions(options []Option, errs *errorCollector) map[string]bool {
 
 func validateOptionFields(o Option, prefix string, errs *errorCollector) {
 	if !o.Type.IsValid() {
-		errs.addf("%s: type must be one of select, confirm, input, multi_select; got %q", prefix, o.Type)
+		errs.addf("%s: type must be one of select, confirm, input, multi_select, password, number; got %q", prefix, o.Type)
 	}
 	if o.Label == "" {
 		errs.addf("%s: label is required", prefix)
@@ -105,6 +105,35 @@ func validateOptionFields(o Option, prefix string, errs *errorCollector) {
 	validateOptionChoices(o, prefix, errs)
 	validateOptionTypeConstraints(o, prefix, errs)
 	validateOptionSemantics(o, prefix, errs)
+	validateSecretEnv(o, prefix, errs)
+}
+
+// envVarNameRe matches a POSIX-style environment variable name.
+var envVarNameRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+func validateSecretEnv(o Option, prefix string, errs *errorCollector) {
+	if o.SecretEnv == "" {
+		return
+	}
+	if o.Type != OptionPassword {
+		errs.addf("%s: secret_env is only valid for password type", prefix)
+	}
+	if !envVarNameRe.MatchString(o.SecretEnv) {
+		errs.addf("%s: secret_env %q is not a valid environment variable name", prefix, o.SecretEnv)
+	}
+}
+
+// Warnings returns non-fatal configuration warnings. They are surfaced to stderr
+// on both the run path (config load) and `oz validate`, but never block loading.
+func Warnings(w *Wizard) []string {
+	var warns []string
+	for i, o := range w.Options {
+		if o.Type == OptionPassword && o.SecretEnv != "" && o.Flag != "" {
+			warns = append(warns, optionPrefix(i, o.Name)+
+				": both secret_env and flag are set; env delivery wins and the flag is not emitted")
+		}
+	}
+	return warns
 }
 
 func validateOptionChoices(o Option, prefix string, errs *errorCollector) {
@@ -128,15 +157,29 @@ func validateOptionTypeConstraints(o Option, prefix string, errs *errorCollector
 		errs.addf("%s: separator is only valid for multi_select type", prefix)
 	}
 	if o.Validate != nil {
-		if o.Type != OptionInput {
-			errs.addf("%s: validate is only valid for input type", prefix)
+		if o.Type != OptionInput && o.Type != OptionPassword && o.Type != OptionNumber {
+			errs.addf("%s: validate is only valid for input, password, or number types", prefix)
 		}
 		validateInputRule(o.Validate, prefix, errs)
 	}
 	if o.Positional && (o.Flag != "" || o.FlagTrue != "" || o.FlagFalse != "") {
 		errs.addf("%s: positional is mutually exclusive with flag, flag_true, flag_false", prefix)
 	}
+	if o.Positional && o.Type == OptionPassword {
+		errs.addf("%s: positional is not allowed for password type (cannot mask a positional secret)", prefix)
+	}
+	validateNumberBounds(o, prefix, errs)
 	validateFieldTypeRestrictions(o, prefix, errs)
+}
+
+func validateNumberBounds(o Option, prefix string, errs *errorCollector) {
+	if o.Type != OptionNumber && (o.Min != nil || o.Max != nil) {
+		errs.addf("%s: min/max are only valid for number type", prefix)
+		return
+	}
+	if o.Min != nil && o.Max != nil && *o.Min > *o.Max {
+		errs.addf("%s: min (%v) exceeds max (%v)", prefix, *o.Min, *o.Max)
+	}
 }
 
 func validateFieldTypeRestrictions(o Option, prefix string, errs *errorCollector) {

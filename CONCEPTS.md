@@ -13,8 +13,10 @@ detection, and an ordered list of options.
 
 ### Option
 One step in a wizard — a single question whose answer contributes to the built command. An option
-has a type (select, confirm, input, or multi-select) that determines how its answer renders: as a
-flag with a value, a boolean flag, repeated flags, or a positional argument.
+has a type (select, confirm, input, multi-select, password, or number) that determines how its
+answer renders: as a flag with a value, a boolean flag, repeated flags, or a positional argument.
+A `password` is masked, redacted in oz's own output, and never persisted; a `number` accepts
+integer/float input with optional `min`/`max` bounds.
 
 ### Built command
 The shell command a wizard produces from its answers, assembled as an ordered sequence of tagged

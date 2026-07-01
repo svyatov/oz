@@ -88,6 +88,21 @@ options:
   #       label: Option A
   #     - value: b
   #       label: Option B
+
+  # Password: masked entry, redacted in output, never persisted
+  # - name: example_password
+  #   type: password
+  #   label: API token
+  #   # flag: --token             # passed in argv (visible in the process list)
+  #   # secret_env: API_TOKEN     # OR deliver via env var, off argv (Linux: off the process list)
+
+  # Number: integer/float with optional inclusive bounds
+  # - name: example_number
+  #   type: number
+  #   label: Port
+  #   flag: --port
+  #   # min: 1
+  #   # max: 65535
 `
 
 func wizardTemplate(name string) string {

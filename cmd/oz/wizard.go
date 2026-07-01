@@ -54,6 +54,9 @@ func loadWizardConfig(name string) (*config.Wizard, error) {
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("invalid wizard config:\n%s", config.FormatErrors(errs))
 	}
+	for _, warn := range config.Warnings(w) {
+		ui.WarnMsgf("%s", warn)
+	}
 	return w, nil
 }
 
@@ -100,6 +103,7 @@ func runWizardLoop(
 			ui.WarnMsgf("failed to load state: %v", err)
 			state = &store.StateEntry{}
 		}
+		state.LastUsed = stripSecrets(w, state.LastUsed) // drop any pre-feature secret on disk.
 
 		if presetName != "" {
 			return nil, runWithPreset(w, st, presetName, dryRun, extraArgs)
@@ -107,7 +111,7 @@ func runWizardLoop(
 
 		// Load version-independent pins, keep only those matching filtered options.
 		allPins, _ := st.LoadPins(w.Name)
-		activePins := filterActivePins(allPins, options)
+		activePins := filterActivePins(stripSecrets(w, allPins), options)
 
 		filteredOptions, pinnedCount := wizard.FilterPinned(options, activePins)
 		pinnedValues := make(config.Values)
@@ -168,28 +172,43 @@ func runWizard(name string, presetName string, dryRun bool, extraArgs []string) 
 
 	parts := command.Build(w, allAnswers)
 	parts = command.AppendExtra(parts, rawExtra)
-	saveLastUsed(st, w.Name, majorVersion, s.state, s.result.Values)
+	saveLastUsed(st, w.Name, majorVersion, s.state, stripSecrets(w, s.result.Values))
 	if dryRun {
 		command.PrintCommand(parts)
 		return nil
 	}
 	command.PrintCommand(parts)
-	return confirmAndExecute(st, w.Name, parts, allAnswers)
+	return confirmAndExecute(st, w, parts, allAnswers, command.SecretEnv(w, allAnswers))
 }
 
 func confirmAndExecute(
-	st *store.Store, wizardName string,
-	parts []command.Part, allAnswers config.Values,
+	st *store.Store, w *config.Wizard,
+	parts []command.Part, allAnswers config.Values, secretEnv []string,
 ) error {
 	if !confirmPrompt("Execute?", true) {
 		return nil
 	}
-	promptAndSavePreset(st, wizardName, allAnswers)
+	promptAndSavePreset(st, w, allAnswers)
 	fmt.Println()
-	if err := command.Run(command.PlainParts(parts)); err != nil {
+	if err := command.RunWithEnv(command.PlainParts(parts), secretEnv); err != nil {
 		return fmt.Errorf("executing command: %w", err)
 	}
 	return nil
+}
+
+// stripSecrets returns a copy of values with password-typed option values
+// removed. Passwords must never reach persisted state (last-used, presets, pins);
+// applied on both write and load so a pre-feature or retyped secret on disk is
+// dropped rather than restored.
+func stripSecrets(w *config.Wizard, values config.Values) config.Values {
+	out := make(config.Values, len(values))
+	maps.Copy(out, values)
+	for _, opt := range w.Options {
+		if opt.Type == config.OptionPassword {
+			delete(out, opt.Name)
+		}
+	}
+	return out
 }
 
 func saveLastUsed(
@@ -205,10 +224,10 @@ func saveLastUsed(
 	}
 }
 
-func promptAndSavePreset(st *store.Store, wizardName string, allAnswers config.Values) {
+func promptAndSavePreset(st *store.Store, w *config.Wizard, allAnswers config.Values) {
 	presetSaveName := promptPresetSave()
 	if presetSaveName != "" {
-		if err := st.SavePreset(wizardName, presetSaveName, allAnswers); err != nil {
+		if err := st.SavePreset(w.Name, presetSaveName, stripSecrets(w, allAnswers)); err != nil {
 			ui.WarnMsgf("failed to save preset: %v", err)
 		} else {
 			ui.SuccessMsgf("Preset %q saved", presetSaveName)
@@ -224,6 +243,7 @@ func runWithPreset(
 	if err != nil {
 		return fmt.Errorf("loading preset %q: %w", presetName, err)
 	}
+	values = stripSecrets(w, values) // a pre-feature preset must not deliver a stale secret.
 
 	matched, rawExtra := command.ParseExtra(w.Options, extraArgs)
 	maps.Copy(values, matched)
@@ -239,7 +259,7 @@ func runWithPreset(
 		return nil
 	}
 	command.PrintCommand(parts)
-	if err := command.Run(command.PlainParts(parts)); err != nil {
+	if err := command.RunWithEnv(command.PlainParts(parts), command.SecretEnv(w, values)); err != nil {
 		return fmt.Errorf("executing command: %w", err)
 	}
 	return nil
@@ -265,7 +285,7 @@ func runPresets(name string) error {
 			ui.WarnMsgf("failed to load preset %q: %v", pn, loadErr)
 			continue
 		}
-		presets[pn] = vals
+		presets[pn] = stripSecrets(w, vals)
 	}
 
 	// Load last-used for "copy from last-used" source.
@@ -277,28 +297,28 @@ func runPresets(name string) error {
 	}
 
 	hints := compat.OptionHints(w.Options)
-	result, err := wizard.RunPresets(w.Options, presets, state.LastUsed, hints)
+	result, err := wizard.RunPresets(w.Options, presets, stripSecrets(w, state.LastUsed), hints)
 	if err != nil {
 		return fmt.Errorf("managing presets: %w", err)
 	}
 
-	return reconcilePresets(st, w.Name, presetNames, result.Presets)
+	return reconcilePresets(st, w, presetNames, result.Presets)
 }
 
 func reconcilePresets(
-	st *store.Store, wizardName string,
+	st *store.Store, w *config.Wizard,
 	originalNames []string, final map[string]config.Values,
 ) error {
 	// Save all presets in final state.
 	for name, values := range final {
-		if err := st.SavePreset(wizardName, name, values); err != nil {
+		if err := st.SavePreset(w.Name, name, stripSecrets(w, values)); err != nil {
 			return fmt.Errorf("saving preset %q: %w", name, err)
 		}
 	}
 	// Remove presets that no longer exist.
 	for _, name := range originalNames {
 		if _, exists := final[name]; !exists {
-			if err := st.RemovePreset(wizardName, name); err != nil {
+			if err := st.RemovePreset(w.Name, name); err != nil {
 				ui.WarnMsgf("failed to remove preset %q: %v", name, err)
 			}
 		}
@@ -322,7 +342,7 @@ func runPins(name string) error {
 	st := store.New(configDir)
 
 	allPins, _ := st.LoadPins(w.Name)
-	pins := filterActivePins(allPins, w.Options)
+	pins := filterActivePins(stripSecrets(w, allPins), w.Options)
 
 	// Collect last-used for defaults.
 	detectedVersion, _ := compat.DetectVersion(w.Version)
@@ -339,7 +359,7 @@ func runPins(name string) error {
 	result, err := wizard.RunPins(wizard.PinsParams{
 		Options:             w.Options,
 		Pins:                pins,
-		LastUsed:            state.LastUsed,
+		LastUsed:            stripSecrets(w, state.LastUsed),
 		Hints:               hints,
 		HasCustomVersion:    hasCustomVersion,
 		VersionPin:          pinnedVer,
@@ -349,7 +369,7 @@ func runPins(name string) error {
 		return fmt.Errorf("managing pins: %w", err)
 	}
 
-	if err := st.SavePins(w.Name, result.Pins); err != nil {
+	if err := st.SavePins(w.Name, stripSecrets(w, result.Pins)); err != nil {
 		return fmt.Errorf("saving pins: %w", err)
 	}
 	if hasCustomVersion {

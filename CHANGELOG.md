@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `password` option type: masked entry that is redacted (`****`) everywhere oz displays a
+  command or answer (dry-run, confirmation prompt, values editor, `oz run show`), never written
+  to persisted state (last-used, presets, pins), and re-prompted every run. A `secret_env: NAME`
+  channel delivers the value through the child process environment instead of `argv`, keeping it
+  off the process list on Linux (see README for the flag-exposure limitation and platform scope)
+- `number` option type: accepts integer/float input with optional inclusive `min`/`max` bounds;
+  rejects non-numeric or out-of-range input, and omits its flag when left blank
 - `oz test [wizard]`: a hermetic snapshot harness that asserts a wizard's fixture answers
   build the expected command. Fixtures live in `wizards/testdata/<wizard>/` as a `<case>.yml`
   (pinned `version:` + `answers:`) and a sibling `<case>.golden`; `--update` regenerates the
