@@ -21,7 +21,9 @@ integer/float input with optional `min`/`max` bounds.
 ### Built command
 The shell command a wizard produces from its answers, assembled as an ordered sequence of tagged
 segments (the command words, positional arguments, and flags) rather than a raw string, so each
-segment can be styled, executed, or compared independently.
+segment can be styled, masked, executed, or compared independently. A segment carrying a secret is
+masked in every human-facing rendering while its true value is retained only for execution and
+hermetic comparison.
 
 ## Versioning
 
