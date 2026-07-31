@@ -1,6 +1,7 @@
 ---
 name: wizard-scaffold
 description: Scaffold a new oz wizard YAML config with proper structure, option types, and validation. Use when the user asks to create, scaffold, or generate a wizard config, wants to wrap a CLI tool with an interactive wizard, or mentions oz wizards, wizard YAML, or interactive CLI prompts.
+license: MIT
 ---
 
 # Wizard Scaffold
