@@ -1,6 +1,12 @@
 # oz
 
-Config-driven CLI wizard framework. Define interactive prompts in YAML, run them with [Bubbletea](https://github.com/charmbracelet/bubbletea), and execute the resulting shell commands.
+Config-driven CLI wizard framework for people who keep re-reading `--help`: describe a tool's flags once in YAML, then answer prompts instead of retyping the command.
+
+- **Scaffold from `--help`.** `oz generate <tool>` reads a tool's own help output and writes the wizard for you, tested against 59 real CLIs.
+- **Runs where you do.** macOS, Linux, and Windows, on amd64 and arm64.
+- **One binary, no runtime.** Nine direct dependencies, nothing to install alongside it.
+- **Six option types, four ready-made wizards.** select, multi-select, confirm, input, password, and number; rails-new, bundle-gem, docker-run, and git-switch.
+- **Wizards are regression tested.** `oz test` replays pinned fixtures and diffs the built command, with the wrapped tool never installed or run.
 
 <!-- TODO: Add demo GIF here -->
 <!-- ![oz demo](docs/demo.gif) -->
@@ -19,11 +25,11 @@ brew install svyatov/tap/oz
 go install github.com/svyatov/oz/cmd/oz@latest
 ```
 
-### Binary Download
+### Binary download
 
 Download pre-built binaries from the [Releases](https://github.com/svyatov/oz/releases) page.
 
-## Quick Start
+## Quick start
 
 ```bash
 oz create mywizard    # scaffold a new wizard YAML and open in $EDITOR
@@ -38,7 +44,7 @@ oz add rails-new      # download from registry
 oz run rails-new      # run it
 ```
 
-## Available Wizards
+## Available wizards
 
 Pre-built wizards are available in the [`wizards/`](wizards/) directory:
 
@@ -59,20 +65,23 @@ oz update <name>      # update to latest version
 
 The registry is this repository's [`wizards/`](wizards/) directory (indexed by [`index.yml`](index.yml)) on the `main` branch, so a wizard is installable as soon as it's merged here. Point `OZ_REGISTRY_URL` at another base URL to use a different source.
 
-### Contributing a Wizard
+### Contributing a wizard
 
 Have a CLI tool you use often? Wrap it in a wizard and share it:
 
 1. Create a YAML config: `oz create my-tool` or `oz generate my-tool`
 2. Test it: `oz validate my-tool && oz run my-tool`
-3. Add at least one fixture under `wizards/testdata/my-tool/` (required — CI
+3. Add at least one fixture under `wizards/testdata/my-tool/` (required: CI
    rejects a wizard without one) and generate its golden with `oz test my-tool
    --update --config-dir .`
 4. Submit a PR adding your file to the [`wizards/`](wizards/) directory
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details, including the fixture format.
 
-## Example Wizard
+## Example wizard
+
+A wizard is one YAML file in `~/.config/oz/wizards/`. Save this as
+`~/.config/oz/wizards/docker-run.yml` to wrap `docker run`:
 
 ```yaml
 name: docker-run
@@ -134,7 +143,7 @@ options:
 
 **Aliases:** `r` (run), `a` (add), `c`/`new` (create), `g`/`gen` (generate), `e` (edit), `rm` (remove), `l`/`ls` (list), `u` (update).
 
-### Per-Wizard Subcommands
+### Per-wizard subcommands
 
 | Command | Description |
 |---------|-------------|
@@ -151,20 +160,22 @@ options:
 
 ## Features
 
-### Option Types
+### Option types
 
-- **select** -- single choice from a list (`choices` or `choices_from`)
-- **multi_select** -- multiple choices with optional `separator`
-- **confirm** -- yes/no toggle (`flag`, `flag_true`, `flag_false`)
-- **input** -- free-text entry with optional `validate` (pattern, min/max length)
-- **password** -- masked entry for secrets; redacted in oz's output and never persisted (see below)
-- **number** -- integer/float entry with optional inclusive `min`/`max` bounds
+- **select**: single choice from a list (`choices` or `choices_from`)
+- **multi_select**: multiple choices with optional `separator`
+- **confirm**: yes/no toggle (`flag`, `flag_true`, `flag_false`)
+- **input**: free-text entry with optional `validate` (pattern, min/max length)
+- **password**: masked entry for secrets, redacted in oz's output and never persisted (see below)
+- **number**: integer/float entry with optional inclusive `min`/`max` bounds
 
-### Password Fields and Secret Delivery
+### Password fields and secret delivery
 
 A `password` option masks its input, shows `****` everywhere oz prints a command or answer
 (dry-run, confirmation prompt, values editor, `oz run show`), and is **never** written to
-last-used state, presets, or pins — every run re-prompts for it.
+last-used state, presets, or pins. Every run re-prompts for it.
+
+Under `options:` in the wizard's YAML file:
 
 ```yaml
   - name: token
@@ -177,11 +188,11 @@ last-used state, presets, or pins — every run re-prompts for it.
   nothing for the option into `argv`. On **Linux** this keeps the secret off the world-readable
   process list (`/proc/<pid>/cmdline` is world-readable; `/proc/<pid>/environ` is owner/root-only).
   macOS/BSD have no `/proc` and restrict cross-user `ps` by default, so env delivery is *no less
-  private than* a flag everywhere and *strictly more private* on Linux — but "off the process list"
-  is a Linux-specific guarantee.
+  private than* a flag everywhere and *strictly more private* on Linux. "Off the process list" is a
+  Linux-specific guarantee.
 - **Without `secret_env`:** the value is passed as the option's normal flag (`--token <value>`).
   oz still masks it in its own output, but a flag value is inherent to CLI argument passing and
-  **remains visible in the executed process's `argv`** — a documented limitation, not a defect.
+  **remains visible in the executed process's `argv`**. That is a documented limitation, not a defect.
 - **Tradeoff:** env delivery hands the secret to the wrapped process *and every child it spawns*
   (env is inherited; argv is per-process), so a descendant that logs or crash-dumps its environment
   can re-expose it. If both `secret_env` and `flag` are set, env delivery wins (nothing is emitted
@@ -204,9 +215,10 @@ Wizards live in `~/.config/oz/wizards/` (override with `OZ_CONFIG_DIR` or `--con
 | `version_control` | Auto-detect tool version and filter options |
 | `versions` | Semver constraint to show option only for matching versions |
 
-### Version Control
+### Version control
 
-Wizards can detect the installed tool version and filter options by semver range:
+Wizards can detect the installed tool version and filter options by semver range. At the top level
+of the wizard's YAML file:
 
 ```yaml
 version_control:
@@ -227,9 +239,9 @@ options:
 
 Supports all semver constraint syntax: `>=`, `<=`, `>`, `<`, `!=`, tilde (`~1.2`), caret (`^2.0`), wildcards (`1.2.x`), hyphen ranges (`1.2 - 1.4`), and OR (`||`).
 
-### Conditional Visibility
+### Conditional visibility
 
-Show or hide options based on previous answers:
+Show or hide options based on previous answers. Under `options:` in the wizard's YAML file:
 
 ```yaml
 - name: db
@@ -247,9 +259,9 @@ Show or hide options based on previous answers:
     db: pg
 ```
 
-### Dynamic Choices
+### Dynamic choices
 
-Load choices from a shell command at runtime:
+Load choices from a shell command at runtime. Under `options:` in the wizard's YAML file:
 
 ```yaml
 - name: branch
@@ -258,7 +270,7 @@ Load choices from a shell command at runtime:
   choices_from: git branch --format='%(refname:short)'
 ```
 
-### Generate Wizards from `--help`
+### Generate wizards from `--help`
 
 Instead of writing YAML from scratch, scaffold a wizard from any CLI tool's help output:
 
@@ -270,7 +282,7 @@ oz generate ffmpeg               # works with most help formats
 
 The parser auto-detects help format and handles GNU, Cobra, kubectl/pflag, Clap (Rust), argparse (Python), Thor (Ruby), dry-cli (Hanami), npm, man pages, Homebrew, and headerless formats. Tested against 59 real-world CLI tools.
 
-## Shell Completions
+## Shell completions
 
 ```bash
 # Bash
@@ -286,9 +298,20 @@ oz completion fish > ~/.config/fish/completions/oz.fish
 oz completion powershell > oz.ps1
 ```
 
+## Help and status
+
+Questions and bug reports both go to [GitHub Issues](https://github.com/svyatov/oz/issues). For a
+suspected vulnerability, use the private channel in [SECURITY.md](SECURITY.md) instead.
+
+oz is maintained by one person in their spare time. Issues and pull requests get a reply, fixes ship
+when they are ready, and there is no support commitment beyond that. See
+[Governance](CONTRIBUTING.md#governance) for what happens if that stops.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, and how to contribute wizards.
+
+Released versions and what changed in each are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
