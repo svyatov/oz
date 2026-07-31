@@ -187,9 +187,9 @@ Under `options:` in the wizard's YAML file:
 - **With `secret_env`:** oz sets `GH_TOKEN=<value>` in the executed command's environment and emits
   nothing for the option into `argv`. On **Linux** this keeps the secret off the world-readable
   process list (`/proc/<pid>/cmdline` is world-readable; `/proc/<pid>/environ` is owner/root-only).
-  macOS/BSD have no `/proc` and restrict cross-user `ps` by default, so env delivery is *no less
-  private than* a flag everywhere and *strictly more private* on Linux. "Off the process list" is a
-  Linux-specific guarantee.
+  That guarantee is Linux-specific. macOS and the BSDs have no `/proc`, and oz makes no claim about
+  what their process tools expose. Treat env delivery there as a smaller `argv` footprint, not a
+  privacy guarantee.
 - **Without `secret_env`:** the value is passed as the option's normal flag (`--token <value>`).
   oz still masks it in its own output, but a flag value is inherent to CLI argument passing and
   **remains visible in the executed process's `argv`**. That is a documented limitation, not a defect.
