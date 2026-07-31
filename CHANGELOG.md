@@ -8,6 +8,16 @@ public API declared in [CONTRIBUTING.md](CONTRIBUTING.md#versioning).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-31
+
+### Fixed
+
+- 0.2.1 exists as a git tag and on `proxy.golang.org`, and carries no GitHub
+  release. Its release run wrote the notes file into the checkout, and GoReleaser
+  refuses to build from a dirty working tree, so no binaries, bills of materials,
+  or Homebrew update accompanied that version. The notes now land outside the
+  checkout, and everything 0.2.1 was meant to ship arrives here
+
 ## [0.2.1] - 2026-07-31
 
 ### Added
@@ -78,7 +88,8 @@ Initial public release.
 - Dry-run mode and command copy-to-clipboard
 - Shell completions (bash, zsh, fish, powershell)
 
-[Unreleased]: https://github.com/svyatov/oz/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/svyatov/oz/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/svyatov/oz/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/svyatov/oz/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/svyatov/oz/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/svyatov/oz/releases/tag/v0.1.0
