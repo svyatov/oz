@@ -34,10 +34,10 @@ sboms:
   - artifacts: archive
 
 # Release notes come from the matching CHANGELOG.md section, passed with
-# --release-notes in .github/workflows/release.yml. That flag skips goreleaser's
-# own changelog generation.
-changelog:
-  disable: true
+# --release-notes in .github/workflows/release.yml. That flag already skips
+# goreleaser's own changelog generation, and there is deliberately no
+# `changelog: disable: true` here: disabling the changelog skips the step that
+# reads the file too, which ships a release with an empty body.
 
 homebrew_casks:
   - name: oz
